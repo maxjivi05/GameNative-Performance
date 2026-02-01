@@ -971,7 +971,7 @@ abstract class BaseAppScreen {
             // This is a bit tricky as NavigationDialog is a legacy View-based dialog.
             // We can show it using a side effect.
             SideEffect {
-                val dialog = NavigationDialog(context, false) { itemId ->
+                val dialog = NavigationDialog(context, false, false) { itemId ->
                     // Handle item selection if needed, but here we just wanted to launch
                     // specific parts of it. Actually, NavigationDialog launches its own
                     // sub-dialogs for these actions.

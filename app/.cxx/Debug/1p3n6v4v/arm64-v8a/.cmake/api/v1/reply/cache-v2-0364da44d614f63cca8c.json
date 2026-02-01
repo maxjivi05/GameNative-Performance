@@ -11,7 +11,7 @@
 				}
 			],
 			"type" : "UNINITIALIZED",
-			"value" : "armeabi-v7a"
+			"value" : "arm64-v8a"
 		},
 		{
 			"name" : "ANDROID_NDK",
@@ -63,7 +63,7 @@
 				}
 			],
 			"type" : "UNINITIALIZED",
-			"value" : "armeabi-v7a"
+			"value" : "arm64-v8a"
 		},
 		{
 			"name" : "CMAKE_ANDROID_NDK",
@@ -151,7 +151,7 @@
 				}
 			],
 			"type" : "INTERNAL",
-			"value" : "/home/max/Build/GameNative-Enh-source/Attempt1/app/.cxx/Debug/1p3n6v4v/armeabi-v7a"
+			"value" : "/home/max/Build/GameNative-Enh-source/Test/app/.cxx/Debug/1p3n6v4v/arm64-v8a"
 		},
 		{
 			"name" : "CMAKE_CACHE_MAJOR_VERSION",
@@ -671,7 +671,7 @@
 				}
 			],
 			"type" : "INTERNAL",
-			"value" : "/home/max/Build/GameNative-Enh-source/Attempt1/app/src/main/cpp"
+			"value" : "/home/max/Build/GameNative-Enh-source/Test/app/src/main/cpp"
 		},
 		{
 			"name" : "CMAKE_INSTALL_PREFIX",
@@ -707,7 +707,7 @@
 				}
 			],
 			"type" : "UNINITIALIZED",
-			"value" : "/home/max/Build/GameNative-Enh-source/Attempt1/app/build/intermediates/cxx/Debug/1p3n6v4v/obj/armeabi-v7a"
+			"value" : "/home/max/Build/GameNative-Enh-source/Test/app/build/intermediates/cxx/Debug/1p3n6v4v/obj/arm64-v8a"
 		},
 		{
 			"name" : "CMAKE_LINKER",
@@ -979,7 +979,7 @@
 				}
 			],
 			"type" : "UNINITIALIZED",
-			"value" : "/home/max/Build/GameNative-Enh-source/Attempt1/app/build/intermediates/cxx/Debug/1p3n6v4v/obj/armeabi-v7a"
+			"value" : "/home/max/Build/GameNative-Enh-source/Test/app/build/intermediates/cxx/Debug/1p3n6v4v/obj/arm64-v8a"
 		},
 		{
 			"name" : "CMAKE_SHARED_LINKER_FLAGS",
@@ -1263,7 +1263,7 @@
 				}
 			],
 			"type" : "STATIC",
-			"value" : "/home/max/Build/GameNative-Enh-source/Attempt1/app/.cxx/Debug/1p3n6v4v/armeabi-v7a/patchelf"
+			"value" : "/home/max/Build/GameNative-Enh-source/Test/app/.cxx/Debug/1p3n6v4v/arm64-v8a/patchelf"
 		},
 		{
 			"name" : "PatchElf_IS_TOP_LEVEL",
@@ -1287,7 +1287,7 @@
 				}
 			],
 			"type" : "STATIC",
-			"value" : "/home/max/Build/GameNative-Enh-source/Attempt1/app/src/main/cpp/patchelf"
+			"value" : "/home/max/Build/GameNative-Enh-source/Test/app/src/main/cpp/patchelf"
 		},
 		{
 			"name" : "Pluvia_BINARY_DIR",
@@ -1299,7 +1299,7 @@
 				}
 			],
 			"type" : "STATIC",
-			"value" : "/home/max/Build/GameNative-Enh-source/Attempt1/app/.cxx/Debug/1p3n6v4v/armeabi-v7a"
+			"value" : "/home/max/Build/GameNative-Enh-source/Test/app/.cxx/Debug/1p3n6v4v/arm64-v8a"
 		},
 		{
 			"name" : "Pluvia_IS_TOP_LEVEL",
@@ -1323,7 +1323,7 @@
 				}
 			],
 			"type" : "STATIC",
-			"value" : "/home/max/Build/GameNative-Enh-source/Attempt1/app/src/main/cpp"
+			"value" : "/home/max/Build/GameNative-Enh-source/Test/app/src/main/cpp"
 		},
 		{
 			"name" : "VirGLRenderer_BINARY_DIR",
@@ -1335,7 +1335,7 @@
 				}
 			],
 			"type" : "STATIC",
-			"value" : "/home/max/Build/GameNative-Enh-source/Attempt1/app/.cxx/Debug/1p3n6v4v/armeabi-v7a/virglrenderer"
+			"value" : "/home/max/Build/GameNative-Enh-source/Test/app/.cxx/Debug/1p3n6v4v/arm64-v8a/virglrenderer"
 		},
 		{
 			"name" : "VirGLRenderer_IS_TOP_LEVEL",
@@ -1359,7 +1359,7 @@
 				}
 			],
 			"type" : "STATIC",
-			"value" : "/home/max/Build/GameNative-Enh-source/Attempt1/app/src/main/cpp/virglrenderer"
+			"value" : "/home/max/Build/GameNative-Enh-source/Test/app/src/main/cpp/virglrenderer"
 		}
 	],
 	"kind" : "cache",

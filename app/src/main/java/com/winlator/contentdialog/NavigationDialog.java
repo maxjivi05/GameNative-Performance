@@ -32,12 +32,13 @@ public class NavigationDialog extends ContentDialog {
     public static final int ACTION_STRETCH_TO_FULLSCREEN = 6;
     public static final int ACTION_CONTROLLER_MANAGER = 7;
     public static final int ACTION_MOTION_CONTROLS = 8;
+    public static final int ACTION_PAUSE_GAME = 9;
 
     public interface NavigationListener {
         void onNavigationItemSelected(int itemId);
     }
 
-    public NavigationDialog(@NonNull Context context, boolean areControlsVisible, NavigationListener listener) {
+    public NavigationDialog(@NonNull Context context, boolean areControlsVisible, boolean isGamePaused, NavigationListener listener) {
         super(context, R.layout.navigation_dialog);
         if (getWindow() != null) {
             getWindow().setBackgroundDrawableResource(R.drawable.navigation_dialog_background);
@@ -58,6 +59,10 @@ public class NavigationDialog extends ContentDialog {
         ControllerManager controllerManager = ControllerManager.getInstance();
         controllerManager.scanForDevices();
         boolean hasPhysicalController = !controllerManager.getDetectedDevices().isEmpty();
+
+        int pauseIcon = isGamePaused ? R.drawable.icon_play : R.drawable.icon_pause;
+        int pauseText = isGamePaused ? R.string.resume_game : R.string.pause_game;
+        addMenuItem(context, grid, pauseIcon, pauseText, ACTION_PAUSE_GAME, listener, 1.0f);
 
         addMenuItem(context, grid, R.drawable.icon_keyboard, R.string.keyboard, ACTION_KEYBOARD, listener, 1.0f);
         int controlsTextRes = areControlsVisible ? R.string.hide_controls : R.string.show_controls;

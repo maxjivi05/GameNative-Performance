@@ -894,22 +894,23 @@ class EpicAppScreen : BaseAppScreen() {
                 onGetDisplayInfo = { context ->
                     getGameDisplayInfo(context, libraryItem)
                 },
-                onInstall = { selectedGameIds ->
+                onInstall = { selectedGameIds, customPath ->
                     hideGameManagerDialog(gameId)
-                    pendingSelectedGameIds = selectedGameIds
-                    downloadPicker.launchPicker()
-                },
-                onInstallCustom = { selectedGameIds, path ->
-                    hideGameManagerDialog(gameId)
-                    // Delegate to performDownload which handles subfolder creation and DLC filtering
-                    if (app.gamenative.ui.components.requestPermissionsForPath(context, path, null)) {
-                        PostHog.capture(
-                            event = "game_install_started",
-                            properties = mapOf("game_name" to (libraryItem.name ?: ""))
-                        )
-                        performDownload(scope, context, libraryItem, selectedGameIds, {}, path)
+                    PostHog.capture(
+                        event = "game_install_started",
+                        properties = mapOf("game_name" to (libraryItem.name ?: ""))
+                    )
+                    
+                    if (customPath != null) {
+                        // Check permissions for custom path
+                        if (app.gamenative.ui.components.requestPermissionsForPath(context, customPath, null)) {
+                            performDownload(scope, context, libraryItem, selectedGameIds, {}, customPath)
+                        } else {
+                            Toast.makeText(context, "Please grant storage permissions and try again", Toast.LENGTH_LONG).show()
+                        }
                     } else {
-                        Toast.makeText(context, "Please grant storage permissions and try again", Toast.LENGTH_LONG).show()
+                        // Use default path
+                        performDownload(scope, context, libraryItem, selectedGameIds, {}, null)
                     }
                 },
                 onDismissRequest = {

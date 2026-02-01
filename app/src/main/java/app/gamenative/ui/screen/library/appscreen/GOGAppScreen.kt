@@ -639,7 +639,7 @@ class GOGAppScreen : BaseAppScreen() {
                 app.gamenative.ui.enums.DialogType.INSTALL_APP -> {
                     {
                         BaseAppScreen.hideInstallDialog(appId)
-                        downloadPicker.launchPicker()
+                        performDownload(context, libraryItem, {}, null)
                     }
                 }
                 else -> null

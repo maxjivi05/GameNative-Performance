@@ -1,4 +1,4 @@
-                        -H/home/max/Build/GameNative-Enh-source/Attempt1/app/src/main/cpp
+                        -H/home/max/Build/GameNative-Enh-source/Test/app/src/main/cpp
 -DCMAKE_SYSTEM_NAME=Android
 -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 -DCMAKE_SYSTEM_VERSION=26
@@ -9,10 +9,10 @@
 -DCMAKE_ANDROID_NDK=/home/max/android-sdk/ndk/22.1.7171670
 -DCMAKE_TOOLCHAIN_FILE=/home/max/android-sdk/ndk/22.1.7171670/build/cmake/android.toolchain.cmake
 -DCMAKE_MAKE_PROGRAM=/home/max/android-sdk/cmake/3.22.1/bin/ninja
--DCMAKE_LIBRARY_OUTPUT_DIRECTORY=/home/max/Build/GameNative-Enh-source/Attempt1/app/build/intermediates/cxx/Debug/1p3n6v4v/obj/arm64-v8a
--DCMAKE_RUNTIME_OUTPUT_DIRECTORY=/home/max/Build/GameNative-Enh-source/Attempt1/app/build/intermediates/cxx/Debug/1p3n6v4v/obj/arm64-v8a
+-DCMAKE_LIBRARY_OUTPUT_DIRECTORY=/home/max/Build/GameNative-Enh-source/Test/app/build/intermediates/cxx/Debug/1p3n6v4v/obj/arm64-v8a
+-DCMAKE_RUNTIME_OUTPUT_DIRECTORY=/home/max/Build/GameNative-Enh-source/Test/app/build/intermediates/cxx/Debug/1p3n6v4v/obj/arm64-v8a
 -DCMAKE_BUILD_TYPE=Debug
--B/home/max/Build/GameNative-Enh-source/Attempt1/app/.cxx/Debug/1p3n6v4v/arm64-v8a
+-B/home/max/Build/GameNative-Enh-source/Test/app/.cxx/Debug/1p3n6v4v/arm64-v8a
 -GNinja
                         Build command args: []
                         Version: 2

@@ -85,7 +85,7 @@ object EpicGameLauncher {
             params.add("-EpicPortal")
 
             // User information parameters
-            val displayName = "GameNativeUser" //! We should adjust this later and use the user's real displayName later
+            val displayName = gameToken?.displayName ?: "GameNativeUser"
             val accountId = gameToken?.accountId ?: "0"
 
             params.add("-epicusername=$displayName")
