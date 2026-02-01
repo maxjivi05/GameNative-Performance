@@ -28,6 +28,7 @@ import app.gamenative.utils.StorageUtils
 import com.winlator.container.Container
 import com.winlator.core.envvars.EnvVars
 import com.winlator.xenvironment.components.GuestProgramLauncherComponent
+import com.winlator.core.WineRegistryEditor
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import java.text.SimpleDateFormat
@@ -705,7 +706,12 @@ class GOGManager @Inject constructor(
             return "\"explorer.exe\""
         }
 
-        val gameInstallPath = getGameInstallPath(gameId.toString(), game.title)
+        // Use stored install path if available (handles custom locations), otherwise default
+        val gameInstallPath = if (game.installPath.isNotEmpty()) {
+            game.installPath
+        } else {
+            getGameInstallPath(gameId.toString(), game.title)
+        }
         val gameDir = File(gameInstallPath)
 
         if (!gameDir.exists()) {
@@ -730,17 +736,32 @@ class GOGManager @Inject constructor(
 
         // Find the drive letter that's mapped to this game's install path
         var gogDriveLetter: String? = null
+        var driveRootPath: String? = null
         for (drive in com.winlator.container.Container.drivesIterator(container.drives)) {
-            if (drive[1] == gameInstallPath) {
+            // Check if drive path matches game path OR is a parent of it
+            // Use canonical paths to handle potential symlinks or formatting differences
+            val drivePath = try { File(drive[1]).canonicalPath } catch(e: Exception) { drive[1] }
+            val gamePath = try { File(gameInstallPath).canonicalPath } catch(e: Exception) { gameInstallPath }
+            
+            if (gamePath.startsWith(drivePath)) {
                 gogDriveLetter = drive[0]
-                Timber.d("Found GOG game mapped to ${drive[0]}: drive")
+                driveRootPath = drivePath
+                Timber.d("Found GOG game mapped to ${drive[0]}: drive (Root: $drivePath)")
                 break
             }
         }
 
         if (gogDriveLetter == null) {
             Timber.e("GOG game directory not mapped to any drive: $gameInstallPath")
-            return "\"explorer.exe\""
+            // Fallback: Try to map based on simple string comparison if canonical failed
+            for (drive in com.winlator.container.Container.drivesIterator(container.drives)) {
+                if (gameInstallPath.startsWith(drive[1])) {
+                    gogDriveLetter = drive[0]
+                    driveRootPath = drive[1]
+                    break
+                }
+            }
+            if (gogDriveLetter == null) return "\"explorer.exe\""
         }
 
         val gameInstallDir = File(gameInstallPath)
@@ -753,7 +774,24 @@ class GOGManager @Inject constructor(
             return "\"explorer.exe\""
         }
 
-        val windowsPath = "$gogDriveLetter:\\$relativePath"
+        // Calculate Windows path for the game directory root
+        val windowsGameDir = if (driveRootPath != null) {
+             val relPath = try {
+                 File(gameInstallPath).relativeTo(File(driveRootPath)).path.replace('/', '\\')
+             } catch (e: Exception) {
+                 ""
+             }
+             if (relPath.isEmpty()) "$gogDriveLetter:\\" else "$gogDriveLetter:\\$relPath"
+        } else {
+            "$gogDriveLetter:\\"
+        }
+
+        // Final windows EXE path
+        val windowsPath = if (windowsGameDir.endsWith("\\")) {
+            "$windowsGameDir$relativePath"
+        } else {
+            "$windowsGameDir\\$relativePath"
+        }
 
         // Set working directory
         val execWorkingDir = execFile.parentFile
@@ -764,8 +802,37 @@ class GOGManager @Inject constructor(
             guestProgramLauncherComponent.workingDir = gameDir
         }
 
+        // Update Registry with GOG metadata
+        updateGogRegistry(container, gameId.toString(), game.title, windowsGameDir, windowsPath)
+
         Timber.d("GOG Wine command: \"$windowsPath\"")
         return "\"$windowsPath\""
+    }
+
+    private fun updateGogRegistry(container: Container, gameId: String, gameTitle: String, windowsInstallPath: String, windowsExePath: String) {
+        try {
+            val systemRegFile = File(container.rootDir, ".wine/system.reg")
+            WineRegistryEditor(systemRegFile).use { registryEditor ->
+                val key = "Software\\GOG.com\\Games\\$gameId"
+                
+                registryEditor.setStringValue(key, "PATH", windowsInstallPath)
+                registryEditor.setStringValue(key, "GAMENAME", gameTitle)
+                registryEditor.setStringValue(key, "GAMEID", gameId)
+                registryEditor.setStringValue(key, "WORKINGDIR", windowsInstallPath)
+                registryEditor.setStringValue(key, "EXE", windowsExePath)
+                registryEditor.setStringValue(key, "LAUNCHPARAM", "")
+                registryEditor.setStringValue(key, "LAUNCHCOMMAND", windowsExePath)
+                registryEditor.setStringValue(key, "INSTALLDATE", SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date()))
+                
+                // Also set the main GOG key if needed
+                registryEditor.setStringValue("Software\\GOG.com\\GOGGALAXY\\Games\\$gameId", "path", windowsInstallPath)
+                registryEditor.setStringValue("Software\\GOG.com\\GOGGALAXY\\Games\\$gameId", "exe", windowsExePath)
+                
+                Timber.d("Updated GOG registry keys for game $gameId at $windowsInstallPath")
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Failed to update GOG registry keys")
+        }
     }
 
     // ==========================================================================

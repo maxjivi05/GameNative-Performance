@@ -28,7 +28,9 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -71,8 +73,7 @@ import java.util.Locale
 fun EpicGameManagerDialog(
     visible: Boolean,
     onGetDisplayInfo: @Composable (Context) -> GameDisplayInfo,
-    onInstall: (List<Int>) -> Unit,
-    onInstallCustom: ((List<Int>, String) -> Unit)? = null,
+    onInstall: (List<Int>, String?) -> Unit,
     onDismissRequest: () -> Unit
 ) {
     val context = LocalContext.current
@@ -80,6 +81,7 @@ fun EpicGameManagerDialog(
 
     val allDownloadableGames = remember { mutableStateListOf<EpicGame>() }
     val selectedGameIds = remember { mutableStateMapOf<Int, Boolean>() }
+    var selectedCustomPath by remember { mutableStateOf<String?>(null) }
 
     val displayInfo = onGetDisplayInfo(context)
     val gameId = displayInfo.gameId
@@ -90,11 +92,8 @@ fun EpicGameManagerDialog(
         if (uri != null) {
             val path = getPathFromTreeUri(uri)
             if (path != null) {
-                val selectedIds = selectedGameIds
-                    .filter { it.value }
-                    .keys
-                    .toList()
-                onInstallCustom?.invoke(selectedIds, path)
+                // Store the path instead of installing immediately
+                selectedCustomPath = path
             }
         }
     }
@@ -104,6 +103,7 @@ fun EpicGameManagerDialog(
 
         allDownloadableGames.clear()
         selectedGameIds.clear()
+        selectedCustomPath = null // Reset path on open
 
         // Get base game
         val baseGame = EpicService.getEpicGameOf(gameId)
@@ -353,6 +353,16 @@ fun EpicGameManagerDialog(
                         Column(
                             modifier = Modifier.fillMaxWidth()
                         ) {
+                            // Show selected path if set
+                            if (selectedCustomPath != null) {
+                                Text(
+                                    text = "Install location: ${selectedCustomPath}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                                )
+                            }
+
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -365,15 +375,14 @@ fun EpicGameManagerDialog(
                                     text = installSizeDisplay()
                                 )
 
-                                if (onInstallCustom != null) {
-                                    IconButton(
-                                        onClick = { launcher.launch(null) }
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.FolderOpen,
-                                            contentDescription = "Install to specific folder"
-                                        )
-                                    }
+                                IconButton(
+                                    onClick = { launcher.launch(null) }
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.FolderOpen,
+                                        contentDescription = "Install to specific folder",
+                                        tint = if (selectedCustomPath != null) MaterialTheme.colorScheme.primary else LocalContext.current.getColor(R.color.navigation_dialog_item_color).let { Color(it) }
+                                    )
                                 }
 
                                 Button(
@@ -383,7 +392,7 @@ fun EpicGameManagerDialog(
                                             .filter { it.value }
                                             .keys
                                             .toList()
-                                        onInstall(selectedIds)
+                                        onInstall(selectedIds, selectedCustomPath)
                                     }
                                 ) {
                                     Text(stringResource(R.string.install))

@@ -12,6 +12,7 @@ import android.view.WindowInsets
 import android.view.inputmethod.InputMethodManager
 import android.widget.FrameLayout
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ViewList
@@ -326,6 +327,7 @@ fun XServerScreen(
     var showElementEditor by remember { mutableStateOf(false) }
     var elementToEdit by remember { mutableStateOf<com.winlator.inputcontrols.ControlElement?>(null) }
     var showPhysicalControllerDialog by remember { mutableStateOf(false) }
+    var isGamePaused by remember { mutableStateOf(false) }
 
     fun startExitWatchForUnmappedGameWindow(window: Window) {
         val winHandler = xServerView?.getxServer()?.winHandler ?: return
@@ -425,9 +427,20 @@ fun XServerScreen(
         NavigationDialog(
             context,
             areControlsVisible.value,
+            isGamePaused,
             object : NavigationDialog.NavigationListener {
                 override fun onNavigationItemSelected(itemId: Int) {
                     when (itemId) {
+                        NavigationDialog.ACTION_PAUSE_GAME -> {
+                            isGamePaused = !isGamePaused
+                            PluviaApp.isManuallyPaused = isGamePaused
+                            if (isGamePaused) {
+                                PluviaApp.xEnvironment?.onPause()
+                            } else {
+                                PluviaApp.xEnvironment?.onResume()
+                            }
+                        }
+
                         NavigationDialog.ACTION_KEYBOARD -> {
                             val anchor = view // use the same composable root view
                             val c = if (Build.VERSION.SDK_INT >= 30)
@@ -834,6 +847,19 @@ fun XServerScreen(
                             Timber.i("xServerState.value.wineInfo is: " + xServerState.value.wineInfo)
                             Timber.i("WineInfo.MAIN_WINE_VERSION is: " + WineInfo.MAIN_WINE_VERSION)
                             Timber.i("Wine path for wineinfo is " + xServerState.value.wineInfo.path)
+
+                            // guard: wine/proton still missing after download attempt
+                            if (!xServerState.value.wineInfo.isMainWineVersion() &&
+                                xServerState.value.wineInfo.path.isNullOrEmpty()
+                            ) {
+                                val msg = context.getString(R.string.error_wine_not_installed, wineVersion)
+                                Timber.e(msg)
+                                onGameLaunchError?.invoke(msg)
+                                android.os.Handler(android.os.Looper.getMainLooper()).post {
+                                    navigateBack()
+                                }
+                                return@submit
+                            }
 
                             if (!xServerState.value.wineInfo.isMainWineVersion()) {
                                 Timber.i("Settings wine path to: ${xServerState.value.wineInfo.path}")
@@ -1272,6 +1298,42 @@ fun XServerScreen(
                     }
                 }
             )
+        }
+
+        if (isGamePaused) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.5f))
+                    .clickable(enabled = false) {}, // Absorb clicks
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        painter = androidx.compose.ui.res.painterResource(id = R.drawable.icon_pause),
+                        contentDescription = null,
+                        tint = androidx.compose.ui.graphics.Color.White,
+                        modifier = Modifier.size(64.dp)
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = stringResource(id = R.string.paused),
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = androidx.compose.ui.graphics.Color.White
+                    )
+                    Spacer(modifier = Modifier.height(24.dp))
+                    Button(onClick = {
+                        isGamePaused = false
+                        PluviaApp.isManuallyPaused = false
+                        PluviaApp.xEnvironment?.onResume()
+                    }) {
+                        Text(stringResource(id = R.string.resume_game))
+                    }
+                }
+            }
         }
     }
 
@@ -1856,6 +1918,7 @@ private fun setupXEnvironment(
         val graphicsDriverConfig = KeyValueSet(container.getGraphicsDriverConfig())
         if (graphicsDriverConfig.get("version").lowercase(Locale.getDefault()).contains("gen8")) {
             var tuDebug = envVars.get("TU_DEBUG")
+            if (!tuDebug.contains("deck_emu")) tuDebug = (if (!tuDebug.isEmpty()) "$tuDebug," else "") + "deck_emu"
             if (!tuDebug.contains("nolrz")) tuDebug = (if (!tuDebug.isEmpty()) "$tuDebug," else "") + "nolrz"
             envVars.put("TU_DEBUG", tuDebug)
         }
@@ -1948,7 +2011,8 @@ private fun setupXEnvironment(
 
     guestProgramLauncherComponent.envVars = envVars
     guestProgramLauncherComponent.setTerminationCallback { status ->
-        if (status != 0) {
+        // 137=SIGKILL, 143=SIGTERM — normal quit signals
+        if (status != 0 && status != 137 && status != 143) {
             Timber.e("Guest program terminated with status: $status")
             onGameLaunchError?.invoke("Game terminated with error status: $status")
             navigateBack()
@@ -2123,51 +2187,15 @@ private fun getWineStartCommand(
         // The container setup in ContainerUtils maps the game install path to A: drive
         val epicCommand = "A:\\$relativePath".replace("/", "\\")
 
-        // Get Epic launch parameters
-        Timber.tag("XServerScreen").d("Building Epic launch parameters for ${game.appName}...")
-        val runArguments: List<String> = runBlocking {
-            val result = EpicService.buildLaunchParameters(context, game, false)
-            if (result.isFailure) {
-                Timber.tag("XServerScreen").e(result.exceptionOrNull(), "Failed to build Epic launch parameters")
-            }
-            val params = result.getOrNull() ?: listOf()
-            Timber.tag("XServerScreen").i("Got ${params.size} Epic launch parameters")
-            params
-        }
         // Set working directory to the folder containing the executable
         val executableDir = game.installPath + "/" + relativePath.substringBeforeLast("/", "")
         guestProgramLauncherComponent.workingDir = File(executableDir)
 
-        Timber.tag("XServerScreen").i("Epic launch command: \"$epicCommand\"")
+        Timber.tag("XServerScreen").i("Epic launch command (initial): \"$epicCommand\"")
 
-        val launchCommand = if (runArguments.isNotEmpty()) {
-            // Quote each argument to handle spaces in paths (e.g., ownership token paths)
-            val args = runArguments.joinToString(" ") { arg ->
-                // If argument contains '=' and the value part might have spaces, quote the whole arg
-                if (arg.contains("=") && arg.substringAfter("=").contains(" ")) {
-                    val (key, value) = arg.split("=", limit = 2)
-                    "$key=\"$value\""
-                } else if (arg.contains(" ")) {
-                    // Quote standalone arguments with spaces
-                    "\"$arg\""
-                } else {
-                    arg
-                }
-            }
-            "winhandler.exe \"$epicCommand\" $args"
-        } else {
-            Timber.tag("XServerScreen").w("No Epic launch parameters available, launching without authentication")
-            "winhandler.exe \"$epicCommand\""
-        }
-
-        // Log command with sensitive auth tokens redacted
-        // Handle both quoted values (with spaces) and unquoted values
-        val redactedCommand = launchCommand
-            .replace(Regex("-AUTH_PASSWORD=(\"[^\"]*\"|[^ ]+)"), "-AUTH_PASSWORD=[REDACTED]")
-            .replace(Regex("-epicovt=(\"[^\"]*\"|[^ ]+)"), "-epicovt=[REDACTED]")
-        Timber.tag("XServerScreen").i("Epic launch command: $redactedCommand")
-
-        return launchCommand
+        // Return basic command without params initially.
+        // The full params with fresh token will be injected in unpackExecutableFile (preUnpack)
+        return "winhandler.exe \"$epicCommand\""
     } else if (gameSource == GameSource.AMAZON) {
         // For Amazon games, get install path using the product ID string (not the Int gameId)
         val productId = appId.removePrefix("AMAZON_").substringBefore("(")
@@ -2853,7 +2881,57 @@ private fun unpackExecutableFile(
         Timber.e("Error during unpacking: $e")
         onError?.invoke("Error during unpacking: ${e.message}")
     } finally {
-        // no-op
+        // Late binding for Epic Games parameters to ensure fresh exchange token
+        if (ContainerUtils.extractGameSourceFromContainerId(appId) == GameSource.EPIC) {
+            val gameId = ContainerUtils.extractGameIdFromContainerId(appId)
+            Timber.i("Performing late parameter injection for Epic game $gameId")
+            
+            try {
+                val game = runBlocking {
+                    EpicService.getInstance()?.epicManager?.getGameById(gameId.toInt())
+                }
+                
+                if (game != null) {
+                    Timber.tag("XServerScreen").d("Fetching fresh Epic launch parameters...")
+                    val runArguments: List<String> = runBlocking {
+                        val result = EpicService.buildLaunchParameters(context, game, false)
+                        if (result.isFailure) {
+                            Timber.tag("XServerScreen").e(result.exceptionOrNull(), "Failed to build Epic launch parameters")
+                        }
+                        result.getOrNull() ?: listOf()
+                    }
+                    
+                    if (runArguments.isNotEmpty()) {
+                        val currentCmd = guestProgramLauncherComponent.guestExecutable
+                        // Current cmd format: "wine explorer /desktop=shell,WxH winhandler.exe \"A:\Path\To.exe\""
+                        // We need to append args to the end
+                        
+                        val argsStr = runArguments.joinToString(" ") { arg ->
+                            if (arg.contains("=") && arg.substringAfter("=").contains(" ")) {
+                                val (key, value) = arg.split("=", limit = 2)
+                                "$key=\"$value\""
+                            } else if (arg.contains(" ")) {
+                                "\"$arg\""
+                            } else {
+                                arg
+                            }
+                        }
+                        
+                        val newCmd = "$currentCmd $argsStr"
+                        
+                        // Log with redaction
+                        val redacted = newCmd
+                            .replace(Regex("-AUTH_PASSWORD=(\"[^\"]*\"|[^ ]+)"), "-AUTH_PASSWORD=[REDACTED]")
+                            .replace(Regex("-epicovt=(\"[^\"]*\"|[^ ]+)"), "-epicovt=[REDACTED]")
+                            
+                        Timber.tag("XServerScreen").i("Updating guest command with fresh token: $redacted")
+                        guestProgramLauncherComponent.guestExecutable = newCmd
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error during late Epic parameter injection")
+            }
+        }
     }
 }
 

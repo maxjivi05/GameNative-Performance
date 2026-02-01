@@ -22,6 +22,8 @@ public class PulseAudioComponent extends EnvironmentComponent {
     private static final Object lock = new Object();
     private float volume = 1.0f;
     private byte performanceMode = 1;
+    private volatile boolean isPaused = false;
+    private int pauseCount = 0;
 
     public PulseAudioComponent(UnixSocketConfig socketConfig) {
         this.socketConfig = socketConfig;
@@ -33,6 +35,8 @@ public class PulseAudioComponent extends EnvironmentComponent {
         synchronized (lock) {
             stop();
             pid = execPulseAudio();
+            isPaused = false;
+            pauseCount = 0;
         }
     }
 
@@ -44,6 +48,39 @@ public class PulseAudioComponent extends EnvironmentComponent {
                 Process.killProcess(pid);
                 pid = -1;
             }
+            isPaused = false;
+            pauseCount = 0;
+        }
+    }
+
+    public void pause() {
+        Log.d("PulseAudioComponent", "Pausing...");
+        synchronized (lock) {
+            if (isPaused || pid == -1) return;
+            ProcessHelper.suspendProcess(pid);
+            isPaused = true;
+            pauseCount++;
+        }
+    }
+
+    public void resume() {
+        Log.d("PulseAudioComponent", "Resuming...");
+        synchronized (lock) {
+            if (!isPaused || pid == -1) return;
+
+            if (pauseCount >= 3) {
+                // After several SIGSTOP/SIGCONT cycles, PulseAudio's internal state can
+                // become corrupted (ring buffers, socket read positions). Kill and restart
+                // to guarantee a clean state. PA clients reconnect automatically.
+                Log.d("PulseAudioComponent", "Restarting PulseAudio after " + pauseCount + " suspend cycles to prevent state corruption");
+                Process.killProcess(pid);
+                pid = execPulseAudio();
+                pauseCount = 0;
+            } else {
+                ProcessHelper.resumeProcess(pid);
+            }
+
+            isPaused = false;
         }
     }
 

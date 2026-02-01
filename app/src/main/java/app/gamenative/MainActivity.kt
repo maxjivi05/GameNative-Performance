@@ -270,8 +270,8 @@ class MainActivity : ComponentActivity() {
         // disable auto-stop when returning to foreground
         SteamService.autoStopWhenIdle = false
 
-        // Resume game if it was running
-        if (SteamService.keepAlive) {
+        // Resume game if it was running and not manually paused
+        if (SteamService.keepAlive && !PluviaApp.isManuallyPaused) {
             PluviaApp.xEnvironment?.onResume()
             Timber.d("Game resumed")
         }
@@ -293,7 +293,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onPause() {
-        if (SteamService.keepAlive) {
+        if (SteamService.keepAlive && !PluviaApp.isManuallyPaused) {
             PluviaApp.xEnvironment?.onPause()
             Timber.d("Game paused due to app backgrounded")
         }

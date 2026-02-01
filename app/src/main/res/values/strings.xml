@@ -562,6 +562,9 @@
     <string name="start_with_controls_hidden_description">On-screen controls will be hidden when the game starts. Toggle via the navigation menu.</string>
     <string name="emulate_keyboard_mouse">Emulate keyboard and mouse</string>
     <string name="emulate_keyboard_mouse_description">Left stick = WASD, Right stick = mouse. L2 = left click, R2 = right click.</string>
+    <string name="pause_game">Pause Game</string>
+    <string name="resume_game">Resume Game</string>
+    <string name="paused">Paused</string>
 
     <!-- Container Configuration: Rendering -->
     <string name="renderer">Renderer</string>
@@ -779,6 +782,7 @@
     <string name="main_sync_in_progress_launch_anyway_message">Cloud save sync for this game is already running. You can wait and try again, or launch anyway without syncing (may cause save conflicts).</string>
     <string name="main_launch_anyway">Launch anyway</string>
     <string name="main_wait">Wait</string>
+    <string name="main_syncing_cloud_saves">Syncing cloud saves...</string>
     <string name="main_sync_failed">Failed to sync save files: %s.</string>
 
     <!-- PluviaMain: Pending Operations -->
@@ -1109,4 +1113,5 @@
     <string name="amazon_verify_success">All files verified successfully.\n\n%1$d / %2$d files OK.</string>
     <string name="amazon_verify_failed_detail">Verification found issues.\n\n%1$d / %2$d files OK\n%3$d missing\n%4$d size mismatch\n%5$d hash mismatch\n\nReinstall the game to fix corrupted files.</string>
     <string name="amazon_verify_error">Verification failed: %1$s</string>
+    <string name="error_wine_not_installed">Wine/Proton package \'%1$s\' is not installed and could not be downloaded.</string>
 </resources>

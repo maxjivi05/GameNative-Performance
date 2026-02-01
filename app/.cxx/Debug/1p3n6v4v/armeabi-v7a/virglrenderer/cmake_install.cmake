@@ -1,4 +1,4 @@
-# Install script for directory: /home/max/Build/GameNative-Enh-source/Attempt1/app/src/main/cpp/virglrenderer
+# Install script for directory: /home/max/Build/GameNative-Enh-source/Test/app/src/main/cpp/virglrenderer
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
