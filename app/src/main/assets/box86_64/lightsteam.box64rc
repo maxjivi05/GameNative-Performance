@@ -1,0 +1,36 @@
+[steam.exe]
+BOX64_ENV=WINEARGS=-silent -no-browser -noreactlogin -no-dwrite -no-cef-sandbox -nooverlay -nobigpicture -nofriendsui -noshaders -novid -noverifyfiles -nointro -skipstreamingdrivers -norepairfiles -nohltv -nofasthtml -nocrashmonitor -no-shared-textures -disablehighdpi -cef-single-process -cef-in-process-gpu -single_core -cef-disable-d3d11 -cef-disable-sandbox -disable-winh264 -vrdisable -cef-disable-breakpad -cef-disable-gpu -cef-disable-hang-timeouts -cef-disable-seccomp-sandbox -cef-disable-extensions -cef-disable-remote-fonts -cef-enable-media-stream -cef-disable-accelerated-video-decode
+BOX64_ENV1=WINEDLLOVERRIDES=gameoverlayui,gameoverlayui64.exe=d
+
+[steamwebhelper.exe]
+BOX64_DYNAREC_STRONGMEM=1
+
+[MgsGroundZeroes.exe]
+BOX64_ENV=WINEFORCENTCONTINUE=1
+
+[farcry3.exe]
+BOX64_ENV=WINE_DO_NOT_OPEN_SC_MANAGER=1
+
+[farcry3_d3d11.exe]
+BOX64_ENV=WINE_DO_NOT_OPEN_SC_MANAGER=1
+
+[FarCry4.exe]
+BOX64_ENV=WINVERSION=winxp
+
+[watch_dogs.exe]
+BOX64_ENV=WINVERSION=winxp
+
+[ffxiiiimg.exe]
+BOX64_ENV=WINEARGS=-FullScreenMode=Force -Shadow=512 -Msaa=2
+
+[kof13_win32_Release.exe]
+BOX64_ENV1=WINEDLLOVERRIDES=quartz=d
+
+[DXMD.exe]
+BOX64_ENV=WINEVMEMMAXSIZE=16384
+
+[rage.exe]
+BOX64_ENV=ZINK_CONTEXT_THREADED=0
+
+[rage64.exe]
+BOX64_ENV=ZINK_CONTEXT_THREADED=0

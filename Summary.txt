@@ -1,0 +1,23 @@
+# Unofficial GameNative 0.7.2 - Release Summary
+
+This release introduces direct integration with the community repository for drivers and components, alongside critical fixes for navigation and custom game art.
+
+## NEW: REPOSITORY INTEGRATION
+- **Contents Manager:** Now directly connects to the `maxjivi05/Components` repository. You can download and install the latest versions of DXVK, VKD3D, Box64, WOWBox64, and FEXCore with one tap.
+- **Driver Manager:** Added a "GN" (Official) and "MTR" (Community) toggle. Switching to MTR gives you access to a dynamic list of community-contributed drivers fetched directly from GitHub.
+- **Smart Sorting:** MTR drivers are now automatically organized by version. The latest releases (e.g., v1.8.5) are always displayed at the top of the list for easy access.
+- **Dynamic Updates:** The app pulls the latest component lists fresh from the repository every time you open the managers.
+
+## CUSTOM GAMES & ART
+- **Robust Icon Extraction:** New engine pulls high-quality PNG icons directly from Windows EXEs, with advanced BMP reconstruction for maximum compatibility.
+- **Centralized Cache:** Icons are saved in secure internal storage, ensuring they display correctly regardless of game install location.
+- **Cache-Busting:** Library art updates instantly when you select a new executable or click "Fetch Game Images."
+
+## NAVIGATION & STABILITY
+- **State Preservation:** Your current screen and scroll position are now preserved when minimizing and resuming the app.
+- **Optional Steam Login:** Sign-in is now optional; access your GOG and Epic library without being forced to log into Steam.
+- **Seamless Reconnection:** Steam reconnects in the background, keeping your experience fluid.
+
+## BUILD INFO
+- **Version:** Unofficial 0.7.2
+- **Target SDK:** 28 (Handheld Optimized)

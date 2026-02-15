@@ -1,0 +1,370 @@
+EVSHIM starting up…
+Bound to SDL 2.32.6  Axis=0x7841409804
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/tmp/gamepad.mem -> /data/data/app.gamenative/files/imagefs/tmp/gamepad.mem
+>>> VJOY UPDATER for Player 0 is LIVE in PID 15067 <<<
+_r_debug not found in ld.so
+EVSHIM starting up…
+Bound to SDL 2.32.6  Axis=0x7293d5a804
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/tmp/gamepad.mem -> /data/data/app.gamenative/files/imagefs/tmp/gamepad.mem
+>>> VJOY UPDATER for Player 0 is LIVE in PID 15067 <<<
+EVSHIM starting up…
+Bound to SDL 2.32.6  Axis=0x786899b804
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/tmp/gamepad.mem -> /data/data/app.gamenative/files/imagefs/tmp/gamepad.mem
+>>> VJOY UPDATER for Player 0 is LIVE in PID 15112 <<<
+esync: up and running.
+Failed to open /etc/machine-id, error No such file or directory.
+0024:fixme:fsync:do_fsync futexes not supported on this platform.
+_r_debug not found in ld.so
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/tmp/gamepad.mem -> /data/data/app.gamenative/files/imagefs/tmp/gamepad.mem
+002c:fixme:fsync:do_fsync futexes not supported on this platform.
+002c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\wineboot.exe" at 0000000140000000: builtin
+002c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\kernelbase.dll" at 0000004FFF140000: builtin
+002c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\kernel32.dll" at 0000004FFF7B0000: builtin
+002c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\ucrtbase.dll" at 0000004FFE860000: builtin
+002c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\sechost.dll" at 0000004FFEEA0000: builtin
+002c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\msvcrt.dll" at 0000004FFE330000: builtin
+002c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\advapi32.dll" at 0000004FFEF80000: builtin
+002c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\ws2_32.dll" at 0000004FFE220000: builtin
+_r_debug not found in ld.so
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/tmp/gamepad.mem -> /data/data/app.gamenative/files/imagefs/tmp/gamepad.mem
+0034:fixme:fsync:do_fsync futexes not supported on this platform.
+0034:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\services.exe" at 0000000140000000: builtin
+0034:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\kernelbase.dll" at 0000004FFF140000: builtin
+0034:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\kernel32.dll" at 0000004FFF7B0000: builtin
+0034:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\ucrtbase.dll" at 0000004FFE860000: builtin
+0034:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\sechost.dll" at 0000004FFEEA0000: builtin
+0034:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\msvcrt.dll" at 0000004FFE330000: builtin
+0034:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\advapi32.dll" at 0000004FFEF80000: builtin
+0034:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\rpcrt4.dll" at 0000004FFDE50000: builtin
+0034:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\userenv.dll" at 0000004FFDE00000: builtin
+0034:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\setupapi.dll" at 0000004FFDB30000: builtin
+_r_debug not found in ld.so
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/tmp/gamepad.mem -> /data/data/app.gamenative/files/imagefs/tmp/gamepad.mem
+0040:fixme:fsync:do_fsync futexes not supported on this platform.
+0040:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\winedevice.exe" at 0000000140000000: builtin
+0040:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\kernelbase.dll" at 0000004FFF140000: builtin
+0040:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\kernel32.dll" at 0000004FFF7B0000: builtin
+0040:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\ucrtbase.dll" at 0000004FFE860000: builtin
+0040:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\sechost.dll" at 0000004FFEEA0000: builtin
+0040:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\msvcrt.dll" at 0000004FFE330000: builtin
+0040:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\advapi32.dll" at 0000004FFEF80000: builtin
+0040:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\ntoskrnl.exe" at 0000004FFD940000: builtin
+0040:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\rpcrt4.dll" at 0000004FFDE50000: builtin
+004c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\drivers\\mountmgr.sys" at 0000004FFD8B0000: builtin
+004c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\setupapi.dll" at 0000004FFDB30000: builtin
+004c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\drivers\\sharedgpures.sys" at 0000004FFD870000: builtin
+_r_debug not found in ld.so
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/tmp/gamepad.mem -> /data/data/app.gamenative/files/imagefs/tmp/gamepad.mem
+006c:fixme:fsync:do_fsync futexes not supported on this platform.
+006c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\plugplay.exe" at 0000000140000000: builtin
+006c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\kernelbase.dll" at 0000004FFF140000: builtin
+006c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\kernel32.dll" at 0000004FFF7B0000: builtin
+006c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\ucrtbase.dll" at 0000004FFE860000: builtin
+006c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\sechost.dll" at 0000004FFEEA0000: builtin
+006c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\msvcrt.dll" at 0000004FFE330000: builtin
+006c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\advapi32.dll" at 0000004FFEF80000: builtin
+006c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\rpcrt4.dll" at 0000004FFDE50000: builtin
+006c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\win32u.dll" at 0000004FFCB90000: builtin
+006c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\gdi32.dll" at 0000004FFCC30000: builtin
+006c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\ws2_32.dll" at 0000004FFE220000: builtin
+006c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\user32.dll" at 0000004FFD030000: builtin
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/share/fonts
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/share/fonts
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts/.uuid -> /data/data/app.gamenative/files/imagefs/usr/share/fonts/.uuid
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts/.uuid -> /data/data/app.gamenative/files/imagefs/usr/share/fonts/.uuid
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/share/fonts
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/share/fonts
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts/.uuid -> /data/data/app.gamenative/files/imagefs/usr/share/fonts/.uuid
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts/.uuid -> /data/data/app.gamenative/files/imagefs/usr/share/fonts/.uuid
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+006c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\imm32.dll" at 0000004FFCAC0000: builtin
+_r_debug not found in ld.so
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/tmp/gamepad.mem -> /data/data/app.gamenative/files/imagefs/tmp/gamepad.mem
+0084:fixme:fsync:do_fsync futexes not supported on this platform.
+0084:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\svchost.exe" at 0000000140000000: builtin
+0084:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\kernelbase.dll" at 0000004FFF140000: builtin
+0084:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\kernel32.dll" at 0000004FFF7B0000: builtin
+0084:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\ucrtbase.dll" at 0000004FFE860000: builtin
+0084:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\sechost.dll" at 0000004FFEEA0000: builtin
+0084:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\msvcrt.dll" at 0000004FFE330000: builtin
+0084:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\advapi32.dll" at 0000004FFEF80000: builtin
+0084:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\wevtsvc.dll" at 0000004FFCA90000: builtin
+0084:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\rpcrt4.dll" at 0000004FFDE50000: builtin
+004c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\drivers\\nsiproxy.sys" at 0000004FFCA40000: builtin
+0098:err:nsi:poll_netlink bind failed, errno 13.
+004c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\dnsapi.dll" at 0000004FFC860000: builtin
+004c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\nsi.dll" at 0000004FFC810000: builtin
+004c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\ws2_32.dll" at 0000004FFE220000: builtin
+004c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\iphlpapi.dll" at 0000004FFC8E0000: builtin
+004c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\drivers\\ndis.sys" at 0000004FFC9F0000: builtin
+_r_debug not found in ld.so
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/tmp/gamepad.mem -> /data/data/app.gamenative/files/imagefs/tmp/gamepad.mem
+00a0:fixme:fsync:do_fsync futexes not supported on this platform.
+00a0:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\winedevice.exe" at 0000000140000000: builtin
+00a0:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\kernelbase.dll" at 0000004FFF140000: builtin
+00a0:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\kernel32.dll" at 0000004FFF7B0000: builtin
+00a0:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\ucrtbase.dll" at 0000004FFE860000: builtin
+00a0:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\sechost.dll" at 0000004FFEEA0000: builtin
+00a0:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\msvcrt.dll" at 0000004FFE330000: builtin
+00a0:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\advapi32.dll" at 0000004FFEF80000: builtin
+00a0:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\ntoskrnl.exe" at 0000004FFD940000: builtin
+00a0:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\rpcrt4.dll" at 0000004FFDE50000: builtin
+00a8:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\drivers\\hidparse.sys" at 0000004FFC740000: builtin
+00a8:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\drivers\\winebus.sys" at 0000004FFC7A0000: builtin
+00a8:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\setupapi.dll" at 0000004FFDB30000: builtin
+00a8:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\win32u.dll" at 0000004FFCB90000: builtin
+00a8:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\gdi32.dll" at 0000004FFCC30000: builtin
+00a8:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\ws2_32.dll" at 0000004FFE220000: builtin
+00a8:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\user32.dll" at 0000004FFD030000: builtin
+00a8:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\combase.dll" at 0000004FFBF40000: builtin
+00a8:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\coml2.dll" at 0000004FFBE90000: builtin
+00a8:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\ole32.dll" at 0000004FFC1B0000: builtin
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/share/fonts
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/share/fonts
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts/.uuid -> /data/data/app.gamenative/files/imagefs/usr/share/fonts/.uuid
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts/.uuid -> /data/data/app.gamenative/files/imagefs/usr/share/fonts/.uuid
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/share/fonts
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/share/fonts
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts/.uuid -> /data/data/app.gamenative/files/imagefs/usr/share/fonts/.uuid
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts/.uuid -> /data/data/app.gamenative/files/imagefs/usr/share/fonts/.uuid
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+00a8:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\imm32.dll" at 0000004FFCAC0000: builtin
+00a8:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\uxtheme.dll" at 0000004FFBD60000: builtin
+00a8:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\drivers\\hidclass.sys" at 0000004FFBCB0000: builtin
+00a8:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\drivers\\winehid.sys" at 0000004FFBD20000: builtin
+00a8:err:hid:pdo_pnp_dispatch Failed to start device 0000000000913390, status 0xc0000005
+00a8:fixme:hid:bus_create_hid_device failed to create device error 0xc0000035
+00a8:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\drivers\\winebth.sys" at 0000004FFBC50000: builtin
+00a8:err:ntoskrnl:ZwLoadDriver failed to create driver L"\\Registry\\Machine\\System\\CurrentControlSet\\Services\\winebth": c00000e5
+0034:fixme:service:scmdatabase_autostart_services Auto-start service L"winebth" failed to start: 1359
+002c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\shcore.dll" at 0000004FFAB10000: builtin
+002c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\win32u.dll" at 0000004FFCB90000: builtin
+002c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\gdi32.dll" at 0000004FFCC30000: builtin
+002c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\user32.dll" at 0000004FFD030000: builtin
+002c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\shlwapi.dll" at 0000004FFAB90000: builtin
+002c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\shell32.dll" at 0000004FFAD30000: builtin
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/share/fonts
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/share/fonts
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts/.uuid -> /data/data/app.gamenative/files/imagefs/usr/share/fonts/.uuid
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts/.uuid -> /data/data/app.gamenative/files/imagefs/usr/share/fonts/.uuid
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+00b4:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\drivers\\winexinput.sys" at 0000004FFAAC0000: builtin
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/share/fonts
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/share/fonts
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts/.uuid -> /data/data/app.gamenative/files/imagefs/usr/share/fonts/.uuid
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts/.uuid -> /data/data/app.gamenative/files/imagefs/usr/share/fonts/.uuid
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+002c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\imm32.dll" at 0000004FFCAC0000: builtin
+002c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\rpcrt4.dll" at 0000004FFDE50000: builtin
+002c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\combase.dll" at 0000004FFBF40000: builtin
+002c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\coml2.dll" at 0000004FFBE90000: builtin
+002c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\ole32.dll" at 0000004FFC1B0000: builtin
+0024:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\start.exe" at 0000000140000000: builtin
+0024:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\kernelbase.dll" at 0000004FFF140000: builtin
+0024:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\kernel32.dll" at 0000004FFF7B0000: builtin
+0024:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\ucrtbase.dll" at 0000004FFE860000: builtin
+0024:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\sechost.dll" at 0000004FFEEA0000: builtin
+0024:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\msvcrt.dll" at 0000004FFE330000: builtin
+0024:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\advapi32.dll" at 0000004FFEF80000: builtin
+0024:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\shcore.dll" at 0000004FFAB10000: builtin
+0024:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\win32u.dll" at 0000004FFCB90000: builtin
+0024:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\gdi32.dll" at 0000004FFCC30000: builtin
+0024:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\ws2_32.dll" at 0000004FFE220000: builtin
+0024:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\user32.dll" at 0000004FFD030000: builtin
+0024:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\shlwapi.dll" at 0000004FFAB90000: builtin
+0024:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\shell32.dll" at 0000004FFAD30000: builtin
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/share/fonts
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/share/fonts
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts/.uuid -> /data/data/app.gamenative/files/imagefs/usr/share/fonts/.uuid
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts/.uuid -> /data/data/app.gamenative/files/imagefs/usr/share/fonts/.uuid
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/share/fonts
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/share/fonts
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts/.uuid -> /data/data/app.gamenative/files/imagefs/usr/share/fonts/.uuid
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts/.uuid -> /data/data/app.gamenative/files/imagefs/usr/share/fonts/.uuid
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+0024:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\imm32.dll" at 0000004FFCAC0000: builtin
+_r_debug not found in ld.so
+EVSHIM starting up…
+Bound to SDL 2.32.6  Axis=0x772fef0804
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/tmp/gamepad.mem -> /data/data/app.gamenative/files/imagefs/tmp/gamepad.mem
+>>> VJOY UPDATER for Player 0 is LIVE in PID 15194 <<<
+00d4:fixme:fsync:do_fsync futexes not supported on this platform.
+00d4:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\explorer.exe" at 0000000140000000: builtin
+00d4:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\kernelbase.dll" at 0000004FFF140000: builtin
+00d4:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\kernel32.dll" at 0000004FFF7B0000: builtin
+00d4:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\ucrtbase.dll" at 0000004FFE860000: builtin
+00d4:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\sechost.dll" at 0000004FFEEA0000: builtin
+00d4:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\msvcrt.dll" at 0000004FFE330000: builtin
+00d4:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\advapi32.dll" at 0000004FFEF80000: builtin
+00d4:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\rpcrt4.dll" at 0000004FFDE50000: builtin
+00d4:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\win32u.dll" at 0000004FFCB90000: builtin
+00d4:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\gdi32.dll" at 0000004FFCC30000: builtin
+00d4:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\ws2_32.dll" at 0000004FFE220000: builtin
+00d4:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\user32.dll" at 0000004FFD030000: builtin
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/share/fonts
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/share/fonts
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts/.uuid -> /data/data/app.gamenative/files/imagefs/usr/share/fonts/.uuid
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts/.uuid -> /data/data/app.gamenative/files/imagefs/usr/share/fonts/.uuid
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/share/fonts
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/share/fonts
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts/.uuid -> /data/data/app.gamenative/files/imagefs/usr/share/fonts/.uuid
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts/.uuid -> /data/data/app.gamenative/files/imagefs/usr/share/fonts/.uuid
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+00d4:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\imm32.dll" at 0000004FFCAC0000: builtin
+00d4:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\winex11.drv" at 0000004FFAA90000: builtin
+Memory mapping flag was not specified
+hook_android_load_sphal_library: filename: vulkan.adreno.so
+hook_android_dlopen_ext: filename: vulkan.adreno.so
+hook_android_dlopen_ext: loading custom driver: /data/user/0/app.gamenative/files/contents/adrenotools/Turnip MTR v1.8.6 A840P/libvulkan_freedreno.so
+00d4:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\uxtheme.dll" at 0000004FFBD60000: builtin
+00d4:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\combase.dll" at 0000004FFBF40000: builtin
+00d4:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\coml2.dll" at 0000004FFBE90000: builtin
+00d4:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\ole32.dll" at 0000004FFC1B0000: builtin
+00d4:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\oleaut32.dll" at 0000004FF9D30000: builtin
+00d4:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\oleacc.dll" at 0000004FFA250000: builtin
+00d4:trace:loaddll:build_module Loaded L"C:\\windows\\winsxs\\arm64_microsoft.windows.common-controls_6595b64144ccf1df_6.0.2600.2982_none_deadbeef\\comctl32.dll" at 0000004FFA320000: builtin
+00d4:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\shcore.dll" at 0000004FFAB10000: builtin
+00d4:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\shlwapi.dll" at 0000004FFAB90000: builtin
+00d4:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\shell32.dll" at 0000004FFAD30000: builtin
+_r_debug not found in ld.so
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/tmp/gamepad.mem -> /data/data/app.gamenative/files/imagefs/tmp/gamepad.mem
+00ec:fixme:fsync:do_fsync futexes not supported on this platform.
+00ec:err:environ:init_peb starting L"C:\\windows\\winhandler.exe" in experimental ARM64EC mode
+00ec:trace:loaddll:build_module Loaded L"C:\\windows\\winhandler.exe" at 0000000140000000: native
+00ec:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\libarm64ecfex.dll" at 0000004FF9800000: builtin
+00d4:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\actxprxy.dll" at 0000004FF9690000: builtin
+00ec:fixme:process:NtSetInformationProcess (0xffffffffffffffff,0x000007d0,0x21ccd0,0x00000004) stub
+00ec:fixme:process:NtSetInformationProcess (0xffffffffffffffff,0x000007d1,0x21ccf8,0x00000008) stub
+00ec:fixme:process:NtSetInformationProcess (0xffffffffffffffff,0x000007d0,0x21cd60,0x00000004) stub
+00ec:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\kernelbase.dll" at 0000004FFF140000: builtin
+00ec:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\kernel32.dll" at 0000004FFF7B0000: builtin
+00ec:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\msvcrt.dll" at 0000004FFE330000: builtin
+_r_debug not found in ld.so
+00ec:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\ucrtbase.dll" at 0000004FFE860000: builtin
+00ec:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\sechost.dll" at 0000004FFEEA0000: builtin
+00ec:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\advapi32.dll" at 0000004FFEF80000: builtin
+00ec:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\shcore.dll" at 0000004FFAB10000: builtin
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/tmp/gamepad.mem -> /data/data/app.gamenative/files/imagefs/tmp/gamepad.mem
+00fc:fixme:fsync:do_fsync futexes not supported on this platform.
+00ec:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\win32u.dll" at 0000004FFCB90000: builtin
+00ec:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\gdi32.dll" at 0000004FFCC30000: builtin
+00ec:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\ws2_32.dll" at 0000004FFE220000: builtin
+00ec:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\user32.dll" at 0000004FFD030000: builtin
+00ec:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\shlwapi.dll" at 0000004FFAB90000: builtin
+00ec:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\SHELL32.dll" at 0000004FFAD30000: builtin
+00fc:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\rpcss.exe" at 0000000140000000: builtin
+00fc:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\kernelbase.dll" at 0000004FFF140000: builtin
+00fc:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\kernel32.dll" at 0000004FFF7B0000: builtin
+00fc:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\ucrtbase.dll" at 0000004FFE860000: builtin
+00fc:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\sechost.dll" at 0000004FFEEA0000: builtin
+00fc:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\msvcrt.dll" at 0000004FFE330000: builtin
+00fc:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\advapi32.dll" at 0000004FFEF80000: builtin
+00fc:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\rpcrt4.dll" at 0000004FFDE50000: builtin
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/share/fonts
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/share/fonts
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts/.uuid -> /data/data/app.gamenative/files/imagefs/usr/share/fonts/.uuid
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts/.uuid -> /data/data/app.gamenative/files/imagefs/usr/share/fonts/.uuid
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/share/fonts
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/share/fonts
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts/.uuid -> /data/data/app.gamenative/files/imagefs/usr/share/fonts/.uuid
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts/.uuid -> /data/data/app.gamenative/files/imagefs/usr/share/fonts/.uuid
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+00ec:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\imm32.dll" at 0000004FFCAC0000: builtin
+00ec:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\rpcrt4.dll" at 0000004FFDE50000: builtin
+00ec:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\combase.dll" at 0000004FFBF40000: builtin
+00ec:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\coml2.dll" at 0000004FFBE90000: builtin
+00ec:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\ole32.dll" at 0000004FFC1B0000: builtin
+_r_debug not found in ld.so
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/tmp/gamepad.mem -> /data/data/app.gamenative/files/imagefs/tmp/gamepad.mem
+0124:fixme:fsync:do_fsync futexes not supported on this platform.
+0124:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\tabtip.exe" at 0000000140000000: builtin
+0124:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\kernelbase.dll" at 0000004FFF140000: builtin
+0124:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\kernel32.dll" at 0000004FFF7B0000: builtin
+0124:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\ucrtbase.dll" at 0000004FFE860000: builtin
+0124:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\sechost.dll" at 0000004FFEEA0000: builtin
+0124:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\msvcrt.dll" at 0000004FFE330000: builtin
+0124:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\advapi32.dll" at 0000004FFEF80000: builtin
+0124:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\win32u.dll" at 0000004FFCB90000: builtin
+0124:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\gdi32.dll" at 0000004FFCC30000: builtin
+0124:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\ws2_32.dll" at 0000004FFE220000: builtin
+0124:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\user32.dll" at 0000004FFD030000: builtin
+0124:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\rpcrt4.dll" at 0000004FFDE50000: builtin
+0124:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\combase.dll" at 0000004FFBF40000: builtin
+0124:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\coml2.dll" at 0000004FFBE90000: builtin
+0124:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\ole32.dll" at 0000004FFC1B0000: builtin
+0124:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\shcore.dll" at 0000004FFAB10000: builtin
+0124:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\shlwapi.dll" at 0000004FFAB90000: builtin
+0124:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\shell32.dll" at 0000004FFAD30000: builtin
+0124:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\oleaut32.dll" at 0000004FF9D30000: builtin
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/share/fonts
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/share/fonts
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts/.uuid -> /data/data/app.gamenative/files/imagefs/usr/share/fonts/.uuid
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts/.uuid -> /data/data/app.gamenative/files/imagefs/usr/share/fonts/.uuid
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/share/fonts
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/share/fonts
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts/.uuid -> /data/data/app.gamenative/files/imagefs/usr/share/fonts/.uuid
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts/.uuid -> /data/data/app.gamenative/files/imagefs/usr/share/fonts/.uuid
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+0124:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\imm32.dll" at 0000004FFCAC0000: builtin
+0124:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\oleacc.dll" at 0000004FFA250000: builtin
+0124:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\uiautomationcore.dll" at 0000004FF9410000: builtin
+00ec:trace:loaddll:build_module Loaded L"c:\\windows\\system32\\winex11.drv" at 0000004FFAA90000: builtin
+0124:trace:loaddll:build_module Loaded L"c:\\windows\\system32\\winex11.drv" at 0000004FFAA90000: builtin
+00ec:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\uxtheme.dll" at 0000004FFBD60000: builtin
+0124:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\uxtheme.dll" at 0000004FFBD60000: builtin
+0124:fixme:oleacc:find_class_data unhandled window class: L"#32769"
+0124:fixme:uiautomation:uia_get_providers_for_hwnd Override provider callback currently unimplemented.
+0124:fixme:uiautomation:default_uia_provider_callback Default ProviderType_NonClientArea provider unimplemented.
+0124:fixme:oleacc:find_class_data unhandled window class: L"#32769"
+0124:fixme:uiautomation:base_hwnd_fragment_get_FragmentRoot 00000000006F6868, 000000000011FC00: stub!
+0124:fixme:uiautomation:base_hwnd_fragment_GetEmbeddedFragmentRoots 00000000006F6868, 000000000011FBF0: stub!
+0130:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0130:fixme:uiautomation:msaa_provider_GetPatternProvider Unimplemented patternId 10002
+0130:fixme:uiautomation:base_hwnd_provider_GetPatternProvider 000000000071B6B0, 10002, 000000000142F960: stub
+0130:fixme:oleacc:find_class_data unhandled window class: L"#32770"
+0130:fixme:oleacc:find_class_data unhandled window class: L"Button"
+X connection to :0 broken (explicit kill or server shutdown).
+X connection to :0 broken (explicit kill or server shutdown).
+00ec:fixme:x11drv:X11DRV_DestroyNotify window 0x200a2/2000003 destroyed from the outside
+00ec:fixme:x11drv:X11DRV_DestroyNotify window 0x1007a/2000002 destroyed from the outside
+X connection to :0 broken (explicit kill or server shutdown).
+00d4:fixme:x11drv:X11DRV_DestroyNotify window 0x20082/80000f destroyed from the outside
+00d4:fixme:x11drv:X11DRV_DestroyNotify window 0x10064/80000e destroyed from the outside
+00d4:fixme:x11drv:X11DRV_DestroyNotify window 0x10062/80000d destroyed from the outside
+00d4:fixme:x11drv:X11DRV_DestroyNotify window 0x10060/80000c destroyed from the outside
+X connection to :0 broken (explicit kill or server shutdown).
+X connection to :0 broken (explicit kill or server shutdown).
