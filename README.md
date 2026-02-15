@@ -6,7 +6,7 @@ GameNative-Performance is a high-performance fork of GameNative, optimized speci
 
 ### 🚀 Hardware Performance Optimization
 - **Force Maximum Clocks (Non-Root):** Integrated loop detection via Adreno Tools that re-applies maximum GPU clock requests every 5 seconds to prevent system downclocking.
-- **Root Maximum Performance:** For rooted users, an aggressive **500ms loop** that monitors hardware nodes and instantly rewrites CPU/GPU registers if a frequency drop is detected.
+- **Root Maximum Performance:** For rooted users, an aggressive **500ms loop** that monitors hardware nodes and instantly rewrites GPU registers if a frequency drop is detected.
 - **Aggressive Power Profiles:** Forces Adreno power levels to 0 (Maximum) and disables GPU "napping" to maintain peak FPS in demanding titles.
 - **Fuzzy GPU Node Detection:** Automatically identifies and targets device-specific clock nodes (e.g., hitting 1200MHz on Adreno 840).
 
@@ -30,7 +30,9 @@ GameNative-Performance is a high-performance fork of GameNative, optimized speci
 4. Access internal files via **Settings -> Debug -> Embedded File Access**.
 
 ## Support
-To report issues or receive support, join the [Discord server](https://discord.gg/2hKv4VfZfE)
+To report issues or receive support, join our community!
+
+[![](https://img.shields.io/discord/1339414441441441441?color=5865F2&label=Join%20Discord&logo=discord&logoColor=white&style=for-the-badge)](https://discord.gg/fHX2jFUWdP)
 
 ## Building
 1. Open in Android Studio.
