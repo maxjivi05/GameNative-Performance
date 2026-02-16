@@ -142,6 +142,9 @@ fun GraphicsTabContent(state: ContainerConfigState) {
         // DX Wrappers (Common)
         DxWrapperSection(state)
 
+        // BCn Emulation (Common)
+        BCnEmulationSection(state)
+
         // Bionic Specific Extras
         if (config.containerVariant.equals(Container.BIONIC, ignoreCase = true)) {
             // Bionic: Exposed Vulkan Extensions
@@ -411,5 +414,47 @@ private fun DxWrapperSection(state: ContainerConfigState) {
                 },
             )
         }
+    }
+}
+
+@Composable
+private fun BCnEmulationSection(state: ContainerConfigState) {
+    val config = state.config.value
+    run {
+        SettingsListDropdown(
+            colors = settingsTileColors(),
+            title = { Text(text = stringResource(R.string.graphics_driver_bcn_emulation)) },
+            value = state.bcnEmulationIndex.value.coerceIn(0, state.bcnEmulationEntries.size - 1).coerceAtLeast(0),
+            items = state.bcnEmulationEntries,
+            onItemSelected = { idx ->
+                state.bcnEmulationIndex.value = idx
+                val cfg = KeyValueSet(config.graphicsDriverConfig)
+                cfg.put("bcnEmulation", state.bcnEmulationEntries[idx])
+                state.config.value = config.copy(graphicsDriverConfig = cfg.toString())
+            },
+        )
+        SettingsListDropdown(
+            colors = settingsTileColors(),
+            title = { Text(text = stringResource(R.string.graphics_driver_bcn_emulation_type)) },
+            value = state.bcnEmulationTypeIndex.value.coerceIn(0, state.bcnEmulationTypeEntries.size - 1).coerceAtLeast(0),
+            items = state.bcnEmulationTypeEntries,
+            onItemSelected = { idx ->
+                state.bcnEmulationTypeIndex.value = idx
+                val cfg = KeyValueSet(config.graphicsDriverConfig)
+                cfg.put("bcnEmulationType", state.bcnEmulationTypeEntries[idx])
+                state.config.value = config.copy(graphicsDriverConfig = cfg.toString())
+            },
+        )
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            title = { Text(text = stringResource(R.string.graphics_driver_bcn_emulation_cache)) },
+            state = state.bcnEmulationCacheEnabled.value,
+            onCheckedChange = { checked ->
+                state.bcnEmulationCacheEnabled.value = checked
+                val cfg = KeyValueSet(config.graphicsDriverConfig)
+                cfg.put("bcnEmulationCache", if (checked) "1" else "0")
+                state.config.value = config.copy(graphicsDriverConfig = cfg.toString())
+            },
+        )
     }
 }
