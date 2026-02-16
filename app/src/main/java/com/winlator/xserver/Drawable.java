@@ -51,6 +51,20 @@ public class Drawable extends XResource {
         this.data = ByteBuffer.allocateDirect(width * height * 4).order(ByteOrder.LITTLE_ENDIAN);
     }
 
+    public Drawable(int id, int width, int height, Visual visual, XServer xServer) {
+        super(id);
+        this.texture = new Texture();
+        if (xServer.getSurfaceFormat().equals("RGBA8")) {
+            this.texture.setFormat(android.opengl.GLES20.GL_RGBA);
+        }
+        this.offscreenStorage = false;
+        this.renderLock = new Object();
+        this.width = (short)width;
+        this.height = (short)height;
+        this.visual = visual;
+        this.data = ByteBuffer.allocateDirect(width * height * 4).order(ByteOrder.LITTLE_ENDIAN);
+    }
+
     public static Drawable fromBitmap(Bitmap bitmap) {
         Drawable drawable = new Drawable(0, bitmap.getWidth(), bitmap.getHeight(), null);
         fromBitmap(bitmap, drawable.data);
