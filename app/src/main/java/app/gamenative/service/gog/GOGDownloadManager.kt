@@ -2,6 +2,8 @@ package app.gamenative.service.gog
 
 import android.content.Context
 import app.gamenative.data.DownloadInfo
+import app.gamenative.enums.Marker
+import app.gamenative.utils.MarkerUtils
 import app.gamenative.service.gog.api.DepotFile
 import app.gamenative.service.gog.api.FileChunk
 import app.gamenative.service.gog.api.GOGApiClient
@@ -93,6 +95,20 @@ class GOGDownloadManager @Inject constructor(
     ): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             Timber.tag("GOG").i("Starting download for game $gameId to ${installPath.absolutePath}")
+
+            // Ensure the install directory exists
+            if (!installPath.exists()) {
+                if (installPath.mkdirs()) {
+                    Timber.tag("GOG").i("Created install directory: ${installPath.absolutePath}")
+                } else {
+                    Timber.tag("GOG").e("Failed to create install directory: ${installPath.absolutePath}")
+                    return@withContext Result.failure(Exception("Failed to create install directory. Check permissions."))
+                }
+            }
+
+            // Reset markers
+            MarkerUtils.removeMarker(installPath.absolutePath, Marker.DOWNLOAD_COMPLETE_MARKER)
+            MarkerUtils.addMarker(installPath.absolutePath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
 
             if(supportDir != null) {
                 Timber.tag("GOG").i("Will also put dependencies into ${supportDir.absolutePath}")
@@ -393,6 +409,10 @@ class GOGDownloadManager @Inject constructor(
                 // Don't fail the entire download for DB issues - They can try again and it will auto-detect and finish
             }
 
+            // Mark download as complete
+            MarkerUtils.removeMarker(installPath.absolutePath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
+            MarkerUtils.addMarker(installPath.absolutePath, Marker.DOWNLOAD_COMPLETE_MARKER)
+
             // Step 13: Emit completion event
             downloadInfo.updateStatusMessage("Complete")
             downloadInfo.setProgress(1.0f)
@@ -408,6 +428,7 @@ class GOGDownloadManager @Inject constructor(
             Result.success(Unit)
         } catch (e: Exception) {
             Timber.tag("GOG").e(e, "Download failed: ${e.message}")
+            MarkerUtils.removeMarker(installPath.absolutePath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
             downloadInfo.updateStatusMessage("Failed: ${e.message}")
             downloadInfo.setProgress(-1.0f)
             downloadInfo.setActive(false)

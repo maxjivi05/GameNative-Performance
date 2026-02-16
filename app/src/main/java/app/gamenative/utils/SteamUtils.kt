@@ -231,7 +231,7 @@ object SteamUtils {
         val appDirPath = SteamService.getAppDirPath(steamAppId)
         val container = ContainerUtils.getContainer(context, appId)
 
-        if (MarkerUtils.hasMarker(appDirPath, Marker.STEAM_COLDCLIENT_USED) && File(container.getRootDir(), ".wine/drive_c/Program Files (x86)/Steam/steamclient_loader_x64.dll").exists()) {
+        if (MarkerUtils.hasMarker(appDirPath, Marker.STEAM_COLDCLIENT_USED) && File(container.getRootDir(), ".wine/drive_c/Program Files (x86)/Steam/steamclient_loader_x64.exe").exists()) {
             return
         }
         MarkerUtils.removeMarker(appDirPath, Marker.STEAM_DLL_REPLACED)
@@ -323,12 +323,24 @@ object SteamUtils {
         Timber.i("Finished restoreSteamclientFiles for appId: $steamAppId. Restored $restoredCount file(s)")
     }
 
-    internal fun writeColdClientIni(steamAppId: Int, container: Container) {
-        val gameName = getAppDirName(getAppInfoOf(steamAppId))
+    internal fun writeSteamclientLoaderIni(steamAppId: Int, container: Container) {
+        val appInfo = getAppInfoOf(steamAppId)
+        val gameName = getAppDirName(appInfo)
         val executablePath = container.executablePath.replace("/", "\\")
-        val exePath = "steamapps\\common\\$gameName\\$executablePath"
+        
+        // If it's a custom install path, the game folder is mapped to A:
+        // Check if installDir is a full path (custom install)
+        val customDir = appInfo?.installDir.orEmpty()
+        val isCustomInstall = customDir.isNotEmpty() && (customDir.startsWith("/") || customDir.contains(File.separator))
+        
+        val exePath = if (isCustomInstall) {
+            "A:\\$executablePath"
+        } else {
+            "steamapps\\common\\$gameName\\$executablePath"
+        }
+        
         val exeCommandLine = container.execArgs
-        val iniFile = File(container.getRootDir(), ".wine/drive_c/Program Files (x86)/Steam/ColdClientLoader.ini")
+        val iniFile = File(container.getRootDir(), ".wine/drive_c/Program Files (x86)/Steam/steamclient_loader_x64.ini")
         iniFile.parentFile?.mkdirs()
 
         // Only include DllsToInjectFolder if unpackFiles is enabled

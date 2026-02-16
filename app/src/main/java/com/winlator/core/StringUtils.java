@@ -23,8 +23,13 @@ public class StringUtils {
         return text.substring(0, start) + value + text.substring(end);
     }
 
-    public static String unescape(String path) {
-        return path.replaceAll("\\\\([^\\\\]+)", "$1").replaceAll("\\\\([^\\\\]+)", "$1").replaceAll("\\\\\\\\", "\\\\").trim();
+    public static String unescape(String value) {
+        if (value == null) return "";
+        value = value.trim();
+        if (value.startsWith("\"") && value.endsWith("\"")) {
+            value = value.substring(1, value.length() - 1);
+        }
+        return value.trim();
     }
 
     public static String parseIdentifier(Object text) {

@@ -234,6 +234,7 @@ internal fun AppScreenContent(
     onPauseResumeClick: () -> Unit,
     onDeleteDownloadClick: () -> Unit,
     onUpdateClick: () -> Unit,
+    onCustomPathClick: (() -> Unit)? = null,
     onBack: () -> Unit = {},
     vararg optionsMenu: AppMenuOption,
 ) {
@@ -455,7 +456,10 @@ internal fun AppScreenContent(
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary),
                         contentPadding = PaddingValues(16.dp)
                     ) {
-                        Text(stringResource(R.string.delete_app), style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold))
+                        Text(
+                            text = if (isInstalled) stringResource(R.string.uninstall) else stringResource(R.string.delete_app),
+                            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
+                        )
                     }
                 } else {
                     // Disable install when Wi-Fi only is enabled and there's no Wi-Fi
@@ -490,6 +494,25 @@ internal fun AppScreenContent(
                             style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
                         )
                     }
+
+                    // Custom Path button (only for non-installed games)
+                    if (!isInstalled && onCustomPathClick != null) {
+                        OutlinedButton(
+                            enabled = installEnabled,
+                            modifier = Modifier.weight(1f),
+                            onClick = onCustomPathClick,
+                            shape = RoundedCornerShape(16.dp),
+                            border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary),
+                            contentPadding = PaddingValues(16.dp)
+                        ) {
+                            Text(
+                                text = "Custom Path",
+                                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
+                            )
+                        }
+                    }
+
                     // Uninstall/Delete button if already installed
                     // This is shared functionality - all game types show delete button when installed
                     // The action is handled by onDeleteDownloadClick which is implemented per game source
@@ -759,7 +782,7 @@ internal fun AppScreenContent(
                             }
 
                             // Location item
-                            if (isInstalled) {
+                            if (isInstalled || displayInfo.installLocation != null) {
                                 item (span = { GridItemSpan(maxLineSpan) }) {
 
                                     Column {

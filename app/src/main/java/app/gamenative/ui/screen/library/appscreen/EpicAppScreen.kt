@@ -5,17 +5,7 @@ import android.widget.Toast
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateMapOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import app.gamenative.R
@@ -110,6 +100,20 @@ class EpicAppScreen : BaseAppScreen() {
 
         fun getGameManagerDialogState(gameId: Int): app.gamenative.ui.component.dialog.state.GameManagerDialogState? {
             return gameManagerDialogStates[gameId]
+        }
+
+        private val customPathPickerRequests = mutableStateMapOf<String, Boolean>()
+
+        fun requestCustomPathPicker(appId: String) {
+            customPathPickerRequests[appId] = true
+        }
+
+        fun clearCustomPathPickerRequest(appId: String) {
+            customPathPickerRequests.remove(appId)
+        }
+
+        fun shouldShowCustomPathPicker(appId: String): Boolean {
+            return customPathPickerRequests[appId] == true
         }
     }
 
@@ -311,8 +315,11 @@ class EpicAppScreen : BaseAppScreen() {
     override fun hasPartialDownload(context: Context, libraryItem: LibraryItem): Boolean {
         val game = EpicService.getEpicGameOf(libraryItem.gameId) ?: return false
         if (game.isInstalled) return false // Already installed (including old installs with no marker)
-        val path = EpicConstants.getGameInstallPath(context, game.appName)
-        return File(path).exists() && !MarkerUtils.hasMarker(path, Marker.DOWNLOAD_COMPLETE_MARKER)
+        // Check stored install path first (handles custom install locations), then default path
+        val storedPath = game.installPath.takeIf { it.isNotEmpty() }
+        val defaultPath = EpicConstants.getGameInstallPath(context, game.appName)
+        val path = storedPath ?: defaultPath
+        return File(path).exists() && MarkerUtils.hasMarker(path, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
     }
 
     override fun onDownloadInstallClick(context: Context, libraryItem: LibraryItem, onClickPlay: (Boolean) -> Unit) {
@@ -379,8 +386,8 @@ class EpicAppScreen : BaseAppScreen() {
                     return@launch
                 }
 
-                // Get install path
-                var installPath = EpicConstants.getGameInstallPath(context, game.appName)
+                // Get install path - check DB first, then default
+                var installPath = EpicService.getInstallPath(libraryItem.gameId) ?: EpicConstants.getGameInstallPath(context, game.appName)
                 
                 if (customInstallPath != null) {
                     // Create a subfolder using the game's appName (which is usually safe) or title
@@ -461,6 +468,10 @@ class EpicAppScreen : BaseAppScreen() {
             Timber.tag(TAG).i("Resuming Epic download: ${libraryItem.gameId}")
             onDownloadInstallClick(context, libraryItem) {}
         }
+    }
+
+    override fun onCustomPathClick(context: Context, libraryItem: LibraryItem) {
+        requestCustomPathPicker(libraryItem.appId)
     }
 
     override fun onDeleteDownloadClick(context: Context, libraryItem: LibraryItem) {
@@ -801,7 +812,11 @@ class EpicAppScreen : BaseAppScreen() {
         val downloadPicker = rememberDownloadFolderPicker(
             onPathSelected = { path ->
                 val gameIds = pendingSelectedGameIds ?: emptyList()
-                performDownload(scope, context, libraryItem, gameIds, {}, path)
+                if (app.gamenative.ui.components.requestPermissionsForPath(context, path, null)) {
+                    performDownload(scope, context, libraryItem, gameIds, {}, path)
+                } else {
+                    Toast.makeText(context, "Please grant storage permissions and try again", Toast.LENGTH_LONG).show()
+                }
                 pendingSelectedGameIds = null
             },
             onFailure = {
@@ -812,6 +827,33 @@ class EpicAppScreen : BaseAppScreen() {
                 pendingSelectedGameIds = null
             }
         )
+
+        val pathOnlyPicker = rememberDownloadFolderPicker(
+            onPathSelected = { path ->
+                if (app.gamenative.ui.components.requestPermissionsForPath(context, path, null)) {
+                    val finalPath = EpicService.setCustomInstallPath(context, libraryItem.gameId, path)
+                    Toast.makeText(context, "Installation path set to: $finalPath", Toast.LENGTH_LONG).show()
+                    app.gamenative.PluviaApp.events.emitJava(
+                        app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged(libraryItem.gameId),
+                    )
+                } else {
+                    Toast.makeText(context, "Please grant storage permissions and try again", Toast.LENGTH_LONG).show()
+                }
+                clearCustomPathPickerRequest(libraryItem.appId)
+            },
+            onCancel = { clearCustomPathPickerRequest(libraryItem.appId) },
+            onFailure = { clearCustomPathPickerRequest(libraryItem.appId) }
+        )
+
+        val customPathRequested by remember(libraryItem.appId) {
+            derivedStateOf { shouldShowCustomPathPicker(libraryItem.appId) }
+        }
+
+        LaunchedEffect(customPathRequested) {
+            if (customPathRequested) {
+                pathOnlyPicker.launchPicker()
+            }
+        }
 
         // Show install dialog if visible
         if (installDialogState.visible) {
@@ -875,13 +917,16 @@ class EpicAppScreen : BaseAppScreen() {
                 },
                 onInstallCustom = { selectedGameIds, path ->
                     hideGameManagerDialog(gameId)
-                    // Call download directly with the custom path
-                    PostHog.capture(
-                        event = "game_install_started",
-                        properties = mapOf("game_name" to (libraryItem.name ?: ""))
-                    )
-                    
-                    EpicService.downloadGame(context, gameId, selectedGameIds, path)
+                    // Delegate to performDownload which handles subfolder creation and DLC filtering
+                    if (app.gamenative.ui.components.requestPermissionsForPath(context, path, null)) {
+                        PostHog.capture(
+                            event = "game_install_started",
+                            properties = mapOf("game_name" to (libraryItem.name ?: ""))
+                        )
+                        performDownload(scope, context, libraryItem, selectedGameIds, {}, path)
+                    } else {
+                        Toast.makeText(context, "Please grant storage permissions and try again", Toast.LENGTH_LONG).show()
+                    }
                 },
                 onDismissRequest = {
                     hideGameManagerDialog(gameId)

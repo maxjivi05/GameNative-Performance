@@ -1,0 +1,7 @@
+.gradle/
+build/
+tmp/
+*.apk
+local.properties
+modified.txt
+Summary.txt

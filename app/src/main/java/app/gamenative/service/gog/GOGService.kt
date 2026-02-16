@@ -247,7 +247,7 @@ class GOGService : Service() {
         fun getInstallPath(gameId: String): String? {
             return runBlocking(Dispatchers.IO) {
                 val game = getInstance()?.gogManager?.getGameFromDbById(gameId)
-                if (game?.isInstalled == true) game.installPath else null
+                if (game != null && game.installPath.isNotEmpty()) game.installPath else null
             }
         }
 
@@ -277,6 +277,27 @@ class GOGService : Service() {
         suspend fun refreshLibrary(context: Context): Result<Int> {
             return getInstance()?.gogManager?.refreshLibrary(context)
                 ?: Result.failure(Exception("Service not available"))
+        }
+
+        fun setCustomInstallPath(context: Context, gameId: String, customInstallPath: String): String {
+            val instance = getInstance()
+            val game = getGOGGameOf(gameId)
+            val folderName = game?.title?.replace(Regex("[^a-zA-Z0-9.-]"), "_") ?: gameId
+            
+            val customFile = File(customInstallPath)
+            val finalPath = if (customFile.name.equals(folderName, ignoreCase = true)) {
+                customFile.absolutePath
+            } else {
+                File(customInstallPath, folderName).absolutePath
+            }
+
+            runBlocking(Dispatchers.IO) {
+                getGOGGameOf(gameId)?.let { gogGame ->
+                    instance?.gogManager?.updateGame(gogGame.copy(installPath = finalPath))
+                    Timber.tag("GOG").i("Updated GOG game installPath in DB to: $finalPath")
+                }
+            }
+            return finalPath
         }
 
         fun downloadGame(context: Context, gameId: String, installPath: String): Result<DownloadInfo?> {

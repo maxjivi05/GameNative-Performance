@@ -81,17 +81,22 @@ fun getPathFromTreeUri(uri: Uri?): String? {
 
 /**
  * Ensures we have the correct permissions for the provided path.
+ * Returns true if permissions are already granted, false if a request was initiated.
  */
 fun requestPermissionsForPath(
     context: Context,
     path: String,
     storagePermissionLauncher: ManagedActivityResultLauncher<Array<String>, Map<String, Boolean>>?,
-) {
+): Boolean {
+    if (CustomGameScanner.hasStoragePermission(context, path)) {
+        return true
+    }
+
     val isOutsideSandbox = !path.contains("/Android/data/${context.packageName}") &&
         !path.contains(context.dataDir.path)
 
     if (!isOutsideSandbox) {
-        return
+        return true
     }
 
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -103,6 +108,7 @@ fun requestPermissionsForPath(
         )
         storagePermissionLauncher?.launch(permissions)
     }
+    return false
 }
 
 data class CustomGameFolderPicker(

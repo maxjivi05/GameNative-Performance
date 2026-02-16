@@ -15,17 +15,21 @@ object MarkerUtils {
             Timber.i("Marker ${type.fileName} at $dirPath already exists")
             return true
         }
-        if (dir.exists()) {
-            try {
+        
+        try {
+            if (!dir.exists()) {
+                dir.mkdirs()
+            }
+            if (dir.exists()) {
                 File(dir, type.fileName).createNewFile()
                 Timber.i("Added marker ${type.fileName} at $dirPath")
                 return true
-            } catch(e: Exception) {
-                Timber.e(e, "Failed to add marker ${type.fileName} at $dirPath")
-                return false
             }
+        } catch(e: Exception) {
+            Timber.e(e, "Failed to add marker ${type.fileName} at $dirPath")
         }
-        Timber.e("Marker ${type.fileName} at $dirPath not added as directory not found")
+        
+        Timber.e("Marker ${type.fileName} at $dirPath not added")
         return false
     }
 

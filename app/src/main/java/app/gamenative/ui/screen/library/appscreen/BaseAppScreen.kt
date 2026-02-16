@@ -139,6 +139,13 @@ abstract class BaseAppScreen {
     abstract fun onDeleteDownloadClick(context: Context, libraryItem: LibraryItem)
 
     /**
+     * Handle custom path selection click
+     */
+    open fun onCustomPathClick(context: Context, libraryItem: LibraryItem) {
+        // Default: no-op, can be overridden by sources that support custom paths
+    }
+
+    /**
      * Handle update click
      */
     abstract fun onUpdateClick(context: Context, libraryItem: LibraryItem)
@@ -756,6 +763,9 @@ abstract class BaseAppScreen {
                 uiScope.launch {
                     performStateRefresh(true)
                 }
+            },
+            onCustomPathClick = {
+                onCustomPathClick(context, libraryItem)
             },
             onBack = onBack,
             optionsMenu = optionsMenu.toTypedArray(),

@@ -1999,8 +1999,8 @@ private fun getWineStartCommand(
             container.saveData()
         }
         if (!container.isUseLegacyDRM){
-            // Create ColdClientLoader.ini file
-            SteamUtils.writeColdClientIni(gameId, container)
+            // Create steamclient_loader_x64.ini file
+            SteamUtils.writeSteamclientLoaderIni(gameId, container)
         }
         val controllerVdfText = SteamService.resolveSteamControllerVdfText(gameId)
         if (controllerVdfText.isNullOrEmpty()) {
@@ -2182,16 +2182,30 @@ private fun getWineStartCommand(
 
                 Timber.i("Final exe path is " + executablePath)
                 val drives = container.drives
-                val driveIndex = drives.indexOf(appDirPath)
-                // greater than 1 since there is the drive character and the colon before the app dir path
-                val drive = if (driveIndex > 1) {
-                    drives[driveIndex - 2]
-                } else {
-                    Timber.e("Could not locate game drive")
-                    'D'
+                
+                // Prioritize A: drive if it's already mapped to the game folder
+                var drive = 'A'
+                var hasCorrectADrive = false
+                for (d in Container.drivesIterator(drives)) {
+                    if (d[0] == "A" && d[1] == appDirPath) {
+                        hasCorrectADrive = true
+                        break
+                    }
                 }
-                envVars.put("WINEPATH", "$drive:/${appLaunchInfo.workingDir}")
-                "\"$drive:/${executablePath}\""
+                
+                if (!hasCorrectADrive) {
+                    val driveIndex = drives.indexOf(appDirPath)
+                    // greater than 1 since there is the drive character and the colon before the app dir path
+                    drive = if (driveIndex > 1) {
+                        drives[driveIndex - 2]
+                    } else {
+                        Timber.e("Could not locate game drive")
+                        'D'
+                    }
+                }
+                
+                envVars.put("WINEPATH", "$drive:\\${appLaunchInfo.workingDir}")
+                "\"$drive:\\${executablePath.replace("/", "\\")}\""
             } else {
                 "\"C:\\\\Program Files (x86)\\\\Steam\\\\steamclient_loader_x64.exe\""
             }
@@ -2214,13 +2228,26 @@ private fun getSteamlessTarget(
         SteamService.getInstalledExe(gameId)
     }
     val drives = container.drives
-    val driveIndex = drives.indexOf(appDirPath)
-    // greater than 1 since there is the drive character and the colon before the app dir path
-    val drive = if (driveIndex > 1) {
-        drives[driveIndex - 2]
-    } else {
-        Timber.e("Could not locate game drive")
-        'D'
+    
+    // Prioritize A: drive if it's already mapped to the game folder
+    var drive = 'A'
+    var hasCorrectADrive = false
+    for (d in Container.drivesIterator(drives)) {
+        if (d[0] == "A" && d[1] == appDirPath) {
+            hasCorrectADrive = true
+            break
+        }
+    }
+    
+    if (!hasCorrectADrive) {
+        val driveIndex = drives.indexOf(appDirPath)
+        // greater than 1 since there is the drive character and the colon before the app dir path
+        drive = if (driveIndex > 1) {
+            drives[driveIndex - 2]
+        } else {
+            Timber.e("Could not locate game drive")
+            'D'
+        }
     }
     return "$drive:\\${executablePath}"
 }

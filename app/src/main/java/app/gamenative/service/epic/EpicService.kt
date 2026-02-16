@@ -209,7 +209,7 @@ class EpicService : Service() {
 
                 // Delete container
                 withContext(Dispatchers.Main) {
-                    ContainerUtils.deleteContainer(context, "EPIC_${game.appName}")
+                    ContainerUtils.deleteContainer(context, "EPIC_${game.id}")
                 }
 
                 // Trigger library refresh event
@@ -285,7 +285,7 @@ class EpicService : Service() {
 
         fun getInstallPath(appId: Int): String? {
             val game = getEpicGameOf(appId)
-            return if (game?.isInstalled == true && game.installPath.isNotEmpty()) {
+            return if (game != null && game.installPath.isNotEmpty()) {
                 game.installPath
             } else {
                 null
@@ -304,6 +304,27 @@ class EpicService : Service() {
         suspend fun fetchManifestSizes(context: Context, appId: Int): EpicManager.ManifestSizes {
             return getInstance()?.epicManager?.fetchManifestSizes(context, appId)
                 ?: EpicManager.ManifestSizes(installSize = 0L, downloadSize = 0L)
+        }
+
+        fun setCustomInstallPath(context: Context, appId: Int, customInstallPath: String): String {
+            val instance = getInstance()
+            val game = getEpicGameOf(appId)
+            val folderName = game?.title?.replace(Regex("[^a-zA-Z0-9.-]"), "_") ?: appId.toString()
+
+            val customFile = File(customInstallPath)
+            val finalPath = if (customFile.name.equals(folderName, ignoreCase = true)) {
+                customFile.absolutePath
+            } else {
+                File(customInstallPath, folderName).absolutePath
+            }
+
+            runBlocking(Dispatchers.IO) {
+                getEpicGameOf(appId)?.let { epicGame ->
+                    instance?.epicManager?.updateGame(epicGame.copy(installPath = finalPath))
+                    Timber.tag("Epic").i("Updated Epic game installPath in DB to: $finalPath")
+                }
+            }
+            return finalPath
         }
 
         fun downloadGame(context: Context, appId: Int, dlcGameIds: List<Int>, installPath: String): Result<DownloadInfo> {

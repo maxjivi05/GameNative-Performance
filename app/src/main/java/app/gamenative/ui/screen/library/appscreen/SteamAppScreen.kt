@@ -356,6 +356,20 @@ class SteamAppScreen : BaseAppScreen() {
         fun getPendingUpdateVerifyOperation(gameId: Int): AppOptionMenuType? {
             return pendingUpdateVerifyOperations[gameId]
         }
+
+        private val customPathPickerRequests = mutableStateMapOf<Int, Boolean>()
+
+        fun requestCustomPathPicker(gameId: Int) {
+            customPathPickerRequests[gameId] = true
+        }
+
+        fun clearCustomPathPickerRequest(gameId: Int) {
+            customPathPickerRequests.remove(gameId)
+        }
+
+        fun shouldShowCustomPathPicker(gameId: Int): Boolean {
+            return customPathPickerRequests[gameId] == true
+        }
     }
     @Composable
     override fun getGameDisplayInfo(
@@ -403,9 +417,7 @@ class SteamAppScreen : BaseAppScreen() {
 
         // Get install location
         val installLocation = remember(isInstalled, gameId) {
-            if (isInstalled) {
-                getAppDirPath(gameId)
-            } else null
+            getAppDirPath(gameId)
         }
 
         // Get size on disk (async, will update via state)
@@ -642,8 +654,13 @@ class SteamAppScreen : BaseAppScreen() {
             )
         } else if (SteamService.hasPartialDownload(gameId)) {
             // Resume incomplete download
-            CoroutineScope(Dispatchers.IO).launch {
-                SteamService.downloadApp(gameId)
+            val path = getAppDirPath(gameId)
+            if (app.gamenative.ui.components.requestPermissionsForPath(context, path, null)) {
+                CoroutineScope(Dispatchers.IO).launch {
+                    SteamService.downloadApp(gameId)
+                }
+            } else {
+                Toast.makeText(context, "Please grant storage permissions and try again", Toast.LENGTH_LONG).show()
             }
         } else if (!isInstalled) {
             // Request storage permissions first, then show install dialog
@@ -673,10 +690,19 @@ class SteamAppScreen : BaseAppScreen() {
         if (isDownloading) {
             downloadInfo?.cancel()
         } else {
-            CoroutineScope(Dispatchers.IO).launch {
-                SteamService.downloadApp(gameId)
+            val path = getAppDirPath(gameId)
+            if (app.gamenative.ui.components.requestPermissionsForPath(context, path, null)) {
+                CoroutineScope(Dispatchers.IO).launch {
+                    SteamService.downloadApp(gameId)
+                }
+            } else {
+                Toast.makeText(context, "Please grant storage permissions and try again", Toast.LENGTH_LONG).show()
             }
         }
+    }
+
+    override fun onCustomPathClick(context: Context, libraryItem: LibraryItem) {
+        requestCustomPathPicker(libraryItem.gameId)
     }
 
     override fun onDeleteDownloadClick(context: Context, libraryItem: LibraryItem) {
@@ -1551,6 +1577,31 @@ class SteamAppScreen : BaseAppScreen() {
 
         var pendingInstallDlcIds by remember { mutableStateOf<List<Int>?>(null) }
 
+        val pathOnlyPicker = rememberDownloadFolderPicker(
+            onPathSelected = { path ->
+                if (app.gamenative.ui.components.requestPermissionsForPath(context, path, permissionLauncher)) {
+                    val finalPath = SteamService.setCustomInstallPath(gameId, path)
+                    Toast.makeText(context, "Installation path set to: $finalPath", Toast.LENGTH_LONG).show()
+                    PluviaApp.events.emit(AndroidEvent.LibraryInstallStatusChanged(gameId))
+                } else {
+                    Toast.makeText(context, "Please grant storage permissions and try again", Toast.LENGTH_LONG).show()
+                }
+                clearCustomPathPickerRequest(gameId)
+            },
+            onCancel = { clearCustomPathPickerRequest(gameId) },
+            onFailure = { clearCustomPathPickerRequest(gameId) }
+        )
+
+        val customPathRequested by remember(gameId) {
+            derivedStateOf { shouldShowCustomPathPicker(gameId) }
+        }
+
+        LaunchedEffect(customPathRequested) {
+            if (customPathRequested) {
+                pathOnlyPicker.launchPicker()
+            }
+        }
+
         val downloadPicker = rememberDownloadFolderPicker(
             onPathSelected = { path ->
                 val dlcIds = pendingInstallDlcIds ?: emptyList()
@@ -1562,12 +1613,21 @@ class SteamAppScreen : BaseAppScreen() {
                     MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_COLDCLIENT_USED)
                 }
 
-                PostHog.capture(
-                    event = "game_install_started",
-                    properties = mapOf("game_name" to (appInfo?.name ?: ""))
-                )
-                CoroutineScope(Dispatchers.IO).launch {
-                    SteamService.downloadApp(gameId, dlcIds, isUpdateOrVerify = false, customInstallPath = path)
+                // Ensure we have correct permissions for the selected path
+                if (app.gamenative.ui.components.requestPermissionsForPath(context, path, permissionLauncher)) {
+                    PostHog.capture(
+                        event = "game_install_started",
+                        properties = mapOf("game_name" to (appInfo?.name ?: ""))
+                    )
+                    CoroutineScope(Dispatchers.IO).launch {
+                        val info = SteamService.downloadApp(gameId, dlcIds, isUpdateOrVerify = false, customInstallPath = path)
+                        if (info == null) {
+                            // If downloadApp returned null immediately, trigger a state refresh to reflect the aborted state
+                            PluviaApp.events.emit(AndroidEvent.DownloadStatusChanged(gameId, false))
+                        }
+                    }
+                } else {
+                    Toast.makeText(context, "Please grant storage permissions and try again", Toast.LENGTH_LONG).show()
                 }
                 pendingInstallDlcIds = null
             },
@@ -1588,8 +1648,22 @@ class SteamAppScreen : BaseAppScreen() {
                 },
                 onInstall = { dlcAppIds ->
                     hideGameManagerDialog(gameId)
-                    pendingInstallDlcIds = dlcAppIds
-                    downloadPicker.launchPicker()
+
+                    val installedApp = SteamService.getInstalledApp(gameId)
+                    if (installedApp != null) {
+                        // Remove markers if the app is already installed
+                        MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_DLL_REPLACED)
+                        MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_DLL_RESTORED)
+                        MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_COLDCLIENT_USED)
+                    }
+
+                    PostHog.capture(
+                        event = "game_install_started",
+                        properties = mapOf("game_name" to (appInfo?.name ?: ""))
+                    )
+                    CoroutineScope(Dispatchers.IO).launch {
+                        SteamService.downloadApp(gameId, dlcAppIds, isUpdateOrVerify = false)
+                    }
                 },
                 onInstallCustom = { dlcAppIds, path ->
                     hideGameManagerDialog(gameId)
@@ -1601,12 +1675,17 @@ class SteamAppScreen : BaseAppScreen() {
                         MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_COLDCLIENT_USED)
                     }
 
-                    PostHog.capture(
-                        event = "game_install_started",
-                        properties = mapOf("game_name" to (appInfo?.name ?: ""))
-                    )
-                    CoroutineScope(Dispatchers.IO).launch {
-                        SteamService.downloadApp(gameId, dlcAppIds, isUpdateOrVerify = false, customInstallPath = path)
+                    // Ensure we have correct permissions for the selected path
+                    if (app.gamenative.ui.components.requestPermissionsForPath(context, path, permissionLauncher)) {
+                        PostHog.capture(
+                            event = "game_install_started",
+                            properties = mapOf("game_name" to (appInfo?.name ?: ""))
+                        )
+                        CoroutineScope(Dispatchers.IO).launch {
+                            SteamService.downloadApp(gameId, dlcAppIds, isUpdateOrVerify = false, customInstallPath = path)
+                        }
+                    } else {
+                        Toast.makeText(context, "Please grant storage permissions and try again", Toast.LENGTH_LONG).show()
                     }
                 },
                 onDismissRequest = {

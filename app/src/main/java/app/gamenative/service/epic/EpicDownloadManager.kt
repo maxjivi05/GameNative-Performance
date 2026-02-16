@@ -76,7 +76,13 @@ class EpicDownloadManager @Inject constructor(
 
             Timber.tag("Epic").i("Starting download for ${game.title} to $installPath")
 
-            File(installPath).mkdirs()
+            // Ensure the install directory exists
+            val dir = File(installPath)
+            if (!dir.exists()) {
+                dir.mkdirs()
+                Timber.tag("Epic").i("Created install directory: $installPath")
+            }
+            MarkerUtils.removeMarker(installPath, Marker.DOWNLOAD_COMPLETE_MARKER)
             MarkerUtils.addMarker(installPath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
 
             // Emit download started event so UI can attach progress listeners

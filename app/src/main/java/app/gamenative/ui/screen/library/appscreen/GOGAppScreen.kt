@@ -4,14 +4,7 @@ import android.content.Context
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import app.gamenative.R
@@ -24,6 +17,8 @@ import app.gamenative.ui.data.GameDisplayInfo
 import app.gamenative.ui.enums.AppOptionMenuType
 import com.winlator.container.ContainerData
 import app.gamenative.ui.component.picker.rememberDownloadFolderPicker
+import app.gamenative.enums.Marker
+import app.gamenative.utils.MarkerUtils
 import java.io.File
 import java.util.Locale
 import kotlinx.coroutines.CoroutineScope
@@ -60,6 +55,20 @@ class GOGAppScreen : BaseAppScreen() {
             val result = uninstallDialogAppIds.contains(appId)
             Timber.tag(TAG).d("shouldShowUninstallDialog: appId=$appId, result=$result")
             return result
+        }
+
+        private val customPathPickerRequests = mutableStateMapOf<String, Boolean>()
+
+        fun requestCustomPathPicker(appId: String) {
+            customPathPickerRequests[appId] = true
+        }
+
+        fun clearCustomPathPickerRequest(appId: String) {
+            customPathPickerRequests.remove(appId)
+        }
+
+        fun shouldShowCustomPathPicker(appId: String): Boolean {
+            return customPathPickerRequests[appId] == true
         }
 
         /**
@@ -201,8 +210,14 @@ class GOGAppScreen : BaseAppScreen() {
     }
 
     override fun hasPartialDownload(context: Context, libraryItem: LibraryItem): Boolean {
-        // GOG downloads cannot be paused/resumed, so never show as having partial download
-        // This prevents the UI from showing a resume button
+        // Check if there's a download in-progress marker (set by GOGDownloadManager)
+        val installPath = GOGService.getInstallPath(libraryItem.gameId.toString())
+        if (!installPath.isNullOrEmpty()) {
+            val dir = File(installPath)
+            if (dir.exists() && MarkerUtils.hasMarker(installPath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)) {
+                return true
+            }
+        }
         return false
     }
 
@@ -264,8 +279,8 @@ class GOGAppScreen : BaseAppScreen() {
         Timber.i("Starting GOG game download: ${libraryItem.appId}")
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                // Get install path
-                var installPath = GOGConstants.getGameInstallPath(libraryItem.name)
+                // Get install path - check DB first, then default
+                var installPath = GOGService.getInstallPath(gameId) ?: GOGConstants.getGameInstallPath(libraryItem.name)
                 
                 if (customInstallPath != null) {
                     // Create a subfolder using the sanitized game name
@@ -320,17 +335,29 @@ class GOGAppScreen : BaseAppScreen() {
 
     override fun onPauseResumeClick(context: Context, libraryItem: LibraryItem) {
         Timber.tag(TAG).i("onPauseResumeClick: appId=${libraryItem.appId}")
-        // GOG downloads cannot be paused - only canceled
-        // This method should not be called for GOG since hasPartialDownload returns false,
-        // but if it is called, just cancel the download
         val gameId = libraryItem.gameId.toString()
         val downloadInfo = GOGService.getDownloadInfo(gameId)
 
-        if (downloadInfo != null) {
+        if (isDownloading(context, libraryItem)) {
+            // Currently downloading - cancel it
             Timber.tag(TAG).i("Cancelling GOG download: ${libraryItem.appId}")
-            downloadInfo.cancel()
+            downloadInfo?.cancel()
             GOGService.cleanupDownload(gameId)
+        } else if (hasPartialDownload(context, libraryItem)) {
+            // Has partial download - resume by restarting
+            Timber.tag(TAG).i("Resuming GOG download: ${libraryItem.appId}")
+            val installPath = GOGService.getInstallPath(gameId)
+            if (installPath != null && app.gamenative.ui.components.requestPermissionsForPath(context, installPath, null)) {
+                performDownload(context, libraryItem, {}, installPath)
+            } else {
+                // Fall back to default path
+                performDownload(context, libraryItem, {})
+            }
         }
+    }
+
+    override fun onCustomPathClick(context: Context, libraryItem: LibraryItem) {
+        requestCustomPathPicker(libraryItem.appId)
     }
 
     override fun onDeleteDownloadClick(context: Context, libraryItem: LibraryItem) {
@@ -577,12 +604,43 @@ class GOGAppScreen : BaseAppScreen() {
 
         val downloadPicker = rememberDownloadFolderPicker(
             onPathSelected = { path ->
-                performDownload(context, libraryItem, {}, path)
+                if (app.gamenative.ui.components.requestPermissionsForPath(context, path, null)) {
+                    performDownload(context, libraryItem, {}, path)
+                } else {
+                    android.widget.Toast.makeText(context, "Please grant storage permissions and try again", android.widget.Toast.LENGTH_LONG).show()
+                }
             },
             onFailure = {
                 android.widget.Toast.makeText(context, "Failed to select folder", android.widget.Toast.LENGTH_SHORT).show()
             },
         )
+
+        val pathOnlyPicker = rememberDownloadFolderPicker(
+            onPathSelected = { path ->
+                if (app.gamenative.ui.components.requestPermissionsForPath(context, path, null)) {
+                    val finalPath = GOGService.setCustomInstallPath(context, libraryItem.gameId.toString(), path)
+                    android.widget.Toast.makeText(context, "Installation path set to: $finalPath", android.widget.Toast.LENGTH_LONG).show()
+                    app.gamenative.PluviaApp.events.emitJava(
+                        app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged(libraryItem.gameId),
+                    )
+                } else {
+                    android.widget.Toast.makeText(context, "Please grant storage permissions and try again", android.widget.Toast.LENGTH_LONG).show()
+                }
+                clearCustomPathPickerRequest(libraryItem.appId)
+            },
+            onCancel = { clearCustomPathPickerRequest(libraryItem.appId) },
+            onFailure = { clearCustomPathPickerRequest(libraryItem.appId) }
+        )
+
+        val customPathRequested by remember(libraryItem.appId) {
+            derivedStateOf { shouldShowCustomPathPicker(libraryItem.appId) }
+        }
+
+        LaunchedEffect(customPathRequested) {
+            if (customPathRequested) {
+                pathOnlyPicker.launchPicker()
+            }
+        }
 
         // Show install dialog if visible
         if (installDialogState.visible) {
