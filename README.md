@@ -32,7 +32,7 @@ GameNative-Performance is a high-performance fork of GameNative, optimized speci
 ## Support
 To report issues or receive support, join our community!
 
-[![](https://img.shields.io/discord/1339414441441441441?color=5865F2&label=Join%20Discord&logo=discord&logoColor=white&style=for-the-badge)](https://discord.gg/fHX2jFUWdP)
+[![](https://img.shields.io/badge/Join%20Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/fHX2jFUWdP)
 
 ## Building
 1. Open in Android Studio.
