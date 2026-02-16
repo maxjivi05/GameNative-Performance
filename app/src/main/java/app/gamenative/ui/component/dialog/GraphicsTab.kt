@@ -145,6 +145,9 @@ fun GraphicsTabContent(state: ContainerConfigState) {
         // BCn Emulation (Common)
         BCnEmulationSection(state)
 
+        // Surface Format (Common)
+        SurfaceFormatSection(state)
+
         // Bionic Specific Extras
         if (config.containerVariant.equals(Container.BIONIC, ignoreCase = true)) {
             // Bionic: Exposed Vulkan Extensions
@@ -453,6 +456,25 @@ private fun BCnEmulationSection(state: ContainerConfigState) {
                 state.bcnEmulationCacheEnabled.value = checked
                 val cfg = KeyValueSet(config.graphicsDriverConfig)
                 cfg.put("bcnEmulationCache", if (checked) "1" else "0")
+                state.config.value = config.copy(graphicsDriverConfig = cfg.toString())
+            },
+        )
+    }
+}
+
+@Composable
+private fun SurfaceFormatSection(state: ContainerConfigState) {
+    val config = state.config.value
+    run {
+        SettingsListDropdown(
+            colors = settingsTileColors(),
+            title = { Text(text = stringResource(R.string.surface_format)) },
+            value = state.surfaceFormatIndex.value.coerceIn(0, state.surfaceFormatEntries.size - 1).coerceAtLeast(0),
+            items = state.surfaceFormatEntries,
+            onItemSelected = { idx ->
+                state.surfaceFormatIndex.value = idx
+                val cfg = KeyValueSet(config.graphicsDriverConfig)
+                cfg.put("surfaceFormat", state.surfaceFormatEntries[idx])
                 state.config.value = config.copy(graphicsDriverConfig = cfg.toString())
             },
         )

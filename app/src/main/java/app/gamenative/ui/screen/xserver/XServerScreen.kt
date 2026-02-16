@@ -679,6 +679,10 @@ fun XServerScreen(
                     ?.getComponent<XServerComponent>(XServerComponent::class.java)
                     ?.xServer
             val xServerToUse = existingXServer ?: XServer(ScreenInfo(xServerState.value.screenSize))
+            if (container != null) {
+                val graphicsDriverConfig = KeyValueSet(container.graphicsDriverConfig)
+                xServerToUse.surfaceFormat = graphicsDriverConfig.get("surfaceFormat", "BGRA8")
+            }
             val xServerView = XServerView(
                 context,
                 xServerToUse,
@@ -3320,6 +3324,9 @@ private fun extractGraphicsDriverFiles(
 
         val resourceType = graphicsDriverConfig.get("resourceType")
         envVars.put("WRAPPER_RESOURCE_TYPE", resourceType)
+
+        val surfaceFormat = graphicsDriverConfig.get("surfaceFormat", "BGRA8")
+        envVars.put("WRAPPER_SURFACE_FORMAT", surfaceFormat)
 
         val syncFrame = graphicsDriverConfig.get("syncFrame")
         if (syncFrame == "1") envVars.put("MESA_VK_WSI_DEBUG", "forcesync")

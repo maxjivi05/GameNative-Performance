@@ -44,6 +44,7 @@ public class XServer {
     private final EnumMap<Lockable, ReentrantLock> locks = new EnumMap<>(Lockable.class);
     private boolean relativeMouseMovement = false;
     private boolean simulateTouchScreen = false;
+    private String surfaceFormat = "BGRA8";
 
     public XServer(ScreenInfo screenInfo) {
         Log.d("XServer", "Creating xServer " + screenInfo);
@@ -100,6 +101,14 @@ public class XServer {
 
     public void setSHMSegmentManager(SHMSegmentManager shmSegmentManager) {
         this.shmSegmentManager = shmSegmentManager;
+    }
+
+    public String getSurfaceFormat() {
+        return surfaceFormat;
+    }
+
+    public void setSurfaceFormat(String surfaceFormat) {
+        this.surfaceFormat = surfaceFormat;
     }
 
     private class SingleXLock implements XLock {

@@ -72,6 +72,10 @@ public class Texture {
         return textureId;
     }
 
+    public void setFormat(int format) {
+        this.format = format;
+    }
+
     public void copyFromFramebuffer(int framebuffer, short width, short height) {
         if (!isAllocated()) {
             allocateTexture(width, height, null);
