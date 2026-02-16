@@ -423,7 +423,7 @@ private fun BCnEmulationSection(state: ContainerConfigState) {
     run {
         SettingsListDropdown(
             colors = settingsTileColors(),
-            title = { Text(text = stringResource(R.string.graphics_driver_bcn_emulation)) },
+            title = { Text(text = stringResource(R.string.bcn_emulation)) },
             value = state.bcnEmulationIndex.value.coerceIn(0, state.bcnEmulationEntries.size - 1).coerceAtLeast(0),
             items = state.bcnEmulationEntries,
             onItemSelected = { idx ->
@@ -435,7 +435,7 @@ private fun BCnEmulationSection(state: ContainerConfigState) {
         )
         SettingsListDropdown(
             colors = settingsTileColors(),
-            title = { Text(text = stringResource(R.string.graphics_driver_bcn_emulation_type)) },
+            title = { Text(text = stringResource(R.string.bcn_emulation_type)) },
             value = state.bcnEmulationTypeIndex.value.coerceIn(0, state.bcnEmulationTypeEntries.size - 1).coerceAtLeast(0),
             items = state.bcnEmulationTypeEntries,
             onItemSelected = { idx ->
@@ -447,7 +447,7 @@ private fun BCnEmulationSection(state: ContainerConfigState) {
         )
         SettingsSwitch(
             colors = settingsTileColorsAlt(),
-            title = { Text(text = stringResource(R.string.graphics_driver_bcn_emulation_cache)) },
+            title = { Text(text = stringResource(R.string.bcn_emulation_cache)) },
             state = state.bcnEmulationCacheEnabled.value,
             onCheckedChange = { checked ->
                 state.bcnEmulationCacheEnabled.value = checked
