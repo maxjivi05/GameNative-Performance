@@ -4,11 +4,13 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.hardware.input.InputManager;
-import android.preference.PreferenceManager;
+import android.util.Log;
 import android.util.SparseArray;
 import android.view.InputDevice;
+import android.view.KeyEvent;
+import android.view.MotionEvent;
 
-import app.gamenative.PrefManager;
+import androidx.preference.PreferenceManager;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -48,6 +50,10 @@ public class ControllerManager {
     public static final String PREF_PLAYER_SLOT_PREFIX = "controller_slot_";
     public static final String PREF_ENABLED_SLOTS_PREFIX = "enabled_slot_";
 
+    private final boolean[] vibrationEnabled = new boolean[]{ true, true, true, true };
+
+    public static final String PREF_VIBRATE_SLOT_PREFIX = "vibrate_slot_";
+
 
     /**
      * Initializes the manager. This must be called once from the main application context.
@@ -74,8 +80,9 @@ public class ControllerManager {
         int[] deviceIds = inputManager.getInputDeviceIds();
         for (int deviceId : deviceIds) {
             InputDevice device = inputManager.getInputDevice(deviceId);
-            // We only want physical gamepads/joysticks, not virtual ones or touchscreens.
-            if (device != null && !device.isVirtual() && isGameController(device)) {
+            if (device != null
+                    && !device.isVirtual()
+                    && isGameController(device)) {
                 detectedDevices.add(device);
             }
         }
@@ -97,6 +104,9 @@ public class ControllerManager {
             // Load whether this slot is enabled. Default P1=true, P2-4=false.
             String enabledKey = PREF_ENABLED_SLOTS_PREFIX + i;
             enabledSlots[i] = preferences.getBoolean(enabledKey, i == 0);
+
+            String vibKey = PREF_VIBRATE_SLOT_PREFIX + i;
+            vibrationEnabled[i] = preferences.getBoolean(vibKey, i == 0);
         }
     }
 
@@ -118,6 +128,9 @@ public class ControllerManager {
             // Save the enabled state
             String enabledKey = PREF_ENABLED_SLOTS_PREFIX + i;
             editor.putBoolean(enabledKey, enabledSlots[i]);
+
+            String vibKey = PREF_VIBRATE_SLOT_PREFIX + i;
+            editor.putBoolean(vibKey, vibrationEnabled[i]);
         }
         editor.apply();
     }
@@ -126,13 +139,80 @@ public class ControllerManager {
 
     /**
      * Checks if a device is a gamepad or joystick.
-     * @param device The InputDevice to check.
      * @return True if the device is a game controller.
      */
-    public static boolean isGameController(InputDevice device) {
-        int sources = device.getSources();
-        return ((sources & InputDevice.SOURCE_JOYSTICK) == InputDevice.SOURCE_JOYSTICK) ||
-                ((sources & InputDevice.SOURCE_GAMEPAD) == InputDevice.SOURCE_GAMEPAD);
+    private static class Caps {
+        boolean lxy, hat, trigger, rstick, anyJoyAxis, anyButtons;
+    }
+
+    private static Caps analyzeCaps(InputDevice d) {
+        Caps c = new Caps();
+        if (d == null) return c;
+
+        for (InputDevice.MotionRange r : d.getMotionRanges()) {
+            int src = r.getSource();
+            if ((src & (InputDevice.SOURCE_JOYSTICK | InputDevice.SOURCE_GAMEPAD)) == 0) continue;
+
+            c.anyJoyAxis = true;
+            switch (r.getAxis()) {
+                case MotionEvent.AXIS_X:
+                case MotionEvent.AXIS_Y:           c.lxy = true; break;
+                case MotionEvent.AXIS_HAT_X:
+                case MotionEvent.AXIS_HAT_Y:       c.hat = true; break;
+                case MotionEvent.AXIS_LTRIGGER:
+                case MotionEvent.AXIS_RTRIGGER:
+                case MotionEvent.AXIS_GAS:
+                case MotionEvent.AXIS_BRAKE:       c.trigger = true; break;
+                case MotionEvent.AXIS_RX:
+                case MotionEvent.AXIS_RY:
+                case MotionEvent.AXIS_RZ:          c.rstick = true; break;
+            }
+        }
+
+        int[] keys = {
+                KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_BUTTON_B,
+                KeyEvent.KEYCODE_BUTTON_X, KeyEvent.KEYCODE_BUTTON_Y,
+                KeyEvent.KEYCODE_BUTTON_L1, KeyEvent.KEYCODE_BUTTON_R1,
+                KeyEvent.KEYCODE_BUTTON_THUMBL, KeyEvent.KEYCODE_BUTTON_THUMBR,
+                KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_DOWN,
+                KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT,
+                KeyEvent.KEYCODE_BUTTON_START, KeyEvent.KEYCODE_BUTTON_SELECT
+        };
+        boolean[] present = d.hasKeys(keys);
+        for (boolean p : present) { if (p) { c.anyButtons = true; break; } }
+
+        return c;
+    }
+
+    private static boolean isPointerLike(InputDevice device) {
+        if (device == null) return false;
+        int s = device.getSources();
+        return ((s & InputDevice.SOURCE_MOUSE) == InputDevice.SOURCE_MOUSE)
+                || ((s & InputDevice.SOURCE_MOUSE_RELATIVE) == InputDevice.SOURCE_MOUSE_RELATIVE)
+                || ((s & InputDevice.SOURCE_TOUCHPAD) == InputDevice.SOURCE_TOUCHPAD)
+                || ((s & InputDevice.SOURCE_STYLUS) == InputDevice.SOURCE_STYLUS)
+                || ((s & InputDevice.SOURCE_CLASS_POINTER) == InputDevice.SOURCE_CLASS_POINTER);
+    }
+
+    public static boolean isGameController(InputDevice d) {
+        if (d == null) return false;
+
+        int s = d.getSources();
+        boolean hasControllerBits =
+                ((s & InputDevice.SOURCE_JOYSTICK) != 0) ||
+                        ((s & InputDevice.SOURCE_GAMEPAD)  != 0);
+
+        boolean pointer = isPointerLike(d);
+        Caps c = analyzeCaps(d);
+
+        // Pointer-like devices must have *non-button* joystick/gamepad axes beyond simple XY.
+        if (pointer) {
+            boolean nonButtonAxes = c.hat || c.trigger || c.rstick;
+            return nonButtonAxes;                    // buttons alone are NOT enough
+        }
+
+        // Non-pointer devices: accept normal controllers with any meaningful controls.
+        return hasControllerBits && (c.lxy || c.hat || c.trigger || c.rstick || c.anyButtons);
     }
 
     /**
@@ -194,6 +274,16 @@ public class ControllerManager {
         slotAssignments.put(slotIndex, newDeviceIdentifier);
         saveAssignments(); // Persist the change immediately.
     }
+
+    public boolean hasEnabledUnassignedSlot() {
+        for (int i = 0; i < 4; i++) {
+            if (enabledSlots[i] && getAssignedDeviceForSlot(i) == null) {
+                return true;
+            }
+        }
+        return false;
+    }
+
 
     /**
      * Clears any device assignment for the given player slot.
@@ -262,4 +352,53 @@ public class ControllerManager {
         if (slotIndex < 0 || slotIndex >= 4) return false;
         return enabledSlots[slotIndex];
     }
+
+    // ControllerManager.java
+
+    private static String sanitizeName(String name) {
+        if (name == null) return "";
+        // Collapse suffixes often used for sensor/touch subdevices.
+        return name.replaceAll("(?i)(\\s*-?\\s*(touch|touchpad|sensor|motion).*)$", "")
+                .trim();
+    }
+
+    public static String makePhysicalGroupKey(InputDevice d) {
+        if (d == null) return null;
+        // Vendor/Product are the anchor; include a sanitized name to reduce
+        // false grouping across very different devices from same vendor.
+        return d.getVendorId() + ":" + d.getProductId() + ":" + sanitizeName(d.getName());
+    }
+
+    public int getSlotForDeviceOrSibling(int deviceId) {
+        InputDevice d = inputManager.getInputDevice(deviceId);
+        if (d == null) return -1;
+
+        // 1) Exact descriptor match first (current behavior)
+        int slot = getSlotForDevice(deviceId);
+        if (slot != -1) return slot;
+
+        // 2) Group match against already-assigned devices
+        String g = makePhysicalGroupKey(d);
+        for (int i = 0; i < 4; i++) {
+            InputDevice assigned = getAssignedDeviceForSlot(i);
+            if (assigned != null) {
+                if (g.equals(makePhysicalGroupKey(assigned))) {
+                    return i;
+                }
+            }
+        }
+        return -1;
+    }
+
+    public boolean isVibrationEnabled(int slot) {
+        return (slot >= 0 && slot < 4) && vibrationEnabled[slot];
+    }
+    public void setVibrationEnabled(int slot, boolean enabled) {
+        if (slot < 0 || slot >= 4) return;
+        vibrationEnabled[slot] = enabled;
+        saveAssignments();
+    }
+
+
+
 }

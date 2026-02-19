@@ -30,6 +30,8 @@ public class NavigationDialog extends ContentDialog {
     public static final int ACTION_EDIT_CONTROLS = 4;
     public static final int ACTION_EDIT_PHYSICAL_CONTROLLER = 5;
     public static final int ACTION_STRETCH_TO_FULLSCREEN = 6;
+    public static final int ACTION_CONTROLLER_MANAGER = 7;
+    public static final int ACTION_MOTION_CONTROLS = 8;
 
     public interface NavigationListener {
         void onNavigationItemSelected(int itemId);
@@ -61,6 +63,8 @@ public class NavigationDialog extends ContentDialog {
         addMenuItem(context, grid, R.drawable.icon_input_controls, R.string.input_controls, ACTION_INPUT_CONTROLS, listener,1.0f);
         addMenuItem(context, grid, R.drawable.icon_popup_menu_edit, R.string.edit_controls, ACTION_EDIT_CONTROLS, listener, 1.0f);
         addMenuItem(context, grid, R.drawable.icon_monitor, R.string.stretch_to_fullscreen, ACTION_STRETCH_TO_FULLSCREEN, listener, 1.0f);
+        addMenuItem(context, grid, R.drawable.icon_gamepad, R.string.controller_manager, ACTION_CONTROLLER_MANAGER, listener, 1.0f);
+        addMenuItem(context, grid, R.drawable.icon_motion_controls, R.string.motion_controls, ACTION_MOTION_CONTROLS, listener, 1.0f);
         if (hasPhysicalController) {
             addMenuItem(context, grid, R.drawable.icon_gamepad, R.string.edit_physical_controller, ACTION_EDIT_PHYSICAL_CONTROLLER, listener, 1.0f);
         }

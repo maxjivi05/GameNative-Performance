@@ -26,6 +26,15 @@ public class ContentDialog extends Dialog {
     private Runnable onCancelCallback;
     private final View contentView;
 
+    public interface OnControllerInputListener {
+        void onControllerInput(android.view.InputDevice device);
+    }
+    private OnControllerInputListener onControllerInputListener;
+
+    public void setOnControllerInputListener(OnControllerInputListener listener) {
+        this.onControllerInputListener = listener;
+    }
+
     public ContentDialog(@NonNull Context context) {
         this(context, 0);
     }
@@ -208,5 +217,17 @@ public class ContentDialog extends Dialog {
 
         dialog.setTitle(titleResId);
         dialog.show();
+    }
+
+    @Override
+    public boolean dispatchKeyEvent(@NonNull android.view.KeyEvent event) {
+        if (onControllerInputListener != null && event.getAction() == android.view.KeyEvent.ACTION_DOWN) {
+            android.view.InputDevice device = event.getDevice();
+            if (device != null && !device.isVirtual() && com.winlator.inputcontrols.ControllerManager.isGameController(device)) {
+                onControllerInputListener.onControllerInput(device);
+                return true;
+            }
+        }
+        return super.dispatchKeyEvent(event);
     }
 }

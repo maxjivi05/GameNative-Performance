@@ -40,7 +40,7 @@ private data class AnalogConfig(val label: String, val axis: Int, val sign: Int)
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun PhysicalControllerConfigSection(
+fun PhysicalControllerConfigSection(
     profile: ControlsProfile,
     onDismiss: () -> Unit,
     onSave: () -> Unit

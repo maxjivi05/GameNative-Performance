@@ -1,0 +1,398 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingTop="12dp"
+        android:paddingBottom="12dp">
+
+        <TextView
+            android:id="@+id/TVRestartRequired"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/restart_required_for_changes"
+            android:textAppearance="?android:attr/textAppearanceMedium"
+            android:textColor="@color/colorAccent"
+            android:gravity="center"
+            android:padding="8dp"
+            android:visibility="gone" />
+
+        <!-- ===== Reusable row pattern: top (label+name), bottom (actions) ===== -->
+
+        <!-- Player 1 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingVertical="8dp">
+
+            <!-- Top line -->
+            <com.google.android.flexbox.FlexboxLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:flexWrap="nowrap"
+                app:alignItems="center"
+                app:justifyContent="flex_start">
+
+                <CheckBox
+                    android:id="@+id/CBPlayer1"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    app:layout_flexShrink="0"
+                    android:layout_marginEnd="8dp"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/player_1"
+                    android:textSize="16sp"
+                    app:layout_flexShrink="0"
+                    android:layout_marginEnd="12dp"/>
+
+                <TextView
+                    android:id="@+id/TVPlayer1DeviceName"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="marquee"
+                    android:marqueeRepeatLimit="marquee_forever"
+                    android:singleLine="true"
+                    android:focusable="true"
+                    android:focusableInTouchMode="true"
+                    android:maxLines="1"
+                    android:text="@string/not_assigned"
+                    android:textStyle="bold"
+                    app:layout_flexGrow="1"
+                    app:layout_minWidth="0dp"/>
+            </com.google.android.flexbox.FlexboxLayout>
+
+            <!-- Bottom actions (wrap if narrow, right-aligned when single line) -->
+            <com.google.android.flexbox.FlexboxLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                app:flexWrap="wrap"
+                app:alignItems="center"
+                app:justifyContent="flex_end">
+
+                <CheckBox
+                    android:id="@+id/CBVibrateP1"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/vibrate"
+                    app:layout_flexShrink="0"
+                    android:layout_marginEnd="8dp"
+                    android:layout_marginBottom="6dp"/>
+
+                <Button
+                    android:id="@+id/BTNMacrosP1"
+                    style="@style/ButtonNeutral"
+                    android:layout_width="wrap_content"
+                    android:layout_height="40dp"
+                    android:text="@string/macros"
+                    android:layout_marginEnd="8dp"
+                    android:layout_marginBottom="6dp"/>
+
+                <Button
+                    android:id="@+id/BTNResetP1"
+                    style="@style/ButtonNeutral"
+                    android:layout_width="wrap_content"
+                    android:layout_height="40dp"
+                    android:text="@string/reset"
+                    app:layout_flexShrink="0"
+                    android:layout_marginEnd="8dp"
+                    android:layout_marginBottom="6dp"/>
+
+                <Button
+                    android:id="@+id/BTNAssignP1"
+                    style="@style/ButtonNeutral"
+                    android:layout_width="wrap_content"
+                    android:layout_height="40dp"
+                    android:text="@string/assign"
+                    app:layout_flexShrink="0"
+                    android:layout_marginBottom="6dp"/>
+            </com.google.android.flexbox.FlexboxLayout>
+        </LinearLayout>
+
+        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#22FFFFFF"/>
+
+        <!-- Player 2 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingVertical="8dp">
+
+            <com.google.android.flexbox.FlexboxLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:flexWrap="nowrap"
+                app:alignItems="center"
+                app:justifyContent="flex_start">
+
+
+                <CheckBox
+                    android:id="@+id/CBPlayer2"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    app:layout_flexShrink="0"
+                    android:layout_marginEnd="8dp"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/player_2"
+                    android:textSize="16sp"
+                    app:layout_flexShrink="0"
+                    android:layout_marginEnd="12dp"/>
+
+                <TextView
+                    android:id="@+id/TVPlayer2DeviceName"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="marquee"
+                    android:marqueeRepeatLimit="marquee_forever"
+                    android:singleLine="true"
+                    android:focusable="true"
+                    android:focusableInTouchMode="true"
+                    android:maxLines="1"
+                    android:text="@string/not_assigned"
+                    android:textStyle="bold"
+                    app:layout_flexGrow="1"
+                    app:layout_minWidth="0dp"/>
+            </com.google.android.flexbox.FlexboxLayout>
+
+            <com.google.android.flexbox.FlexboxLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                app:flexWrap="wrap"
+                app:alignItems="center"
+                app:justifyContent="flex_end">
+
+
+                <CheckBox
+                    android:id="@+id/CBVibrateP2"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/vibrate"
+                    android:layout_marginEnd="8dp"
+                    android:layout_marginBottom="6dp"/>
+
+                <Button
+                    android:id="@+id/BTNMacrosP2"
+                    style="@style/ButtonNeutral"
+                    android:layout_width="wrap_content"
+                    android:layout_height="40dp"
+                    android:text="@string/macros"
+                    android:layout_marginEnd="8dp"
+                    android:layout_marginBottom="6dp"/>
+
+                <Button
+                    android:id="@+id/BTNResetP2"
+                    style="@style/ButtonNeutral"
+                    android:layout_width="wrap_content"
+                    android:layout_height="40dp"
+                    android:text="@string/reset"
+                    android:layout_marginEnd="8dp"
+                    android:layout_marginBottom="6dp"/>
+
+                <Button
+                    android:id="@+id/BTNAssignP2"
+                    style="@style/ButtonNeutral"
+                    android:layout_width="wrap_content"
+                    android:layout_height="40dp"
+                    android:text="@string/assign"
+                    android:layout_marginBottom="6dp"/>
+            </com.google.android.flexbox.FlexboxLayout>
+        </LinearLayout>
+
+        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#22FFFFFF"/>
+
+        <!-- Player 3 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingVertical="8dp">
+
+            <com.google.android.flexbox.FlexboxLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:flexWrap="nowrap"
+                app:alignItems="center"
+                app:justifyContent="flex_start">
+
+                <CheckBox
+                    android:id="@+id/CBPlayer3"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="8dp"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/player_3"
+                    android:textSize="16sp"
+                    android:layout_marginEnd="12dp"/>
+
+                <TextView
+                    android:id="@+id/TVPlayer3DeviceName"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="marquee"
+                    android:marqueeRepeatLimit="marquee_forever"
+                    android:singleLine="true"
+                    android:focusable="true"
+                    android:focusableInTouchMode="true"
+                    android:maxLines="1"
+                    android:text="@string/not_assigned"
+                    android:textStyle="bold"
+                    app:layout_flexGrow="1"
+                    app:layout_minWidth="0dp"/>
+            </com.google.android.flexbox.FlexboxLayout>
+
+            <com.google.android.flexbox.FlexboxLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                app:flexWrap="wrap"
+                app:alignItems="center"
+                app:justifyContent="flex_end">
+
+
+                <CheckBox
+                    android:id="@+id/CBVibrateP3"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/vibrate"
+                    android:layout_marginEnd="8dp"
+                    android:layout_marginBottom="6dp"/>
+
+                <Button
+                    android:id="@+id/BTNMacrosP3"
+                    style="@style/ButtonNeutral"
+                    android:layout_width="wrap_content"
+                    android:layout_height="40dp"
+                    android:text="@string/macros"
+                    android:layout_marginEnd="8dp"
+                    android:layout_marginBottom="6dp"/>
+
+                <Button
+                    android:id="@+id/BTNResetP3"
+                    style="@style/ButtonNeutral"
+                    android:layout_width="wrap_content"
+                    android:layout_height="40dp"
+                    android:text="@string/reset"
+                    android:layout_marginEnd="8dp"
+                    android:layout_marginBottom="6dp"/>
+
+                <Button
+                    android:id="@+id/BTNAssignP3"
+                    style="@style/ButtonNeutral"
+                    android:layout_width="wrap_content"
+                    android:layout_height="40dp"
+                    android:text="@string/assign"
+                    android:layout_marginBottom="6dp"/>
+            </com.google.android.flexbox.FlexboxLayout>
+        </LinearLayout>
+
+        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#22FFFFFF"/>
+
+        <!-- Player 4 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingVertical="8dp">
+
+            <com.google.android.flexbox.FlexboxLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:flexWrap="nowrap"
+                app:alignItems="center"
+                app:justifyContent="flex_start">
+
+
+                <CheckBox
+                    android:id="@+id/CBPlayer4"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="8dp"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/player_4"
+                    android:textSize="16sp"
+                    android:layout_marginEnd="12dp"/>
+
+                <TextView
+                    android:id="@+id/TVPlayer4DeviceName"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="marquee"
+                    android:marqueeRepeatLimit="marquee_forever"
+                    android:singleLine="true"
+                    android:focusable="true"
+                    android:focusableInTouchMode="true"
+                    android:maxLines="1"
+                    android:text="@string/not_assigned"
+                    android:textStyle="bold"
+                    app:layout_flexGrow="1"
+                    app:layout_minWidth="0dp"/>
+            </com.google.android.flexbox.FlexboxLayout>
+
+            <com.google.android.flexbox.FlexboxLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                app:flexWrap="wrap"
+                app:alignItems="center"
+                app:justifyContent="flex_end">
+
+                <CheckBox
+                    android:id="@+id/CBVibrateP4"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/vibrate"
+                    android:layout_marginEnd="8dp"
+                    android:layout_marginBottom="6dp"/>
+
+                <Button
+                    android:id="@+id/BTNMacrosP4"
+                    style="@style/ButtonNeutral"
+                    android:layout_width="wrap_content"
+                    android:layout_height="40dp"
+                    android:text="@string/macros"
+                    android:layout_marginEnd="8dp"
+                    android:layout_marginBottom="6dp"/>
+
+                <Button
+                    android:id="@+id/BTNResetP4"
+                    style="@style/ButtonNeutral"
+                    android:layout_width="wrap_content"
+                    android:layout_height="40dp"
+                    android:text="@string/reset"
+                    android:layout_marginEnd="8dp"
+                    android:layout_marginBottom="6dp"/>
+
+                <Button
+                    android:id="@+id/BTNAssignP4"
+                    style="@style/ButtonNeutral"
+                    android:layout_width="wrap_content"
+                    android:layout_height="40dp"
+                    android:text="@string/assign"
+                    android:layout_marginBottom="6dp"/>
+            </com.google.android.flexbox.FlexboxLayout>
+        </LinearLayout>
+
+    </LinearLayout>
+</ScrollView>

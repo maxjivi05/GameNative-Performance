@@ -13,13 +13,21 @@
 #include <string.h>
 #include <stdbool.h>
 #include <sys/mman.h>
+#include <unistd.h>
+#include <sys/syscall.h>
 
-#include "native_handle.h"
+typedef struct native_handle {
+    int version;        /* sizeof(native_handle_t) */
+    int numFds;         /* number of file-descriptors at &data[0] */
+    int numInts;        /* number of ints at &data[numFds] */
+    int data[0];        /* numFds + numInts ints */
+} native_handle_t;
 
+#define HAL_PIXEL_FORMAT_RGBA_8888 1
 #define HAL_PIXEL_FORMAT_BGRA_8888 5
-#define println(...) __android_log_print(ANDROID_LOG_DEBUG, "System.out", __VA_ARGS__);
+#define printf(...) __android_log_print(ANDROID_LOG_DEBUG, "System.out", __VA_ARGS__);
 
-extern const native_handle_t* _Nullable AHardwareBuffer_getNativeHandle(const AHardwareBuffer* _Nonnull buffer);
+extern const native_handle_t* AHardwareBuffer_getNativeHandle(const AHardwareBuffer* buffer);
 
 EGLImageKHR createImageKHR(AHardwareBuffer* hardwareBuffer, int textureId) {
     if (!hardwareBuffer) {
@@ -73,39 +81,6 @@ EGLImageKHR createImageKHR(AHardwareBuffer* hardwareBuffer, int textureId) {
     return imageKHR;
 }
 
-
-long createImageKHR(undefined8 param_1,undefined4 param_2)
-
-{
-    long lVar1;
-    long lVar2;
-    undefined8 uVar3;
-    undefined8 local_48;
-    undefined4 local_40;
-    long local_38;
-
-    lVar1 = tpidr_el0;
-    local_38 = *(long *)(lVar1 + 0x28);
-    local_48 = 0x1000030d2;
-    local_40 = 0x3038;
-    AHardwareBuffer_acquire();
-    lVar2 = eglGetNativeClientBufferANDROID(param_1);
-    if (lVar2 != 0) {
-        uVar3 = eglGetDisplay(0);
-        lVar2 = eglCreateImageKHR(uVar3,0,0x3140,lVar2,&local_48);
-        if (lVar2 != 0) {
-            glBindTexture(0xde1,param_2);
-            glEGLImageTargetTexture2DOES(0xde1,lVar2);
-            glBindTexture(0xde1,0);
-        }
-    }
-    if (*(long *)(lVar1 + 0x28) == local_38) {
-        return lVar2;
-    }
-    /* WARNING: Subroutine does not return */
-    __stack_chk_fail();
-}
-
 // Function to create a hardware buffer
 AHardwareBuffer* createHardwareBuffer(int width, int height, bool cpuAccess, bool useHALPixelFormatBGRA8888) {
     AHardwareBuffer_Desc buffDesc = {0};
@@ -151,7 +126,7 @@ Java_com_winlator_renderer_GPUImage_createHardwareBuffer(JNIEnv *env,
 
     /* 1. Stride */
     AHardwareBuffer_Desc desc;
-    AHardwareBuffer_describe(buffer, &desc);          // fills ‘desc’ :contentReference[oaicite:0]{index=0}
+    AHardwareBuffer_describe(buffer, &desc);
 
     jmethodID midStride = (*env)->GetMethodID(env, cls, "setStride", "(S)V");
     (*env)->CallVoidMethod(env, obj, midStride, (jshort)desc.stride);
@@ -231,18 +206,8 @@ Java_com_winlator_renderer_GPUImage_destroyImageKHR(JNIEnv *env, jclass obj, jlo
     }
 }
 
-int32_t AHardwareBuffer_getFd(const AHardwareBuffer *buffer)
-{
-    const native_handle_t *h = AHardwareBuffer_getNativeHandle(buffer);
-    if (h && h->numFds > 0)
-        return h->data[0];
-    return -1;
-}
-
 int32_t createMemoryFd(const char *name, off_t size)
 {
-    /* Fallback to direct syscall because bionic’s <sys/memfd.h> is
-       available only from API-30 upward. */
     int32_t fd = (int32_t)syscall(__NR_memfd_create, name, MFD_CLOEXEC);
     if (fd == -1) return -1;
 

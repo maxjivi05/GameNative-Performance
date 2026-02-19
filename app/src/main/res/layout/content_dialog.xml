@@ -68,6 +68,15 @@
         android:layout_weight="1"
         android:visibility="gone" />
 
+    <CheckBox
+        android:id="@+id/CBExtraOption"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="8dp"
+        android:text="Extra Option"
+        android:visibility="gone" />
+
     <LinearLayout
         android:id="@+id/LLBottomBar"
         android:layout_width="match_parent"
@@ -103,6 +112,24 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/BTDisableAll"
+                    android:visibility="gone"
+                    android:text="@string/disable_all"
+                    style="@style/ButtonNeutral" />
+
+                <Button
+                    android:id="@+id/BTEnableAll"
+                    android:visibility="gone"
+                    android:text="@string/enable_all"
+                    style="@style/ButtonNeutral" />
+
+                <Button
+                    android:id="@+id/BTReset"
+                    android:visibility="gone"
+                    android:text="@string/reset"
+                    style="@style/ButtonNeutral" />
 
                 <Button
                     style="@style/ButtonNeutral"

@@ -27,6 +27,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.RandomAccessFile;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.Arrays;
@@ -192,6 +193,27 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
     }
 
     private int execGuestProgram() {
+        // Get the number of enabled players directly from ControllerManager.
+        final int enabledPlayerCount = com.winlator.inputcontrols.ControllerManager.getInstance().getEnabledPlayerCount();
+        for (int i = 0; i < 4; i++) {
+            String memPath;
+            if (i == 0) {
+                // Player 1 uses the original, non-numbered path that is known to work.
+                memPath = "/data/data/app.gamenative/files/imagefs/tmp/gamepad.mem";
+            } else {
+                // Players 2, 3, 4 use a 1-based index.
+                memPath = "/data/data/app.gamenative/files/imagefs/tmp/gamepad" + i + ".mem";
+            }
+
+            File memFile = new File(memPath);
+            memFile.getParentFile().mkdirs();
+            try (RandomAccessFile raf = new RandomAccessFile(memFile, "rw")) {
+                raf.setLength(64);
+            } catch (IOException e) {
+                Log.e("EVSHIM_HOST", "Failed to create mem file for player index "+i, e);
+            }
+        }
+
         Context context = environment.getContext();
         ImageFs imageFs = ImageFs.find(context);
         File rootDir = imageFs.getRootDir();
@@ -200,6 +222,7 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
         boolean enableBox86_64Logs = PrefManager.getBoolean("enable_box86_64_logs", true);
 
         EnvVars envVars = new EnvVars();
+        envVars.put("EVSHIM_MAX_PLAYERS", String.valueOf(enabledPlayerCount));
         addBox64EnvVars(envVars, enableBox86_64Logs);
         envVars.put("HOME", imageFs.home_path);
         envVars.put("USER", ImageFs.USER);
@@ -219,8 +242,12 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
 
         if ((new File(imageFs.getGlibc64Dir(), "libandroid-sysvshm.so")).exists() ||
                 (new File(imageFs.getGlibc32Dir(), "libandroid-sysvshm.so")).exists
-                        ())
-            envVars.put("LD_PRELOAD", "libredirect.so libandroid-sysvshm.so");
+                        ()) {
+            String ldPreload = "libredirect.so libandroid-sysvshm.so";
+            String evshimPath = imageFs.getLibDir() + "/libevshim.so";
+            if (new File(evshimPath).exists()) ldPreload += " " + evshimPath;
+            envVars.put("LD_PRELOAD", ldPreload);
+        }
         envVars.put("WINEESYNC_WINLATOR", "1");
         if (this.envVars != null) envVars.putAll(this.envVars);
 
@@ -312,8 +339,12 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
 
         if ((new File(imageFs.getGlibc64Dir(), "libandroid-sysvshm.so")).exists() ||
                 (new File(imageFs.getGlibc32Dir(), "libandroid-sysvshm.so")).exists
-                        ())
-            envVars.put("LD_PRELOAD", "libredirect.so libandroid-sysvshm.so");
+                        ()) {
+            String ldPreload = "libredirect.so libandroid-sysvshm.so";
+            String evshimPath = imageFs.getLibDir() + "/libevshim.so";
+            if (new File(evshimPath).exists()) ldPreload += " " + evshimPath;
+            envVars.put("LD_PRELOAD", ldPreload);
+        }
         envVars.put("WINEESYNC_WINLATOR", "1");
         if (this.envVars != null) envVars.putAll(this.envVars);
 

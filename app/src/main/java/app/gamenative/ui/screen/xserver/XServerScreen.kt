@@ -109,6 +109,7 @@ import com.winlator.inputcontrols.ControllerManager
 import com.winlator.inputcontrols.ControlsProfile
 import com.winlator.inputcontrols.ExternalController
 import com.winlator.inputcontrols.InputControlsManager
+import com.winlator.inputcontrols.MotionControls
 import com.winlator.inputcontrols.TouchMouse
 import com.winlator.widget.FrameRating
 import com.winlator.widget.InputControlsView
@@ -317,8 +318,8 @@ fun XServerScreen(
         }
     }
     var isKeyboardVisible = false
-    var areControlsVisible by remember { mutableStateOf(false) }
-    var isEditMode by remember { mutableStateOf(false) }
+    var areControlsVisible by remember { mutableStateOf(PluviaApp.editMode) }
+    var isEditMode by remember { mutableStateOf(PluviaApp.editMode) }
     // Snapshot of element positions before entering edit mode (for cancel behavior)
     var elementPositionsSnapshot by remember { mutableStateOf<Map<com.winlator.inputcontrols.ControlElement, Pair<Int, Int>>>(emptyMap()) }
     var showElementEditor by remember { mutableStateOf(false) }
@@ -545,6 +546,14 @@ fun XServerScreen(
                         NavigationDialog.ACTION_EDIT_PHYSICAL_CONTROLLER -> {
                             PostHog.capture(event = "edit_physical_controller_from_menu")
                             showPhysicalControllerDialog = true
+                        }
+
+                        NavigationDialog.ACTION_CONTROLLER_MANAGER -> {
+                            com.winlator.contentdialog.ControllerAssignmentDialog.show(context, xServerView!!.getxServer().winHandler)
+                        }
+
+                        NavigationDialog.ACTION_MOTION_CONTROLS -> {
+                            com.winlator.inputcontrols.MotionControls.getInstance(context).showContentDialog(context, null)
                         }
 
                         NavigationDialog.ACTION_STRETCH_TO_FULLSCREEN -> {
@@ -972,6 +981,10 @@ fun XServerScreen(
                 // Set overlay opacity from preferences if needed
                 val opacity = PrefManager.getFloat("controls_opacity", InputControlsView.DEFAULT_OVERLAY_OPACITY)
                 setOverlayOpacity(opacity)
+
+                if (PluviaApp.editMode) {
+                    setEditMode(true)
+                }
             }
             PluviaApp.inputControlsView = icView
 
@@ -1054,6 +1067,18 @@ fun XServerScreen(
             // Auto-show on-screen controls after the view has been laid out and has proper dimensions
             icView.post {
                 Timber.d("Auto-show logic running - view dimensions: ${icView.width}x${icView.height}")
+                
+                if (PluviaApp.editMode) {
+                    loadedProfile?.let { profile ->
+                        val snapshot = mutableMapOf<com.winlator.inputcontrols.ControlElement, Pair<Int, Int>>()
+                        profile.elements.forEach { element ->
+                            snapshot[element] = Pair(element.x.toInt(), element.y.toInt())
+                        }
+                        elementPositionsSnapshot = snapshot
+                    }
+                    PluviaApp.editMode = false
+                }
+
                 loadedProfile?.let { profile ->
                     // Load elements if not already loaded (view has dimensions now)
                     if (!profile.isElementsLoaded) {
@@ -1962,6 +1987,9 @@ private fun setupXEnvironment(
     // put in separate scope since winhandler start method does some network stuff
     CoroutineScope(Dispatchers.IO).launch {
         xServer.winHandler.start()
+        withContext(Dispatchers.Main) {
+            MotionControls.getInstance(context).attach(xServer.winHandler)
+        }
     }
     envVars.clear()
     xServerState.value = xServerState.value.copy(
