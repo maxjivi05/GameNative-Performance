@@ -15,11 +15,13 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.net.toUri
 import app.gamenative.PluviaApp
@@ -28,6 +30,12 @@ import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
 import app.gamenative.events.AndroidEvent
 import app.gamenative.ui.component.dialog.ContainerConfigDialog
+import app.gamenative.ui.component.dialog.ControllerOptionsDialog
+import app.gamenative.ui.component.dialog.SavesOptionsDialog
+import app.gamenative.ui.component.dialog.PhysicalControllerConfigSection
+import app.gamenative.ui.component.dialog.ProfileSelectionDialog
+import com.winlator.contentdialog.NavigationDialog
+import com.winlator.inputcontrols.InputControlsManager
 import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.data.GameDisplayInfo
 import app.gamenative.ui.enums.AppOptionMenuType
@@ -36,6 +44,7 @@ import app.gamenative.utils.GameMetadataManager
 import app.gamenative.utils.SteamGridDB
 import app.gamenative.utils.createPinnedShortcut
 import com.winlator.container.ContainerData
+import timber.log.Timber
 import java.io.File
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -504,13 +513,12 @@ abstract class BaseAppScreen {
         if (isInstalled) {
             // Options only available when game is installed
             
-            // Add Import/Export Save options
-            val gameName = getGameName(context, libraryItem)
-            menuOptions.add(AppMenuOption(AppOptionMenuType.ExportSave, onClick = {
-                exportSaveLauncher.launch("${gameName}_${System.currentTimeMillis()}.zip")
+            menuOptions.add(AppMenuOption(AppOptionMenuType.Controller, onClick = {
+                PluviaApp.events.emit(AndroidEvent.ShowControllerOptions)
             }))
-            menuOptions.add(AppMenuOption(AppOptionMenuType.ImportSave, onClick = {
-                importSaveLauncher.launch(arrayOf("application/zip"))
+
+            menuOptions.add(AppMenuOption(AppOptionMenuType.Saves, onClick = {
+                PluviaApp.events.emit(AndroidEvent.ShowSavesOptions)
             }))
 
             getRunContainerOption(context, libraryItem, onClickPlay)?.let { menuOptions.add(it) }
@@ -604,6 +612,30 @@ abstract class BaseAppScreen {
         var showConfigDialog by androidx.compose.runtime.remember {
             androidx.compose.runtime.mutableStateOf(false)
         }
+        var showControllerDialog by androidx.compose.runtime.remember {
+            androidx.compose.runtime.mutableStateOf(false)
+        }
+        var showSavesDialog by androidx.compose.runtime.remember {
+            androidx.compose.runtime.mutableStateOf(false)
+        }
+        var showProfileSelectionDialog by androidx.compose.runtime.remember {
+            androidx.compose.runtime.mutableStateOf(false)
+        }
+        var showNavigationDialog by androidx.compose.runtime.remember {
+            androidx.compose.runtime.mutableStateOf(false)
+        }
+        var initialNavigationAction by androidx.compose.runtime.remember {
+            androidx.compose.runtime.mutableIntStateOf(0)
+        }
+
+        var showPhysicalControllerDialog by androidx.compose.runtime.remember {
+            androidx.compose.runtime.mutableStateOf(false)
+        }
+        var profilesListKey by remember { mutableIntStateOf(0) }
+        var activeProfile by androidx.compose.runtime.remember {
+            androidx.compose.runtime.mutableStateOf<com.winlator.inputcontrols.ControlsProfile?>(null)
+        }
+
         var containerData by androidx.compose.runtime.remember {
             androidx.compose.runtime.mutableStateOf(ContainerData())
         }
@@ -611,6 +643,66 @@ abstract class BaseAppScreen {
         val onEditContainer: () -> Unit = {
             containerData = loadContainerData(context, libraryItem)
             showConfigDialog = true
+        }
+
+        val inputControlsManager = remember { InputControlsManager(context) }
+
+        // Import ICP Launcher
+        val importICPLauncher = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.OpenDocument(),
+            onResult = { uri ->
+                if (uri != null) {
+                    val profile = inputControlsManager.importProfile(uri)
+                    if (profile != null) {
+                        val container = ContainerUtils.getContainer(context, libraryItem.appId)
+                        container.putExtra("profileId", profile.id.toString())
+                        container.saveData()
+                        profilesListKey++
+                        Toast.makeText(context, "Profile ${profile.getName()} imported and selected", Toast.LENGTH_SHORT).show()
+                    } else {
+                        Toast.makeText(context, "Failed to import profile", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        )
+
+        // Export ICP Launcher
+        val exportICPLauncher = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.CreateDocument("application/octet-stream"),
+            onResult = { uri ->
+                if (uri != null) {
+                    val container = ContainerUtils.getContainer(context, libraryItem.appId)
+                    val profileIdStr = container.getExtra("profileId", "0")
+                    val profileId = profileIdStr.toIntOrNull() ?: 0
+                    val profile = inputControlsManager.getProfile(profileId)
+                    if (profile != null) {
+                        if (inputControlsManager.exportProfile(profile, uri)) {
+                            Toast.makeText(context, "Profile exported successfully", Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(context, "Failed to export profile", Toast.LENGTH_SHORT).show()
+                        }
+                    } else {
+                        Toast.makeText(context, "No profile associated with this container", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        )
+
+        DisposableEffect(libraryItem.appId) {
+            val showControllerListener: (AndroidEvent.ShowControllerOptions) -> Unit = {
+                showControllerDialog = true
+            }
+            val showSavesListener: (AndroidEvent.ShowSavesOptions) -> Unit = {
+                showSavesDialog = true
+            }
+
+            PluviaApp.events.on(showControllerListener)
+            PluviaApp.events.on(showSavesListener)
+
+            onDispose {
+                PluviaApp.events.off(showControllerListener)
+                PluviaApp.events.off(showSavesListener)
+            }
         }
 
         // Export for Frontend launcher
@@ -781,6 +873,154 @@ abstract class BaseAppScreen {
                     saveContainerConfig(context, libraryItem, it)
                     showConfigDialog = false
                 },
+            )
+        }
+
+        if (showControllerDialog) {
+            ControllerOptionsDialog(
+                onDismiss = { showControllerDialog = false },
+                onEditOnScreen = {
+                    showControllerDialog = false
+                    val container = ContainerUtils.getContainer(context, libraryItem.appId)
+                    val profileIdStr = container.getExtra("profileId", "0")
+                    var profileId = profileIdStr.toIntOrNull() ?: 0
+                    
+                    if (profileId == 0) {
+                        // Create a game-specific profile if it doesn't exist
+                        val allProfiles = inputControlsManager.getProfiles(false)
+                        val sourceProfile = inputControlsManager.getProfile(0)
+                            ?: allProfiles.firstOrNull { it.id == 2 }
+                            ?: allProfiles.firstOrNull()
+                            
+                        if (sourceProfile != null) {
+                            try {
+                                val newProfile = inputControlsManager.duplicateProfile(sourceProfile)
+                                newProfile.setName("${displayInfo.name} - Controls")
+                                newProfile.save()
+                                profileId = newProfile.id
+                                container.putExtra("profileId", profileId.toString())
+                                container.saveData()
+                            } catch (e: Exception) {
+                                Timber.e(e, "Failed to auto-create profile for editor")
+                            }
+                        }
+                    }
+                    
+                    if (profileId != 0) {
+                        PluviaApp.events.emit(AndroidEvent.OpenControlsEditor(profileId))
+                    } else {
+                        Toast.makeText(context, "Could not open editor: No profile found", Toast.LENGTH_SHORT).show()
+                    }
+                },
+                onSelectICP = {
+                    showControllerDialog = false
+                    showProfileSelectionDialog = true
+                },
+                onImportICP = {
+                    showControllerDialog = false
+                    importICPLauncher.launch(arrayOf("application/octet-stream", "*/*"))
+                },
+                onExportICP = {
+                    showControllerDialog = false
+                    val gameName = displayInfo.name
+                    exportICPLauncher.launch("${gameName}.icp")
+                },
+                onControllerManager = {
+                    showControllerDialog = false
+                    initialNavigationAction = NavigationDialog.ACTION_CONTROLLER_MANAGER
+                    showNavigationDialog = true
+                },
+                onMotionControls = {
+                    showControllerDialog = false
+                    initialNavigationAction = NavigationDialog.ACTION_MOTION_CONTROLS
+                    showNavigationDialog = true
+                },
+                onEditPhysicalController = {
+                    showControllerDialog = false
+                    initialNavigationAction = NavigationDialog.ACTION_EDIT_PHYSICAL_CONTROLLER
+                    showNavigationDialog = true
+                }
+            )
+        }
+
+        if (showSavesDialog) {
+            SavesOptionsDialog(
+                onDismiss = { showSavesDialog = false },
+                onImport = {
+                    showSavesDialog = false
+                    importSaveLauncher.launch(arrayOf("application/zip"))
+                },
+                onExport = {
+                    showSavesDialog = false
+                    val gameName = displayInfo.name
+                    exportSaveLauncher.launch("${gameName}_${System.currentTimeMillis()}.zip")
+                }
+            )
+        }
+
+        if (showNavigationDialog) {
+            // This is a bit tricky as NavigationDialog is a legacy View-based dialog.
+            // We can show it using a side effect.
+            SideEffect {
+                val dialog = NavigationDialog(context) { itemId ->
+                    // Handle item selection if needed, but here we just wanted to launch
+                    // specific parts of it. Actually, NavigationDialog launches its own
+                    // sub-dialogs for these actions.
+                }
+                // We want to immediately trigger the action and dismiss the main nav dialog
+                // but NavigationDialog doesn't easily support that without showing it.
+                // Alternative: call the manager/dialogs directly.
+                when (initialNavigationAction) {
+                    NavigationDialog.ACTION_CONTROLLER_MANAGER -> 
+                        com.winlator.contentdialog.ControllerAssignmentDialog.show(context, null)
+                    NavigationDialog.ACTION_MOTION_CONTROLS -> 
+                        com.winlator.inputcontrols.MotionControls.getInstance(context).showContentDialog(context, null)
+                    NavigationDialog.ACTION_EDIT_PHYSICAL_CONTROLLER -> {
+                        // Handled by showPhysicalControllerDialog
+                    }
+                }
+                showNavigationDialog = false
+            }
+        }
+
+        if (showPhysicalControllerDialog && activeProfile != null) {
+            PhysicalControllerConfigSection(
+                profile = activeProfile!!,
+                onDismiss = { showPhysicalControllerDialog = false },
+                onSave = { showPhysicalControllerDialog = false }
+            )
+        }
+
+        if (showProfileSelectionDialog) {
+            val container = ContainerUtils.getContainer(context, libraryItem.appId)
+            val selectedId = container.getExtra("profileId", "0").toIntOrNull() ?: 0
+            
+            val profilesList = remember(profilesListKey) { inputControlsManager.getProfiles(false) }
+
+            ProfileSelectionDialog(
+                profiles = profilesList,
+                selectedProfileId = selectedId,
+                onDismiss = { showProfileSelectionDialog = false },
+                onProfileSelected = { profile ->
+                    container.putExtra("profileId", profile.id.toString())
+                    container.saveData()
+                    showProfileSelectionDialog = false
+                    Toast.makeText(context, "Profile ${profile.name} selected", Toast.LENGTH_SHORT).show()
+                },
+                onDeleteProfile = { profile ->
+                    inputControlsManager.removeProfile(profile)
+                    if (selectedId == profile.id) {
+                        container.putExtra("profileId", "0")
+                        container.saveData()
+                    }
+                    profilesListKey++
+                    Toast.makeText(context, "Profile deleted", Toast.LENGTH_SHORT).show()
+                },
+                onRenameProfile = { profile, newName ->
+                    inputControlsManager.renameProfile(profile, newName)
+                    profilesListKey++
+                    Toast.makeText(context, "Profile renamed", Toast.LENGTH_SHORT).show()
+                }
             )
         }
 

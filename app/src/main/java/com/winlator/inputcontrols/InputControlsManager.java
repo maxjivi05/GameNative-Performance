@@ -7,7 +7,8 @@ import android.media.MediaScannerConnection;
 import android.os.Environment;
 import android.util.JsonReader;
 
-import com.winlator.PrefManager;
+import androidx.preference.PreferenceManager;
+
 import com.winlator.core.AppUtils;
 import com.winlator.core.FileUtils;
 
@@ -16,6 +17,7 @@ import org.json.JSONObject;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
@@ -56,11 +58,12 @@ public class InputControlsManager {
             return;
         }
 
-        PrefManager.init(context);
-        String newVersion = String.valueOf(AppUtils.getVersionCode(context));
-        String oldVersion = PrefManager.getString("inputcontrols_app_version", "0");
+        SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
+
+        int newVersion = AppUtils.getVersionCode(context);
+        int oldVersion = preferences.getInt("inputcontrols_app_version", 0);
         if (oldVersion == newVersion) return;
-        PrefManager.putString("inputcontrols_app_version", newVersion);
+        preferences.edit().putInt("inputcontrols_app_version", newVersion).apply();
 
         File[] files = profilesDir.listFiles();
         if (files == null) return;
@@ -75,7 +78,6 @@ public class InputControlsManager {
                 File targetFile = null;
                 for (File file : files) {
                     ControlsProfile targetProfile = loadProfile(context, file);
-                    if (originProfile == null || targetProfile == null) continue;
                     if (originProfile.id == targetProfile.id && originProfile.getName().equals(targetProfile.getName())) {
                         targetFile = file;
                         break;
@@ -85,12 +87,6 @@ public class InputControlsManager {
                 if (targetFile != null) {
                     FileUtils.copy(context, assetPath, targetFile);
                 }
-            }
-
-            // Fix if controls-0.icp not exists
-            File file = ControlsProfile.getProfileFile(context, 0);
-            if (!file.isFile()) {
-                FileUtils.copy(context, "inputcontrols/profiles/controls-0.icp", file);
             }
         }
         catch (IOException e) {}
@@ -105,7 +101,6 @@ public class InputControlsManager {
         if (files != null) {
             for (File file : files) {
                 ControlsProfile profile = loadProfile(context, file);
-                if (profile == null) continue;
                 if (!(ignoreTemplates && profile.isTemplate())) profiles.add(profile);
                 maxProfileId = Math.max(maxProfileId, profile.id);
             }
@@ -157,31 +152,75 @@ public class InputControlsManager {
 
     public void removeProfile(ControlsProfile profile) {
         File file = ControlsProfile.getProfileFile(context, profile.id);
-        if (file.isFile() && file.delete()) profiles.remove(profile);
+        if (file.isFile() && file.delete()) {
+            profiles.remove(profile);
+        }
+    }
+
+    public void renameProfile(ControlsProfile profile, String newName) {
+        profile.setName(newName);
+        profile.save();
+    }
+
+    public ControlsProfile importProfile(android.net.Uri uri) {
+        String content = FileUtils.readString(context, uri);
+        if (content == null) return null;
+        try {
+            JSONObject data = new JSONObject(content);
+            
+            // Try to get filename from URI to use as profile name
+            String filename = null;
+            try (android.database.Cursor cursor = context.getContentResolver().query(uri, null, null, null, null)) {
+                if (cursor != null && cursor.moveToFirst()) {
+                    int nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME);
+                    if (nameIndex != -1) filename = cursor.getString(nameIndex);
+                }
+            }
+            
+            if (filename != null) {
+                // Remove extension
+                int lastDot = filename.lastIndexOf('.');
+                if (lastDot > 0) filename = filename.substring(0, lastDot);
+                data.put("name", filename);
+            }
+
+            return importProfile(data);
+        }
+        catch (JSONException e) {
+            return null;
+        }
     }
 
     public ControlsProfile importProfile(JSONObject data) {
         try {
-            if (!data.has("id") || !data.has("name")) return null;
             int newId = ++maxProfileId;
             File newFile = ControlsProfile.getProfileFile(context, newId);
             data.put("id", newId);
+            if (!data.has("name")) data.put("name", "Imported Profile " + newId);
             FileUtils.writeString(newFile, data.toString());
             ControlsProfile newProfile = loadProfile(context, newFile);
 
-            int foundIndex = -1;
-            for (int i = 0; i < profiles.size(); i++) {
-                ControlsProfile profile = profiles.get(i);
-                if (profile.getName().equals(newProfile.getName())) {
-                    foundIndex = i;
-                    break;
-                }
-            }
+            if (newProfile == null) return null;
 
-            if (foundIndex != -1) {
-                profiles.set(foundIndex, newProfile);
+            if (profiles == null) getProfiles();
+
+            if (profiles != null) {
+                int foundIndex = -1;
+                for (int i = 0; i < profiles.size(); i++) {
+                    ControlsProfile profile = profiles.get(i);
+                    if (profile.getName().equals(newProfile.getName())) {
+                        foundIndex = i;
+                        break;
+                    }
+                }
+
+                if (foundIndex != -1) {
+                    profiles.set(foundIndex, newProfile);
+                } else profiles.add(newProfile);
+            } else {
+                profiles = new ArrayList<>();
+                profiles.add(newProfile);
             }
-            else profiles.add(newProfile);
             return newProfile;
         }
         catch (JSONException e) {
@@ -191,10 +230,26 @@ public class InputControlsManager {
 
     public File exportProfile(ControlsProfile profile) {
         File downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-        File destination = new File(downloadsDir, "Winlator/profiles/"+profile.getName()+".icp");
+        File destination = new File(downloadsDir, "GameNative/profiles/"+profile.getName()+".icp");
         FileUtils.copy(ControlsProfile.getProfileFile(context, profile.id), destination);
         MediaScannerConnection.scanFile(context, new String[]{destination.getAbsolutePath()}, null, null);
         return destination.isFile() ? destination : null;
+    }
+
+    public boolean exportProfile(ControlsProfile profile, android.net.Uri uri) {
+        try (android.os.ParcelFileDescriptor pfd = context.getContentResolver().openFileDescriptor(uri, "w");
+             FileOutputStream fos = new FileOutputStream(pfd.getFileDescriptor())) {
+            File sourceFile = ControlsProfile.getProfileFile(context, profile.id);
+            byte[] bytes = FileUtils.read(sourceFile);
+            if (bytes != null) {
+                fos.write(bytes);
+                return true;
+            }
+            return false;
+        }
+        catch (IOException e) {
+            return false;
+        }
     }
 
     public static ControlsProfile loadProfile(Context context, File file) {

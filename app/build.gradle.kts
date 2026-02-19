@@ -189,13 +189,12 @@ android {
     //     }
     // }
 
-    // cmake on release builds a proot that fails to process ld-2.31.so
-    // externalNativeBuild {
-    //     cmake {
-    //         path = file("src/main/cpp/CMakeLists.txt")
-    //         version = "3.22.1"
-    //     }
-    // }
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+            version = "3.22.1"
+        }
+    }
 
     // (For now) Uncomment for LeakCanary to work.
     // configurations {
@@ -244,6 +243,7 @@ dependencies {
     // Support
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.preference)
     implementation(libs.apng)
     implementation(libs.datastore.preferences)
     implementation(libs.jetbrains.kotlinx.json)
@@ -296,4 +296,5 @@ dependencies {
     implementation("io.ktor:ktor-client-android:3.1.3")
 
     implementation("com.auth0.android:jwtdecode:2.0.2")
+    implementation("com.google.android.flexbox:flexbox:3.0.0")
 }

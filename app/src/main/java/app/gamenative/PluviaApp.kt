@@ -116,6 +116,7 @@ class PluviaApp : SplitCompatApplication() {
         var inputControlsView: InputControlsView? = null
         var inputControlsManager: InputControlsManager? = null
         var touchpadView: TouchpadView? = null
+        var editMode: Boolean = false
 
         // Supabase client for game feedback
         lateinit var supabase: SupabaseClient

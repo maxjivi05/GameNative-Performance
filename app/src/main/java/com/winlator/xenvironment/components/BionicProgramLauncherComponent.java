@@ -201,12 +201,9 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
     }
 
     private int execGuestProgram() {
-
-        final int MAX_PLAYERS = 1; // old static method
-
         // Get the number of enabled players directly from ControllerManager.
-        final int enabledPlayerCount = MAX_PLAYERS;
-        for (int i = 0; i < enabledPlayerCount; i++) {
+        final int enabledPlayerCount = com.winlator.inputcontrols.ControllerManager.getInstance().getEnabledPlayerCount();
+        for (int i = 0; i < 4; i++) {
             String memPath;
             if (i == 0) {
                 // Player 1 uses the original, non-numbered path that is known to work.
@@ -318,9 +315,12 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
 
         if (new File(sysvPath).exists()) ld_preload += sysvPath;
 
-
-        ld_preload += ":" + evshimPath;
-        ld_preload += ":" + replacePath;
+        if (new File(evshimPath).exists()) {
+            if (!ld_preload.isEmpty()) ld_preload += ":";
+            ld_preload += evshimPath;
+        }
+        if (!ld_preload.isEmpty()) ld_preload += ":";
+        ld_preload += replacePath;
 
         envVars.put("LD_PRELOAD", ld_preload);
 
@@ -500,11 +500,17 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
 
         String ld_preload = "";
         String sysvPath = imageFs.getLibDir() + "/libandroid-sysvshm.so";
+        String evshimPath = imageFs.getLibDir() + "/libevshim.so";
         String replacePath = imageFs.getLibDir() + "/libredirect-bionic.so";
 
         if (new File(sysvPath).exists()) ld_preload += sysvPath;
 
-        ld_preload += ":" + replacePath;
+        if (new File(evshimPath).exists()) {
+            if (!ld_preload.isEmpty()) ld_preload += ":";
+            ld_preload += evshimPath;
+        }
+        if (!ld_preload.isEmpty()) ld_preload += ":";
+        ld_preload += replacePath;
 
         envVars.put("LD_PRELOAD", ld_preload);
 

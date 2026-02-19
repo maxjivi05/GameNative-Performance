@@ -469,15 +469,21 @@ fun PluviaMain(
         )
     }
 
+    val onOpenControlsEditor: (AndroidEvent.OpenControlsEditor) -> Unit = { event ->
+        navController.navigate(PluviaScreen.ControlsEditor.route(event.profileId))
+    }
+
     LaunchedEffect(Unit) {
         PluviaApp.events.on<AndroidEvent.PromptSaveContainerConfig, Unit>(onPromptSaveConfig)
         PluviaApp.events.on<AndroidEvent.ShowGameFeedback, Unit>(onShowGameFeedback)
+        PluviaApp.events.on<AndroidEvent.OpenControlsEditor, Unit>(onOpenControlsEditor)
     }
 
     DisposableEffect(Unit) {
         onDispose {
             PluviaApp.events.off<AndroidEvent.PromptSaveContainerConfig, Unit>(onPromptSaveConfig)
             PluviaApp.events.off<AndroidEvent.ShowGameFeedback, Unit>(onShowGameFeedback)
+            PluviaApp.events.off<AndroidEvent.OpenControlsEditor, Unit>(onOpenControlsEditor)
         }
     }
 
@@ -1050,6 +1056,18 @@ fun PluviaMain(
                     onNavigateToSteamLogin = {
                         navController.navigate(PluviaScreen.LoginUser.route)
                     },
+                )
+            }
+
+            /** Controls Editor **/
+            composable(
+                route = PluviaScreen.ControlsEditor.route,
+                arguments = listOf(navArgument(PluviaScreen.ControlsEditor.ARG_PROFILE_ID) { type = NavType.IntType })
+            ) { backStackEntry ->
+                val profileId = backStackEntry.arguments?.getInt(PluviaScreen.ControlsEditor.ARG_PROFILE_ID) ?: 0
+                app.gamenative.ui.screen.library.ControlsEditorScreen(
+                    profileId = profileId,
+                    onBack = { navController.popBackStack() }
                 )
             }
         }

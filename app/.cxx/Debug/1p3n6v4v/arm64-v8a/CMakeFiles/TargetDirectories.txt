@@ -1,0 +1,10 @@
+/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/.cxx/Debug/1p3n6v4v/arm64-v8a/CMakeFiles/winlator.dir
+/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/.cxx/Debug/1p3n6v4v/arm64-v8a/CMakeFiles/evshim.dir
+/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/.cxx/Debug/1p3n6v4v/arm64-v8a/CMakeFiles/edit_cache.dir
+/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/.cxx/Debug/1p3n6v4v/arm64-v8a/CMakeFiles/rebuild_cache.dir
+/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/.cxx/Debug/1p3n6v4v/arm64-v8a/virglrenderer/CMakeFiles/virglrenderer.dir
+/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/.cxx/Debug/1p3n6v4v/arm64-v8a/virglrenderer/CMakeFiles/edit_cache.dir
+/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/.cxx/Debug/1p3n6v4v/arm64-v8a/virglrenderer/CMakeFiles/rebuild_cache.dir
+/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/.cxx/Debug/1p3n6v4v/arm64-v8a/patchelf/CMakeFiles/patchelf.dir
+/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/.cxx/Debug/1p3n6v4v/arm64-v8a/patchelf/CMakeFiles/edit_cache.dir
+/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/.cxx/Debug/1p3n6v4v/arm64-v8a/patchelf/CMakeFiles/rebuild_cache.dir

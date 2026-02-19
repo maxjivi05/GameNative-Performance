@@ -10,6 +10,7 @@ import android.provider.DocumentsProvider;
 import android.webkit.MimeTypeMap;
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.IOException;
 
 public class GNPStorageProvider extends DocumentsProvider {
     private static final String ROOT_ID = "gnp_internal";
@@ -24,13 +25,18 @@ public class GNPStorageProvider extends DocumentsProvider {
     };
 
     @Override
+    public boolean onCreate() {
+        return true;
+    }
+
+    @Override
     public Cursor queryRoots(String[] projection) throws FileNotFoundException {
         final MatrixCursor result = new MatrixCursor(projection != null ? projection : DEFAULT_ROOT_PROJECTION);
         final MatrixCursor.RowBuilder row = result.newRow();
         row.add(Root.COLUMN_ROOT_ID, ROOT_ID);
         row.add(Root.COLUMN_FLAGS, Root.FLAG_SUPPORTS_CREATE | Root.FLAG_SUPPORTS_IS_CHILD);
         row.add(Root.COLUMN_TITLE, "GNP Internal Data");
-        row.add(Root.COLUMN_DOCUMENT_ID, getDocIdForFile(getContext().getFilesDir().getParentFile()));
+        row.add(Root.COLUMN_DOCUMENT_ID, ROOT_ID);
         row.add(Root.COLUMN_MIME_TYPES, "*/*");
         return result;
     }
@@ -46,10 +52,57 @@ public class GNPStorageProvider extends DocumentsProvider {
     public Cursor queryChildDocuments(String parentDocumentId, String[] projection, String sortOrder) throws FileNotFoundException {
         final MatrixCursor result = new MatrixCursor(projection != null ? projection : DEFAULT_DOCUMENT_PROJECTION);
         final File parent = getFileForDocId(parentDocumentId);
-        for (File file : parent.listFiles()) {
-            includeFile(result, null, file);
+        File[] files = parent.listFiles();
+        if (files != null) {
+            for (File file : files) {
+                includeFile(result, null, file);
+            }
         }
         return result;
+    }
+
+    @Override
+    public String createDocument(String parentDocumentId, String mimeType, String displayName) throws FileNotFoundException {
+        File parent = getFileForDocId(parentDocumentId);
+        File file = new File(parent, displayName);
+        try {
+            if (Document.MIME_TYPE_DIR.equals(mimeType)) {
+                if (!file.mkdir()) throw new IOException("Failed to create directory");
+            } else {
+                if (!file.createNewFile()) throw new IOException("Failed to create file");
+            }
+        } catch (IOException e) {
+            throw new FileNotFoundException("Failed to create document: " + e.getMessage());
+        }
+        return getDocIdForFile(file);
+    }
+
+    @Override
+    public void deleteDocument(String documentId) throws FileNotFoundException {
+        File file = getFileForDocId(documentId);
+        if (file.isDirectory()) {
+            deleteRecursive(file);
+        } else {
+            if (!file.delete()) throw new FileNotFoundException("Failed to delete file");
+        }
+    }
+
+    private void deleteRecursive(File file) {
+        File[] children = file.listFiles();
+        if (children != null) {
+            for (File child : children) deleteRecursive(child);
+        }
+        file.delete();
+    }
+
+    @Override
+    public String renameDocument(String documentId, String displayName) throws FileNotFoundException {
+        File file = getFileForDocId(documentId);
+        File newFile = new File(file.getParentFile(), displayName);
+        if (!file.renameTo(newFile)) {
+            throw new FileNotFoundException("Failed to rename document");
+        }
+        return getDocIdForFile(newFile);
     }
 
     @Override
@@ -59,34 +112,36 @@ public class GNPStorageProvider extends DocumentsProvider {
         return ParcelFileDescriptor.open(file, accessMode);
     }
 
-    @Override
-    public boolean onCreate() {
-        return true;
-    }
-
     private String getDocIdForFile(File file) {
-        return file.getAbsolutePath();
+        String base = getContext().getFilesDir().getParentFile().getAbsolutePath();
+        String path = file.getAbsolutePath();
+        if (path.equals(base)) return ROOT_ID;
+        if (path.startsWith(base)) {
+            return path.substring(base.length() + 1);
+        }
+        return path;
     }
 
     private File getFileForDocId(String docId) {
-        return new File(docId);
+        File base = getContext().getFilesDir().getParentFile();
+        if (ROOT_ID.equals(docId)) return base;
+        return new File(base, docId);
     }
 
     private void includeFile(MatrixCursor result, String docId, File file) {
         if (docId == null) docId = getDocIdForFile(file);
         else file = getFileForDocId(docId);
 
-        int flags = 0;
+        int flags = Document.FLAG_SUPPORTS_DELETE | Document.FLAG_SUPPORTS_RENAME;
         if (file.isDirectory()) {
-            if (file.canWrite()) flags |= Document.FLAG_DIR_SUPPORTS_CREATE;
-        } else if (file.canWrite()) {
+            flags |= Document.FLAG_DIR_SUPPORTS_CREATE;
+        } else {
             flags |= Document.FLAG_SUPPORTS_WRITE;
-            flags |= Document.FLAG_SUPPORTS_DELETE;
         }
 
         final MatrixCursor.RowBuilder row = result.newRow();
         row.add(Document.COLUMN_DOCUMENT_ID, docId);
-        row.add(Document.COLUMN_DISPLAY_NAME, file.getName());
+        row.add(Document.COLUMN_DISPLAY_NAME, file.getName().isEmpty() ? "Root" : file.getName());
         row.add(Document.COLUMN_SIZE, file.length());
         row.add(Document.COLUMN_MIME_TYPE, getTypeForFile(file));
         row.add(Document.COLUMN_LAST_MODIFIED, file.lastModified());

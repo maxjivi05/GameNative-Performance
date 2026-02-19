@@ -25,5 +25,7 @@ enum class AppOptionMenuType(val text: String) {
     ImportSave("Import Save"),
     ExportSave("Export Save"),
     TestGraphics("Test graphics"),
-    ManageGameContent("Manage DLC");
+    ManageGameContent("Manage DLC"),
+    Controller("Controller"),
+    Saves("Saves");
 }
