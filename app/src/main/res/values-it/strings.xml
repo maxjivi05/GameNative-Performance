@@ -41,6 +41,17 @@
     <string name="steam_uninstall_confirmation_message">Sei sicuro di voler disinstallare %1$s? Questa azione non può essere annullata.</string>
     <string name="steam_uninstall_success">%1$s è stato disinstallato</string>
     <string name="steam_uninstall_failed">Impossibile disinstallare il gioco</string>
+    <string name="amazon_uninstall_game_title">Disinstalla gioco</string>
+    <string name="amazon_uninstall_confirmation_message">Sei sicuro di voler disinstallare %1$s? Questa azione non può essere annullata.</string>
+    <string name="amazon_install_game_title">Scarica gioco</string>
+    <string name="amazon_install_confirmation_message">L\'app che stai installando ha i seguenti requisiti di spazio. Vuoi procedere?\n\n\tDimensione Download: %1$s\n\tSpazio Disponibile: %2$s</string>
+    <string name="amazon_verify_files_title">Verifica file</string>
+    <string name="amazon_verify_files_message">Verrà controllata la corrispondenza di tutti i file installati con il manifesto di download per individuare file mancanti o corrotti.\n\nPotrebbe richiedere del tempo per giochi di grandi dimensioni.</string>
+    <string name="amazon_verify_confirm">Verifica</string>
+    <string name="amazon_verify_in_progress">Verifica dei file in corso… Potrebbe richiedere del tempo.</string>
+    <string name="amazon_verify_success">Tutti i file verificati con successo.\n\n%1$d / %2$d file OK.</string>
+    <string name="amazon_verify_failed_detail">La verifica ha riscontrato problemi.\n\n%1$d / %2$d file OK\n%3$d mancanti\n%4$d dimensione errata\n%5$d hash errato\n\nReinstalla il gioco per riparare i file corrotti.</string>
+    <string name="amazon_verify_error">Verifica fallita: %1$s</string>
     <string name="gog_uninstall_game_title">Disinstalla Gioco</string>
     <string name="gog_uninstall_confirmation_message">Sei sicuro di voler disinstallare %1$s? Questa azione non può essere annullata.</string>
     <string name="gog_install_game_title">Scarica Gioco</string>
@@ -420,6 +431,8 @@
     <string name="games">Giochi</string>
     <string name="playtime_last_two_weeks">Tempo di gioco ultime 2 settimane: %s ore</string>
     <string name="total_playtime">Tempo di gioco totale: %s ore</string>
+    <string name="last_played">Ultima partita</string>
+    <string name="playtime">Tempo di gioco</string>
     <string name="add_custom_game_content_desc">Aggiungi gioco personalizzato</string>
     <string name="add_custom_game_dialog_title">Aggiungi Gioco Personalizzato</string>
     <string name="add_custom_game_dialog_message">Seleziona la cartella contenente i file del gioco che vuoi aggiungere come gioco personalizzato.</string>
@@ -495,6 +508,7 @@
     <string name="graphics_driver_version">Versione Driver Grafico</string>
     <string name="exposed_vulkan_extensions">Estensioni Vulkan Esposte</string>
     <string name="max_device_memory">Memoria Dispositivo Max</string>
+    <string name="frame_synchronization">Sincronizzazione fotogrammi</string>
     <string name="use_adrenotools_turnip">Usa Adrenotools Turnip</string>
     <string name="vulkan_version">Versione Vulkan</string>
     <string name="image_cache_size">Dimensione Cache Immagini</string>
@@ -672,6 +686,7 @@
     <string name="login_qr_failed">Codice QR Fallito</string>
     <string name="login_retry_qr">Riprova Codice QR</string>
     <string name="login_qr_instructions">Apri l\'app mobile di Steam e scansiona questo codice QR per accedere istantaneamente</string>
+    <string name="login_skip_steam">Salta l\'accesso a Steam</string>
 
     <!-- Generic/Reusable strings -->
     <string name="continue_action">Continua</string>
@@ -992,6 +1007,21 @@
     <string name="epic_logout_success">Disconnesso da Epic Games con successo</string>
     <string name="epic_logout_failed">Disconnessione fallita: %s</string>
     <string name="epic_logout_in_progress">Uscita da Epic Games…</string>
+
+    <!-- Amazon Games Integration -->
+    <string name="amazon_integration_title">Integrazione Amazon Games (Alpha)</string>
+    <string name="amazon_settings_login_title">Accedi</string>
+    <string name="amazon_settings_login_subtitle">Accedi al tuo account Amazon Games</string>
+    <string name="amazon_login_success_title">Accesso riuscito</string>
+    <string name="amazon_login_cancel">Annulla</string>
+    <string name="amazon_settings_logout_title">Esci</string>
+    <string name="amazon_settings_logout_subtitle">Esci dal tuo account Amazon Games</string>
+    <string name="amazon_logout_confirm_title">Disconnettersi da Amazon Games?</string>
+    <string name="amazon_logout_confirm_message">Questo rimuoverà le tue credenziali Amazon Games e cancellerà la tua libreria Amazon da questo dispositivo. Puoi accedere nuovamente in qualsiasi momento.</string>
+    <string name="amazon_logout_confirm">Esci</string>
+    <string name="amazon_logout_success">Disconnesso da Amazon Games con successo</string>
+    <string name="amazon_logout_failed">Disconnessione fallita: %s</string>
+    <string name="amazon_logout_in_progress">Uscita da Amazon Games…</string>
 
     <!-- Epic Install/Uninstall -->
     <string name="epic_uninstall_game_title">Disinstalla gioco</string>

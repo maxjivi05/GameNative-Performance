@@ -759,6 +759,13 @@ object PrefManager {
             setPref(SHOW_EPIC_IN_LIBRARY, value)
         }
 
+    private val SHOW_AMAZON_IN_LIBRARY = booleanPreferencesKey("show_amazon_in_library")
+    var showAmazonInLibrary: Boolean
+        get() = getPref(SHOW_AMAZON_IN_LIBRARY, true)
+        set(value) {
+            setPref(SHOW_AMAZON_IN_LIBRARY, value)
+        }
+
     // Game counts for skeleton loaders
     private val CUSTOM_GAMES_COUNT = intPreferencesKey("custom_games_count")
     var customGamesCount: Int

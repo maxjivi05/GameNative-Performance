@@ -37,7 +37,7 @@ public class NavigationDialog extends ContentDialog {
         void onNavigationItemSelected(int itemId);
     }
 
-    public NavigationDialog(@NonNull Context context, NavigationListener listener) {
+    public NavigationDialog(@NonNull Context context, boolean areControlsVisible, NavigationListener listener) {
         super(context, R.layout.navigation_dialog);
         if (getWindow() != null) {
             getWindow().setBackgroundDrawableResource(R.drawable.navigation_dialog_background);
@@ -60,7 +60,8 @@ public class NavigationDialog extends ContentDialog {
         boolean hasPhysicalController = !controllerManager.getDetectedDevices().isEmpty();
 
         addMenuItem(context, grid, R.drawable.icon_keyboard, R.string.keyboard, ACTION_KEYBOARD, listener, 1.0f);
-        addMenuItem(context, grid, R.drawable.icon_input_controls, R.string.input_controls, ACTION_INPUT_CONTROLS, listener,1.0f);
+        int controlsTextRes = areControlsVisible ? R.string.hide_controls : R.string.show_controls;
+        addMenuItem(context, grid, R.drawable.icon_input_controls, controlsTextRes, ACTION_INPUT_CONTROLS, listener,1.0f);
         addMenuItem(context, grid, R.drawable.icon_popup_menu_edit, R.string.edit_controls, ACTION_EDIT_CONTROLS, listener, 1.0f);
         addMenuItem(context, grid, R.drawable.icon_monitor, R.string.stretch_to_fullscreen, ACTION_STRETCH_TO_FULLSCREEN, listener, 1.0f);
         addMenuItem(context, grid, R.drawable.icon_gamepad, R.string.controller_manager, ACTION_CONTROLLER_MANAGER, listener, 1.0f);

@@ -1,3 +1,3 @@
-/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/CMakeLists.txt
-/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/patchelf/CMakeLists.txt
-/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/CMakeLists.txt
+/home/max/Build/GameNative-Enh-source/Attempt1/app/src/main/cpp/CMakeLists.txt
+/home/max/Build/GameNative-Enh-source/Attempt1/app/src/main/cpp/patchelf/CMakeLists.txt
+/home/max/Build/GameNative-Enh-source/Attempt1/app/src/main/cpp/virglrenderer/CMakeLists.txt

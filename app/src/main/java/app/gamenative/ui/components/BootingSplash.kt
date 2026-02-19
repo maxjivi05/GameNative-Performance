@@ -49,14 +49,14 @@ fun BootingSplash(
     val tips = remember {
         listOf(
             "Booting may take a few minutes on first launch",
-            "Tip: You can view the game files by pressing \"Open Container\" in the game settings.",
+            "Tip: You can view the game files by pressing \"Container\" in the game menu.",
             "Tip: You can go to the main settings menu and download custom drivers for your device to be used on Bionic.",
             "Tip: If you are getting a DirectX error, make sure you are using DXVK 1.10.3-async and leegao-wrapper on Bionic.",
-            "Tip: Try the Direct3D test in the Start Menu after clicking Open Container to check if your device is working correctly.",
+            "Tip: Try the Direct3D test in the Start Menu after clicking Open Container in the Container menu to check if your device is working correctly.",
             "Tip: Use DXVK for DirectX 8/9/10/11 games, VKD3D for DirectX 12 games and VirGL + WineD3D for OpenGL games.",
             "Tip: Use Turnip on glibc or bionic to play DirectX 12 games. DirectX 12 support for devices that don't support Turnip is currently limited.",
             "Tip: Try the Adreno or Snapdragon 8 Elite drivers on glibc if you are on a compatible device.",
-            "Tip: If you are getting a black screen when launching a game, try Open Container and launching the game from A: drive.",
+            "Tip: If you are getting a black screen when launching a game, try Open Container in the Container menu and launching the game from A: drive.",
             "Tip: You can add different locations for Custom Games in the settings.",
             "Tip: Turn off \"Show FPS\" to get rid of the mesa overlay.",
             "Tip: Install packages in A:\\_CommonRedist if your game doesn't launch.",

@@ -788,33 +788,6 @@ class SteamAppScreen : BaseAppScreen() {
     }
 
     /**
-     * Override Reset Container to show confirmation dialog
-     */
-    @Composable
-    override fun getResetContainerOption(
-        context: Context,
-        libraryItem: LibraryItem
-    ): AppMenuOption {
-        val gameId = libraryItem.gameId
-        var showResetConfirmDialog by remember { mutableStateOf(false) }
-
-        if (showResetConfirmDialog) {
-            ResetConfirmDialog(
-                onConfirm = {
-                    showResetConfirmDialog = false
-                    resetContainerToDefaults(context, libraryItem)
-                },
-                onDismiss = { showResetConfirmDialog = false }
-            )
-        }
-
-        return AppMenuOption(
-            AppOptionMenuType.ResetToDefaults,
-            onClick = { showResetConfirmDialog = true }
-        )
-    }
-
-    /**
      * Add Steam-specific menu options (Reset DRM, Verify Files, Update)
      */
     @Composable

@@ -2,7 +2,7 @@
 	"artifacts" : 
 	[
 		{
-			"path" : "/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/build/intermediates/cxx/Debug/1p3n6v4v/obj/arm64-v8a/libpatchelf.so"
+			"path" : "/home/max/Build/GameNative-Enh-source/Attempt1/app/build/intermediates/cxx/Debug/1p3n6v4v/obj/arm64-v8a/libevshim.so"
 		}
 	],
 	"backtrace" : 1,
@@ -11,11 +11,12 @@
 		"commands" : 
 		[
 			"add_library",
-			"include_directories"
+			"target_link_libraries",
+			"target_include_directories"
 		],
 		"files" : 
 		[
-			"patchelf/CMakeLists.txt"
+			"CMakeLists.txt"
 		],
 		"nodes" : 
 		[
@@ -25,13 +26,19 @@
 			{
 				"command" : 0,
 				"file" : 0,
-				"line" : 9,
+				"line" : 21,
 				"parent" : 0
 			},
 			{
 				"command" : 1,
 				"file" : 0,
-				"line" : 7,
+				"line" : 36,
+				"parent" : 0
+			},
+			{
+				"command" : 2,
+				"file" : 0,
+				"line" : 24,
 				"parent" : 0
 			}
 		]
@@ -42,34 +49,23 @@
 			"compileCommandFragments" : 
 			[
 				{
-					"fragment" : "-g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security   -O0 -fno-limit-debug-info  -fPIC"
-				},
-				{
-					"fragment" : "-std=gnu++17"
+					"fragment" : "-g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security  -O2 -Wno-unused-function -Wimplicit-function-declaration -O0 -fno-limit-debug-info  -fPIC"
 				}
 			],
 			"defines" : 
 			[
 				{
-					"define" : "patchelf_EXPORTS"
+					"define" : "evshim_EXPORTS"
 				}
 			],
 			"includes" : 
 			[
 				{
-					"backtrace" : 2,
-					"path" : "/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/patchelf/src"
+					"backtrace" : 3,
+					"path" : "/home/max/Build/GameNative-Enh-source/Attempt1/app/src/main/cpp/include"
 				}
 			],
-			"language" : "CXX",
-			"languageStandard" : 
-			{
-				"backtraces" : 
-				[
-					1
-				],
-				"standard" : "17"
-			},
+			"language" : "C",
 			"sourceIndexes" : 
 			[
 				0
@@ -80,7 +76,7 @@
 			}
 		}
 	],
-	"id" : "patchelf::@34e0f137fc7625edf7c9",
+	"id" : "evshim::@6890427a1f51a3e7e1df",
 	"link" : 
 	{
 		"commandFragments" : 
@@ -90,22 +86,32 @@
 				"role" : "flags"
 			},
 			{
+				"backtrace" : 2,
+				"fragment" : "-llog",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 2,
+				"fragment" : "-landroid",
+				"role" : "libraries"
+			},
+			{
 				"fragment" : "-latomic -lm",
 				"role" : "libraries"
 			}
 		],
-		"language" : "CXX",
+		"language" : "C",
 		"sysroot" : 
 		{
 			"path" : "/home/max/android-sdk/ndk/22.1.7171670/toolchains/llvm/prebuilt/linux-x86_64/sysroot"
 		}
 	},
-	"name" : "patchelf",
-	"nameOnDisk" : "libpatchelf.so",
+	"name" : "evshim",
+	"nameOnDisk" : "libevshim.so",
 	"paths" : 
 	{
-		"build" : "patchelf",
-		"source" : "patchelf"
+		"build" : ".",
+		"source" : "."
 	},
 	"sourceGroups" : 
 	[
@@ -122,7 +128,7 @@
 		{
 			"backtrace" : 1,
 			"compileGroupIndex" : 0,
-			"path" : "patchelf/src/patchelf.cc",
+			"path" : "winlator/evshim.c",
 			"sourceGroupIndex" : 0
 		}
 	],

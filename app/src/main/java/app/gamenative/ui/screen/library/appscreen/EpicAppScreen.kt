@@ -636,22 +636,6 @@ class EpicAppScreen : BaseAppScreen() {
     }
 
     /**
-     * Epic games support standard container reset
-     */
-    @Composable
-    override fun getResetContainerOption(
-        context: Context,
-        libraryItem: LibraryItem,
-    ): AppMenuOption {
-        return AppMenuOption(
-            optionType = AppOptionMenuType.ResetToDefaults,
-            onClick = {
-                resetContainerToDefaults(context, libraryItem)
-            },
-        )
-    }
-
-    /**
      * Epic games don't need special image fetching logic like Custom Games
      * Images come from Epic CDN
      */

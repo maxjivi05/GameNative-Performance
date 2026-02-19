@@ -474,21 +474,6 @@ class GOGAppScreen : BaseAppScreen() {
         return true
     }
 
-    /**
-     * GOG games support standard container reset
-     */
-    @Composable
-    override fun getResetContainerOption(
-        context: Context,
-        libraryItem: LibraryItem,
-    ): AppMenuOption {
-        return AppMenuOption(
-            optionType = AppOptionMenuType.ResetToDefaults,
-            onClick = {
-                resetContainerToDefaults(context, libraryItem)
-            },
-        )
-    }
     override fun getGameFolderPathForImageFetch(context: Context, libraryItem: LibraryItem): String? {
         return null // GOG Stores full URLs in their database entry.
     }

@@ -55,7 +55,6 @@ class MainViewModel @Inject constructor(
         data class ExternalGameLaunch(val appId: String) : MainUiEvent()
         data class OnLogonEnded(val result: LoginResult) : MainUiEvent()
         data object ShowDiscordSupportDialog : MainUiEvent()
-        data class ShowGameFeedbackDialog(val appId: String) : MainUiEvent()
         data class ShowToast(val message: String) : MainUiEvent()
     }
 
@@ -332,6 +331,16 @@ class MainViewModel @Inject constructor(
                         Timber.tag("Epic").e(e, "[Cloud Saves] Exception during upload sync for $gameId")
                     }
                 }
+            } else if (gameSource == GameSource.AMAZON) {
+                // Record playtime for Amazon games (Amazon has no cloud save API)
+                Timber.tag("Amazon").i("Amazon Game exited for $appId — recording playtime")
+                viewModelScope.launch(Dispatchers.IO) {
+                    try {
+                        app.gamenative.service.amazon.AmazonService.recordSessionPlaytime()
+                    } catch (e: Exception) {
+                        Timber.tag("Amazon").e(e, "Exception during Amazon playtime recording for $appId")
+                    }
+                }
             } else {
                 // For Steam games, sync cloud saves
                 SteamService.closeApp(gameId, isOffline.value) { prefix ->
@@ -357,7 +366,6 @@ class MainViewModel @Inject constructor(
                     if (!shown) {
                         container.putExtra("discord_support_prompt_shown", "true")
                         container.saveData()
-                        _uiEvent.send(MainUiEvent.ShowGameFeedbackDialog(appId))
                     }
 
                     // Only show feedback if container config was changed before this game run
@@ -365,8 +373,6 @@ class MainViewModel @Inject constructor(
                         // Clear the flag
                         container.putExtra("config_changed", "false")
                         container.saveData()
-                        // Show the feedback dialog
-                        _uiEvent.send(MainUiEvent.ShowGameFeedbackDialog(appId))
                     }
                 } else {
                     Timber.d("Non-Steam Game Detected, not showing feedback")
