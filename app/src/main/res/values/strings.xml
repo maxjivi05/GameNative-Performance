@@ -197,6 +197,8 @@
     <string name="dpad_left">D-Pad Left</string>
     <string name="dpad_right">D-Pad Right</string>
     <string name="input_controls">On-screen Controller</string>
+    <string name="show_controls">Show On-screen Controller</string>
+    <string name="hide_controls">Hide On-screen Controller</string>
     <string name="edit_controls">Edit On-screen Controller</string>
     <string name="stretch_to_fullscreen">Stretch To Fullscreen</string>
     <string name="edit_physical_controller">Edit Physical Controller</string>
@@ -1080,4 +1082,31 @@
     <string name="left_controller">Left controller</string>
     <string name="right_controller">Right controller</string>
     <string name="frame_synchronization">Frame Synchronization</string>
+
+    <!-- Amazon Games Integration -->
+    <string name="amazon_integration_title">Amazon Games Integration (Alpha)</string>
+    <string name="amazon_games_integration_title">Amazon Games</string>
+    <string name="amazon_settings_login_title">Sign in</string>
+    <string name="amazon_settings_login_subtitle">Sign in to your Amazon Games account</string>
+    <string name="amazon_login_success_title">Login Successful</string>
+    <string name="amazon_login_cancel">Cancel</string>
+    <string name="amazon_settings_logout_title">Logout</string>
+    <string name="amazon_settings_logout_subtitle">Sign out from your Amazon Games account</string>
+    <string name="amazon_logout_confirm_title">Logout from Amazon Games?</string>
+    <string name="amazon_logout_confirm_message">This will remove your Amazon Games credentials and clear your Amazon library from this device. You can sign in again at any time.</string>
+    <string name="amazon_logout_confirm">Logout</string>
+    <string name="amazon_logout_success">Logged out from Amazon Games successfully</string>
+    <string name="amazon_logout_failed">Failed to logout: %s</string>
+    <string name="amazon_logout_in_progress">Logging out from Amazon Games…</string>
+    <string name="amazon_uninstall_game_title">Uninstall Game</string>
+    <string name="amazon_uninstall_confirmation_message">Are you sure you want to uninstall %1$s? This action cannot be undone.</string>
+    <string name="amazon_install_game_title">Download Game</string>
+    <string name="amazon_install_confirmation_message">The app being installed has the following space requirements. Would you like to proceed?\n\n\tDownload Size: %1$s\n\tAvailable Space: %2$s</string>
+    <string name="amazon_verify_files_title">Verify Files</string>
+    <string name="amazon_verify_files_message">This will check all installed files against the download manifest to detect missing or corrupted files.\n\nThis may take a while for large games.</string>
+    <string name="amazon_verify_confirm">Verify</string>
+    <string name="amazon_verify_in_progress">Verifying files… This may take a while.</string>
+    <string name="amazon_verify_success">All files verified successfully.\n\n%1$d / %2$d files OK.</string>
+    <string name="amazon_verify_failed_detail">Verification found issues.\n\n%1$d / %2$d files OK\n%3$d missing\n%4$d size mismatch\n%5$d hash mismatch\n\nReinstall the game to fix corrupted files.</string>
+    <string name="amazon_verify_error">Verification failed: %1$s</string>
 </resources>

@@ -105,28 +105,28 @@
 				{
 					"directoryIndex" : 0,
 					"id" : "evshim::@6890427a1f51a3e7e1df",
-					"jsonFile" : "target-evshim-Debug-1340a15c8cb0f375f6db.json",
+					"jsonFile" : "target-evshim-Debug-69934b9422d92aff41bb.json",
 					"name" : "evshim",
 					"projectIndex" : 0
 				},
 				{
 					"directoryIndex" : 2,
 					"id" : "patchelf::@34e0f137fc7625edf7c9",
-					"jsonFile" : "target-patchelf-Debug-42a16b47c59c99d96bb0.json",
+					"jsonFile" : "target-patchelf-Debug-12820174b6af0e0fceb2.json",
 					"name" : "patchelf",
 					"projectIndex" : 2
 				},
 				{
 					"directoryIndex" : 1,
 					"id" : "virglrenderer::@b02222b02b17b4412ae0",
-					"jsonFile" : "target-virglrenderer-Debug-3731ce9d9146f20d1353.json",
+					"jsonFile" : "target-virglrenderer-Debug-b097da524f7590d3cd2f.json",
 					"name" : "virglrenderer",
 					"projectIndex" : 1
 				},
 				{
 					"directoryIndex" : 0,
 					"id" : "winlator::@6890427a1f51a3e7e1df",
-					"jsonFile" : "target-winlator-Debug-93c991ff7dea256d815a.json",
+					"jsonFile" : "target-winlator-Debug-e9b94c19cfeff9fff179.json",
 					"name" : "winlator",
 					"projectIndex" : 0
 				}
@@ -136,8 +136,8 @@
 	"kind" : "codemodel",
 	"paths" : 
 	{
-		"build" : "/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/.cxx/Debug/1p3n6v4v/arm64-v8a",
-		"source" : "/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp"
+		"build" : "/home/max/Build/GameNative-Enh-source/Attempt1/app/.cxx/Debug/1p3n6v4v/armeabi-v7a",
+		"source" : "/home/max/Build/GameNative-Enh-source/Attempt1/app/src/main/cpp"
 	},
 	"version" : 
 	{

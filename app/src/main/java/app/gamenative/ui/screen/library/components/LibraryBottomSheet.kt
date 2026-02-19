@@ -3,6 +3,8 @@ package app.gamenative.ui.screen.library.components
 import android.content.res.Configuration
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Spacer
@@ -12,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.PhotoAlbum
 import androidx.compose.material.icons.filled.PhotoSizeSelectActual
 import androidx.compose.material3.Icon
@@ -29,6 +32,7 @@ import app.gamenative.data.GameSource
 import app.gamenative.ui.component.FlowFilterChip
 import app.gamenative.ui.enums.AppFilter
 import app.gamenative.ui.enums.PaneType
+import app.gamenative.ui.icons.Amazon
 import app.gamenative.ui.icons.CustomGame
 import app.gamenative.ui.icons.Steam
 import app.gamenative.ui.theme.PluviaTheme
@@ -45,11 +49,13 @@ fun LibraryBottomSheet(
     showCustomGames: Boolean,
     showGOG: Boolean,
     showEpic: Boolean,
+    showAmazon: Boolean,
     onSourceToggle: (app.gamenative.data.GameSource) -> Unit,
 ) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
             .padding(horizontal = 32.dp),
     ) {
         Text(text = stringResource(R.string.library_app_type), style = MaterialTheme.typography.titleLarge)
@@ -130,6 +136,18 @@ fun LibraryBottomSheet(
                     )
                 },
             )
+            FlowFilterChip(
+                onClick = { onSourceToggle(GameSource.AMAZON) },
+                label = { Text(text = "Amazon") },
+                selected = showAmazon,
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Filled.Amazon,
+                        contentDescription = "Amazon",
+                        modifier = Modifier.size(24.dp)
+                    )
+                },
+            )
         }
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -167,6 +185,10 @@ fun LibraryBottomSheet(
  * PREVIEW *
  ***********/
 
+// small screen
+@Preview(device = "spec:width=320dp,height=480dp,dpi=320")
+// landscape
+@Preview(device = "spec:width=800dp,height=360dp,dpi=320")
 @Preview(uiMode = Configuration.UI_MODE_NIGHT_YES or Configuration.UI_MODE_TYPE_NORMAL)
 @Preview
 @Composable
@@ -182,6 +204,7 @@ private fun Preview_LibraryBottomSheet() {
                 showCustomGames = true,
                 showGOG = true,
                 showEpic = true,
+                showAmazon = true,
                 onSourceToggle = { },
             )
         }

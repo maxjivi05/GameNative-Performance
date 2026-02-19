@@ -3,6 +3,7 @@ package app.gamenative.ui.screen.xserver
 import android.app.Activity
 import android.content.Context
 import android.graphics.Color
+import android.hardware.input.InputManager
 import android.os.Build
 import android.util.Log
 import android.view.View
@@ -318,7 +319,7 @@ fun XServerScreen(
         }
     }
     var isKeyboardVisible = false
-    var areControlsVisible by remember { mutableStateOf(PluviaApp.editMode) }
+    val areControlsVisible = remember { mutableStateOf(PluviaApp.editMode) }
     var isEditMode by remember { mutableStateOf(PluviaApp.editMode) }
     // Snapshot of element positions before entering edit mode (for cancel behavior)
     var elementPositionsSnapshot by remember { mutableStateOf<Map<com.winlator.inputcontrols.ControlElement, Pair<Int, Int>>>(emptyMap()) }
@@ -423,6 +424,7 @@ fun XServerScreen(
         Timber.i("BackHandler")
         NavigationDialog(
             context,
+            areControlsVisible.value,
             object : NavigationDialog.NavigationListener {
                 override fun onNavigationItemSelected(itemId: Int) {
                     when (itemId) {
@@ -446,9 +448,10 @@ fun XServerScreen(
                         }
 
                         NavigationDialog.ACTION_INPUT_CONTROLS -> {
-                            if (areControlsVisible){
+                            if (areControlsVisible.value){
                                 PostHog.capture(event = "onscreen_controller_disabled")
-                                hideInputControls();
+                                hideInputControls()
+                                areControlsVisible.value = false
                             } else {
                                 PostHog.capture(event = "onscreen_controller_enabled")
                                 val manager = PluviaApp.inputControlsManager
@@ -464,9 +467,9 @@ fun XServerScreen(
                                     } ?: manager?.getProfile(0) ?: profiles.getOrNull(2) ?: profiles.first()
 
                                     showInputControls(targetProfile, xServerView!!.getxServer().winHandler, container)
+                                    areControlsVisible.value = true
                                 }
                             }
-                            areControlsVisible = !areControlsVisible
                         }
 
                         NavigationDialog.ACTION_EDIT_CONTROLS -> {
@@ -536,9 +539,9 @@ fun XServerScreen(
                                     }
                                 }
 
-                                if (!areControlsVisible) {
+                                if (!areControlsVisible.value) {
                                     showInputControls(activeProfile, xServerView!!.getxServer().winHandler, container)
-                                    areControlsVisible = true
+                                    areControlsVisible.value = true
                                 }
                             }
                         }
@@ -666,7 +669,7 @@ fun XServerScreen(
                 if (overlayHandled) return@pointerInteropFilter true
 
                 // If controls are visible, let them handle it first
-                val controlsHandled = if (areControlsVisible) {
+                val controlsHandled = if (areControlsVisible.value) {
                     PluviaApp.inputControlsView?.onTouchEvent(event) ?: false
                 } else {
                     false
@@ -926,12 +929,15 @@ fun XServerScreen(
             gameHost.addView(xServerView)
 
             PluviaApp.inputControlsManager = InputControlsManager(context)
+            val inputManager = context.getSystemService(Context.INPUT_SERVICE) as InputManager
+            val controllerManager = ControllerManager.getInstance()
 
             // Store the loaded profile for auto-show logic later (declared outside apply block)
             var loadedProfile: ControlsProfile? = null
 
             // Create InputControlsView and add to FrameLayout
             val icView = InputControlsView(context).apply {
+                visibility = View.GONE
                 // Configure InputControlsView
                 setXServer(xServerView.getxServer())
                 setTouchpadView(PluviaApp.touchpadView)
@@ -987,6 +993,10 @@ fun XServerScreen(
                 }
             }
             PluviaApp.inputControlsView = icView
+            
+            // Start with state false and view GONE to force updateControlsVisibility to act on launch
+            areControlsVisible.value = false
+            icView.visibility = View.GONE
 
             xServerView.getxServer().winHandler.setInputControlsView(PluviaApp.inputControlsView)
 
@@ -1053,12 +1063,61 @@ fun XServerScreen(
                 } else {
                     null
                 }
+
+            val updateControlsVisibility: () -> Unit = {
+                val profile = loadedProfile
+                val winHandler = xServerView.getxServer()?.winHandler
+                if (profile != null && winHandler != null && profile.elements.isNotEmpty()) {
+                    controllerManager.scanForDevices()
+                    val detectedDevices = controllerManager.getDetectedDevices()
+                    val hasPhysicalController = detectedDevices.isNotEmpty()
+
+                    // Auto-assign connected controllers to available slots
+                    var assignmentsChanged = false
+                    for (device in detectedDevices) {
+                        if (controllerManager.getSlotForDevice(device.id) == -1) {
+                            // Find first empty slot
+                            for (i in 0 until 4) {
+                                if (controllerManager.getAssignedDeviceForSlot(i) == null) {
+                                    Timber.d("Auto-assigning physical controller ${device.name} to Slot $i")
+                                    controllerManager.assignDeviceToSlot(i, device)
+                                    controllerManager.setSlotEnabled(i, true)
+                                    assignmentsChanged = true
+                                    break
+                                }
+                            }
+                        }
+                    }
+                    if (assignmentsChanged) winHandler.refreshControllerMappings()
+
+                    val shouldShow = !container.isTouchscreenMode && (isEditMode || !hasPhysicalController)
+
+                    if (shouldShow != areControlsVisible.value) {
+                        Timber.d("Input device change: updating controls visibility to $shouldShow")
+                        if (shouldShow) {
+                            showInputControls(profile, winHandler, container)
+                        } else {
+                            hideInputControls()
+                        }
+                        areControlsVisible.value = shouldShow // Update state AFTER showing/hiding
+                    }
+                }
+            }
+
+            val deviceListener = object : InputManager.InputDeviceListener {
+                override fun onInputDeviceAdded(deviceId: Int) = updateControlsVisibility()
+                override fun onInputDeviceRemoved(deviceId: Int) = updateControlsVisibility()
+                override fun onInputDeviceChanged(deviceId: Int) = updateControlsVisibility()
+            }
+            inputManager.registerInputDeviceListener(deviceListener, null)
+
             frameLayout.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
                 override fun onViewAttachedToWindow(v: View) {}
 
                 override fun onViewDetachedFromWindow(v: View) {
                     externalDisplayController?.stop()
                     swapController?.stop()
+                    inputManager.unregisterInputDeviceListener(deviceListener)
                 }
             })
             // Don't call hideInputControls() here - let the auto-show logic below handle visibility
@@ -1086,36 +1145,7 @@ fun XServerScreen(
                         profile.loadElements(icView)
                     }
 
-                    // Only auto-show if profile has on-screen elements
-                    Timber.d("Profile has ${profile.elements.size} elements loaded")
-                    if (profile.elements.isNotEmpty()) {
-                        // Check for ACTUAL physically connected controllers, not just saved bindings
-                        val controllerManager = ControllerManager.getInstance()
-                        controllerManager.scanForDevices()
-                        val hasPhysicalController = controllerManager.getDetectedDevices().isNotEmpty()
-
-                        // Determine if controls should be shown based on priority:
-                        // 1. If touchscreen mode is true → always hide
-                        // 2. Else if physical controller detected → hide
-                        // 3. Else → show
-                        val shouldShowControls = when {
-                            container.isTouchscreenMode -> false
-                            hasPhysicalController -> false
-                            else -> true
-                        }
-
-                        if (shouldShowControls) {
-                            Timber.d("Auto-showing onscreen controls")
-                            showInputControls(profile, xServerView.getxServer().winHandler, container)
-                            areControlsVisible = true
-                        } else {
-                            Timber.d("Hiding onscreen controls")
-                            hideInputControls()
-                            areControlsVisible = false
-                        }
-                    } else {
-                        Timber.w("Profile has no elements - cannot auto-show controls")
-                    }
+                    updateControlsVisibility()
                 }
             }
             frameRating = FrameRating(context)
@@ -1153,7 +1183,7 @@ fun XServerScreen(
     )
 
         // Floating toolbar for edit mode (always visible in edit mode)
-        if (isEditMode && areControlsVisible) {
+        if (isEditMode && areControlsVisible.value) {
             EditModeToolbar(
                 onAdd = {
                     if (PluviaApp.inputControlsView?.addElement() == true) {
@@ -2138,6 +2168,146 @@ private fun getWineStartCommand(
         Timber.tag("XServerScreen").i("Epic launch command: $redactedCommand")
 
         return launchCommand
+    } else if (gameSource == GameSource.AMAZON) {
+        // For Amazon games, get install path using the product ID string (not the Int gameId)
+        val productId = appId.removePrefix("AMAZON_").substringBefore("(")
+        Timber.tag("XServerScreen").i("Launching Amazon game: productId=$productId")
+
+        val amazonService = app.gamenative.service.amazon.AmazonService.getInstance()
+        val installPath = amazonService?.getInstalledGamePath(productId)
+
+        if (installPath.isNullOrEmpty()) {
+            Timber.tag("XServerScreen").e("Cannot launch: Amazon game not installed")
+            return "\"explorer.exe\""
+        }
+
+        // Try fuel.json first (Amazon's launch manifest)
+        val fuelFile = File(installPath, "fuel.json")
+        var fuelCommand: String? = null
+        var fuelArgs: List<String> = emptyList()
+        var fuelWorkingDir: String? = null
+
+        if (fuelFile.exists()) {
+            try {
+                val json = org.json.JSONObject(fuelFile.readText())
+                val main = json.optJSONObject("Main")
+                if (main != null) {
+                    fuelCommand = main.optString("Command", "").takeIf { it.isNotEmpty() }
+                    fuelWorkingDir = main.optString("WorkingSubdirOverride", "").takeIf { it.isNotEmpty() }
+                    val argsArray = main.optJSONArray("Args")
+                    if (argsArray != null) {
+                        fuelArgs = (0 until argsArray.length()).mapNotNull { argsArray.optString(it) }
+                    }
+                }
+                Timber.tag("XServerScreen").i("fuel.json parsed: command=$fuelCommand, args=$fuelArgs, workingDir=$fuelWorkingDir")
+            } catch (e: Exception) {
+                Timber.tag("XServerScreen").w(e, "Failed to parse fuel.json, falling back to heuristic")
+            }
+        } else {
+            Timber.tag("XServerScreen").d("No fuel.json found at ${fuelFile.path}, using heuristic")
+        }
+
+        // Validate fuel.json command if provided
+        if (fuelCommand != null) {
+            val exeFile = File(installPath, fuelCommand.replace("\\", "/"))
+            if (!exeFile.exists()) {
+                Timber.tag("XServerScreen").w("fuel.json executable not found: ${exeFile.path}, falling back to heuristic")
+                fuelCommand = null
+            }
+        }
+
+        // Resolve executable path (fuel.json command, or fallback to largest .exe heuristic)
+        val resolvedRelativePath = if (fuelCommand != null) {
+            fuelCommand.replace("\\", "/")
+        } else {
+            val exeFile = File(installPath).walk()
+                .filter { it.extension.equals("exe", ignoreCase = true) }
+                .filter { file ->
+                    val name = file.name.lowercase()
+                    !name.contains("unins") && !name.contains("setup") && !name.contains("crash")
+                }
+                .maxByOrNull { it.length() }
+
+            if (exeFile == null) {
+                Timber.tag("XServerScreen").e("Cannot find executable for Amazon game")
+                return "\"explorer.exe\""
+            }
+            Timber.tag("XServerScreen").d("Heuristic selected exe: ${exeFile.path}")
+            exeFile.relativeTo(File(installPath)).path
+        }
+
+        val winPath = resolvedRelativePath.replace("/", "\\")
+        val amazonCommand = "A:\\$winPath"
+
+        // Set working directory: fuel.json override, or directory containing the executable
+        val workDir = if (fuelWorkingDir != null) {
+            installPath + "/" + fuelWorkingDir.replace("\\", "/")
+        } else {
+            val exeDir = resolvedRelativePath.substringBeforeLast("/", "")
+            if (exeDir.isNotEmpty()) installPath + "/" + exeDir else installPath
+        }
+        guestProgramLauncherComponent.workingDir = File(workDir)
+
+        // Set FuelPump environment variables for Amazon Games SDK / DRM
+        val configPath = "C:\\ProgramData"
+        envVars.put("FUEL_DIR", "$configPath\\Amazon Games Services\\Legacy")
+        envVars.put("AMAZON_GAMES_SDK_PATH", "$configPath\\Amazon Games Services\\AmazonGamesSDK")
+
+        // Fetch game metadata for per-game env vars
+        val amazonGame = kotlinx.coroutines.runBlocking(Dispatchers.IO) {
+            app.gamenative.service.amazon.AmazonService.getAmazonGameOf(productId)
+        }
+        if (amazonGame != null) {
+            envVars.put("AMAZON_GAMES_FUEL_ENTITLEMENT_ID", amazonGame.entitlementId)
+            if (amazonGame.productSku.isNotEmpty()) {
+                envVars.put("AMAZON_GAMES_FUEL_PRODUCT_SKU", amazonGame.productSku)
+            }
+            Timber.tag("XServerScreen").i("FuelPump env: entitlementId=${amazonGame.entitlementId}, sku=${amazonGame.productSku}")
+        } else {
+            Timber.tag("XServerScreen").w("Could not load AmazonGame for $productId — FuelPump env vars incomplete")
+        }
+        envVars.put("AMAZON_GAMES_FUEL_DISPLAY_NAME", "Player")
+
+        // Deploy Amazon Games SDK DLL files to Wine prefix
+        val prefixProgramData = File(container.getRootDir(), ".wine/drive_c/ProgramData")
+        try {
+            File(prefixProgramData, "Amazon Games Services/Legacy").mkdirs()
+            File(prefixProgramData, "Amazon Games Services/AmazonGamesSDK").mkdirs()
+
+            val sdkToken = kotlinx.coroutines.runBlocking(Dispatchers.IO) {
+                app.gamenative.service.amazon.AmazonService.getInstance()
+                    ?.amazonManager?.getBearerToken()
+            }
+            if (sdkToken != null) {
+                val cached = kotlinx.coroutines.runBlocking(Dispatchers.IO) {
+                    app.gamenative.service.amazon.AmazonSdkManager.ensureSdkFiles(context, sdkToken)
+                }
+                if (cached) {
+                    val deployed = app.gamenative.service.amazon.AmazonSdkManager
+                        .deploySdkToPrefix(context, prefixProgramData)
+                    Timber.tag("XServerScreen").i("SDK deployed: $deployed file(s) to Wine prefix")
+                } else {
+                    Timber.tag("XServerScreen").w("SDK download failed — game may not authenticate (non-fatal)")
+                }
+            } else {
+                Timber.tag("XServerScreen").w("No Amazon bearer token — SDK files not deployed (non-fatal)")
+            }
+        } catch (e: Exception) {
+            Timber.tag("XServerScreen").w(e, "Failed to deploy SDK files (non-fatal)")
+        }
+
+        // Build launch command with optional args from fuel.json
+        val amazonLaunchCommand = if (fuelArgs.isNotEmpty()) {
+            val argsStr = fuelArgs.joinToString(" ") { arg ->
+                if (arg.contains(" ")) "\"$arg\"" else arg
+            }
+            Timber.tag("XServerScreen").i("Amazon launch command: \"$amazonCommand\" $argsStr")
+            "winhandler.exe \"$amazonCommand\" $argsStr"
+        } else {
+            Timber.tag("XServerScreen").i("Amazon launch command: \"$amazonCommand\"")
+            "winhandler.exe \"$amazonCommand\""
+        }
+        return amazonLaunchCommand
     } else if (isCustomGame) {
         // For Custom Games, we can launch even without appLaunchInfo
         // Use the executable path from container config. If missing, try to auto-detect

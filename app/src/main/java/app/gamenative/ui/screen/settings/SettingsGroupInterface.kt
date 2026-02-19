@@ -80,8 +80,59 @@ import kotlinx.coroutines.CoroutineScope
 import timber.log.Timber
 import app.gamenative.PluviaApp
 import app.gamenative.events.AndroidEvent
+import app.gamenative.ui.screen.auth.AmazonOAuthActivity
 import app.gamenative.ui.screen.auth.EpicOAuthActivity
 import app.gamenative.ui.screen.auth.GOGOAuthActivity
+import app.gamenative.service.amazon.AmazonAuthManager
+import app.gamenative.service.amazon.AmazonService
+
+/**
+ * Shared Amazon authentication handler that manages the complete auth flow.
+ *
+ * @param context Android context for service operations
+ * @param authCode The OAuth authorization code (PKCE)
+ * @param coroutineScope Coroutine scope for async operations
+ * @param onLoadingChange Callback when loading state changes
+ * @param onError Callback when an error occurs (receives error message)
+ * @param onSuccess Callback when authentication succeeds
+ * @param onDialogClose Callback to close the login dialog
+ */
+private suspend fun handleAmazonAuthentication(
+    context: Context,
+    authCode: String,
+    coroutineScope: CoroutineScope,
+    onLoadingChange: (Boolean) -> Unit,
+    onError: (String?) -> Unit,
+    onSuccess: () -> Unit,
+    onDialogClose: () -> Unit
+) {
+    onLoadingChange(true)
+    onError(null)
+
+    try {
+        Timber.d("[SettingsAmazon]: Starting authentication...")
+        val result = AmazonService.authenticateWithCode(context, authCode)
+
+        if (result.isSuccess) {
+            Timber.i("[SettingsAmazon]: ✓ Authentication successful!")
+            Timber.i("[SettingsAmazon]: Starting AmazonService and triggering immediate library sync")
+            AmazonService.start(context)
+            AmazonService.triggerLibrarySync(context)
+            onSuccess()
+            onLoadingChange(false)
+            onDialogClose()
+        } else {
+            val error = result.exceptionOrNull()?.message ?: "Authentication failed"
+            Timber.e("[SettingsAmazon]: Authentication failed: $error")
+            onLoadingChange(false)
+            onError(error)
+        }
+    } catch (e: Exception) {
+        Timber.e(e, "[SettingsAmazon]: Authentication exception: ${e.message}")
+        onLoadingChange(false)
+        onError(e.message ?: "Authentication failed")
+    }
+}
 
 /**
  * Shared GOG authentication handler that manages the complete auth flow.
@@ -255,6 +306,9 @@ fun SettingsGroupInterface(
     var showEpicLogoutDialog by rememberSaveable { mutableStateOf(false) }
     var epicLogoutLoading by rememberSaveable { mutableStateOf(false) }
 
+    // Amazon login state
+    var amazonLoginLoading by rememberSaveable { mutableStateOf(false) }
+
     val coroutineScope = rememberCoroutineScope()
     // Use Activity lifecycle scope for the OAuth result callback so it stays valid after
     // returning from GOGOAuthActivity (composition may have been left → rememberCoroutineScope cancelled).
@@ -333,6 +387,46 @@ fun SettingsGroupInterface(
                     android.widget.Toast.makeText(
                         context,
                         context.getString(R.string.epic_login_success_title),
+                        android.widget.Toast.LENGTH_SHORT
+                    ).show()
+                },
+                onDialogClose = { }
+            )
+        }
+    }
+
+    // Amazon in-app OAuth (WebView PKCE) launcher; result delivers auth code automatically
+    val amazonOAuthLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode != android.app.Activity.RESULT_OK) {
+            val message = result.data?.getStringExtra(AmazonOAuthActivity.EXTRA_ERROR)
+                ?: context.getString(R.string.amazon_login_cancel)
+            android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_LONG).show()
+            return@rememberLauncherForActivityResult
+        }
+        val code = result.data?.getStringExtra(AmazonOAuthActivity.EXTRA_AUTH_CODE)
+        if (code == null) {
+            val message = result.data?.getStringExtra(AmazonOAuthActivity.EXTRA_ERROR)
+                ?: context.getString(R.string.amazon_login_cancel)
+            android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_LONG).show()
+            return@rememberLauncherForActivityResult
+        }
+        lifecycleScope.launch {
+            handleAmazonAuthentication(
+                context = context,
+                authCode = code,
+                coroutineScope = lifecycleScope,
+                onLoadingChange = { amazonLoginLoading = it },
+                onError = { msg ->
+                    if (msg != null) {
+                        android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_LONG).show()
+                    }
+                },
+                onSuccess = {
+                    android.widget.Toast.makeText(
+                        context,
+                        context.getString(R.string.amazon_login_success_title),
                         android.widget.Toast.LENGTH_SHORT
                     ).show()
                 },
@@ -537,7 +631,34 @@ fun SettingsGroupInterface(
         }
     }
 
-
+    // Amazon Games integration settings
+    SettingsGroup(title = { Text(text = stringResource(R.string.amazon_games_integration_title)) }) {
+        if (!AmazonAuthManager.hasStoredCredentials(context)) {
+            SettingsMenuLink(
+                icon = { androidx.compose.material3.Icon(Icons.Default.Login, contentDescription = null) },
+                colors = settingsTileColorsAlt(),
+                title = { Text(text = stringResource(R.string.amazon_settings_login_title)) },
+                subtitle = { Text(text = stringResource(R.string.amazon_settings_login_subtitle)) },
+                onClick = {
+                    amazonOAuthLauncher.launch(Intent(context, AmazonOAuthActivity::class.java))
+                }
+            )
+        }
+        if (AmazonAuthManager.hasStoredCredentials(context)) {
+            SettingsMenuLink(
+                icon = { androidx.compose.material3.Icon(Icons.Default.Logout, contentDescription = null) },
+                title = { Text(text = stringResource(R.string.amazon_settings_logout_title)) },
+                subtitle = { Text(text = stringResource(R.string.amazon_settings_logout_subtitle)) },
+                onClick = {
+                    lifecycleScope.launch(Dispatchers.IO) {
+                        AmazonAuthManager.logout(context)
+                    }
+                    android.widget.Toast.makeText(context, context.getString(R.string.amazon_logout_success), android.widget.Toast.LENGTH_SHORT).show()
+                },
+                colors = settingsTileColorsAlt()
+            )
+        }
+    }
 
     // Downloads settings
     SettingsGroup(title = { Text(text = stringResource(R.string.settings_downloads_title)) }) {

@@ -7,7 +7,8 @@ enum class GameSource {
     STEAM,
     CUSTOM_GAME,
     GOG,
-    EPIC
+    EPIC,
+    AMAZON
     // Add other platforms here..
 }
 
@@ -59,12 +60,22 @@ data class LibraryItem(
             GameSource.EPIC -> {
                 iconHash
             }
+            GameSource.AMAZON -> {
+                iconHash
+            }
         }
 
     /**
-     * Helper property to get the game ID as an integer
-     * For all game sources, extract the numeric part after the prefix
+     * Helper property to get the game ID as an integer.
+     * For Steam/Epic/GOG/Custom: extract the numeric part after the prefix.
+     * For Amazon: product IDs are UUID strings (e.g. "amzn1.adg.product.xxx")
+     * that cannot be parsed as Int, so we use hashCode() for a stable Int representation.
+     * This matches the hashCode() used in AmazonService event emission.
      */
     val gameId: Int
-        get() = appId.removePrefix("${gameSource.name}_").toIntOrNull() ?: 0
+        get() {
+            val idPart = appId.removePrefix("${gameSource.name}_")
+            return idPart.toIntOrNull()
+                ?: if (gameSource == GameSource.AMAZON) idPart.hashCode() else 0
+        }
 }

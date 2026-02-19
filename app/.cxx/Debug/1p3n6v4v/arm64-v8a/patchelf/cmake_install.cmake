@@ -1,4 +1,4 @@
-# Install script for directory: /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/patchelf
+# Install script for directory: /home/max/Build/GameNative-Enh-source/Attempt1/app/src/main/cpp/patchelf
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)

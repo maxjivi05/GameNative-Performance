@@ -30,6 +30,7 @@ import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
 import app.gamenative.events.AndroidEvent
 import app.gamenative.ui.component.dialog.ContainerConfigDialog
+import app.gamenative.ui.component.dialog.ContainerOptionsDialog
 import app.gamenative.ui.component.dialog.ControllerOptionsDialog
 import app.gamenative.ui.component.dialog.SavesOptionsDialog
 import app.gamenative.ui.component.dialog.PhysicalControllerConfigSection
@@ -244,12 +245,6 @@ abstract class BaseAppScreen {
     }
 
     @Composable
-    protected abstract fun getResetContainerOption(
-        context: Context,
-        libraryItem: LibraryItem,
-    ): AppMenuOption?
-
-    @Composable
     protected open fun getExportContainerOption(
         context: Context,
         libraryItem: LibraryItem,
@@ -332,16 +327,6 @@ abstract class BaseAppScreen {
     }
 
     @Composable
-    private fun getSubmitFeedbackOption(context: Context, libraryItem: LibraryItem): AppMenuOption {
-        return AppMenuOption(
-            optionType = AppOptionMenuType.SubmitFeedback,
-            onClick = {
-                PluviaApp.events.emit(AndroidEvent.ShowGameFeedback(libraryItem.appId))
-            },
-        )
-    }
-
-    @Composable
     private fun getFetchImagesOption(context: Context, libraryItem: LibraryItem): AppMenuOption {
         return AppMenuOption(
             optionType = AppOptionMenuType.FetchSteamGridDBImages,
@@ -404,7 +389,7 @@ abstract class BaseAppScreen {
             onClick = {
                 val browserIntent = Intent(
                     Intent.ACTION_VIEW,
-                    ("https://discord.gg/2hKv4VfZfE").toUri(),
+                    ("https://discord.gg/KWc5h7GZTK").toUri(),
                 )
                 context.startActivity(browserIntent)
             },
@@ -521,15 +506,16 @@ abstract class BaseAppScreen {
                 PluviaApp.events.emit(AndroidEvent.ShowSavesOptions)
             }))
 
-            getRunContainerOption(context, libraryItem, onClickPlay)?.let { menuOptions.add(it) }
+            menuOptions.add(AppMenuOption(AppOptionMenuType.Container, onClick = {
+                PluviaApp.events.emit(AndroidEvent.ShowContainerOptions(libraryItem.appId))
+            }))
+
             getTestGraphicsOption(context, libraryItem, onTestGraphics)?.let { menuOptions.add(it) }
-            getResetContainerOption(context, libraryItem)?.let { menuOptions.add(it) }
             getCreateShortcutOption(context, libraryItem)?.let { menuOptions.add(it) }
             getExportContainerOption(context, libraryItem, exportFrontendLauncher)?.let { menuOptions.add(it) }
         }
 
         // Always available options
-        menuOptions.add(getSubmitFeedbackOption(context, libraryItem))
         menuOptions.add(getFetchImagesOption(context, libraryItem))
         menuOptions.add(getGetSupportOption(context))
 
@@ -610,6 +596,9 @@ abstract class BaseAppScreen {
         }
 
         var showConfigDialog by androidx.compose.runtime.remember {
+            androidx.compose.runtime.mutableStateOf(false)
+        }
+        var showContainerDialog by androidx.compose.runtime.remember {
             androidx.compose.runtime.mutableStateOf(false)
         }
         var showControllerDialog by androidx.compose.runtime.remember {
@@ -695,13 +684,18 @@ abstract class BaseAppScreen {
             val showSavesListener: (AndroidEvent.ShowSavesOptions) -> Unit = {
                 showSavesDialog = true
             }
+            val showContainerListener: (AndroidEvent.ShowContainerOptions) -> Unit = {
+                showContainerDialog = true
+            }
 
             PluviaApp.events.on(showControllerListener)
             PluviaApp.events.on(showSavesListener)
+            PluviaApp.events.on(showContainerListener)
 
             onDispose {
                 PluviaApp.events.off(showControllerListener)
                 PluviaApp.events.off(showSavesListener)
+                PluviaApp.events.off(showContainerListener)
             }
         }
 
@@ -802,6 +796,7 @@ abstract class BaseAppScreen {
             app.gamenative.data.GameSource.EPIC -> app.gamenative.service.epic.EpicService.getDownloadInfo(displayInfo.gameId)
             app.gamenative.data.GameSource.GOG -> app.gamenative.service.gog.GOGService.getDownloadInfo(displayInfo.gameId.toString())
             app.gamenative.data.GameSource.CUSTOM_GAME -> null // Custom games don't support downloads yet
+            app.gamenative.data.GameSource.AMAZON -> null // Amazon download info not tracked here
         }
 
         DisposableEffect(libraryItem.appId) {
@@ -873,6 +868,20 @@ abstract class BaseAppScreen {
                     saveContainerConfig(context, libraryItem, it)
                     showConfigDialog = false
                 },
+            )
+        }
+
+        if (showContainerDialog) {
+            ContainerOptionsDialog(
+                onDismiss = { showContainerDialog = false },
+                onOpen = {
+                    showContainerDialog = false
+                    onRunContainerClick(context, libraryItem, onClickPlay)
+                },
+                onReset = {
+                    showContainerDialog = false
+                    resetContainerToDefaults(context, libraryItem)
+                }
             )
         }
 
@@ -962,7 +971,7 @@ abstract class BaseAppScreen {
             // This is a bit tricky as NavigationDialog is a legacy View-based dialog.
             // We can show it using a side effect.
             SideEffect {
-                val dialog = NavigationDialog(context) { itemId ->
+                val dialog = NavigationDialog(context, false) { itemId ->
                     // Handle item selection if needed, but here we just wanted to launch
                     // specific parts of it. Actually, NavigationDialog launches its own
                     // sub-dialogs for these actions.

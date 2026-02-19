@@ -12,11 +12,14 @@ import app.gamenative.data.LibraryItem
 import app.gamenative.data.SteamApp
 import app.gamenative.data.GOGGame
 import app.gamenative.data.EpicGame
+import app.gamenative.data.AmazonGame
 import app.gamenative.data.GameSource
 import app.gamenative.db.dao.SteamAppDao
 import app.gamenative.db.dao.GOGGameDao
 import app.gamenative.db.dao.EpicGameDao
+import app.gamenative.db.dao.AmazonGameDao
 import app.gamenative.db.dao.AppInfoDao
+import app.gamenative.service.amazon.AmazonService
 import app.gamenative.service.DownloadService
 import app.gamenative.service.SteamService
 import app.gamenative.ui.data.LibraryState
@@ -50,6 +53,7 @@ class LibraryViewModel @Inject constructor(
     private val steamAppDao: SteamAppDao,
     private val gogGameDao: GOGGameDao,
     private val epicGameDao: EpicGameDao,
+    private val amazonGameDao: AmazonGameDao,
     private val appInfoDao: AppInfoDao,
     @ApplicationContext private val context: Context,
 ) : ViewModel() {
@@ -78,6 +82,7 @@ class LibraryViewModel @Inject constructor(
     private var appList: List<SteamApp> = emptyList()
     private var gogGameList: List<GOGGame> = emptyList()
     private var epicGameList: List<EpicGame> = emptyList()
+    private var amazonGameList: List<AmazonGame> = emptyList()
 
     // Track if this is the first load to apply minimum load time
     private var isFirstLoad = true
@@ -142,6 +147,17 @@ class LibraryViewModel @Inject constructor(
             }
         }
 
+        viewModelScope.launch(Dispatchers.IO) {
+            amazonGameDao.getAll().collect { games ->
+                Timber.tag("LibraryViewModel").d("Collecting ${games.size} Amazon games")
+                val hasChanges = amazonGameList.size != games.size || amazonGameList != games
+                amazonGameList = games
+                if (hasChanges) {
+                    onFilterApps(paginationCurrentPage)
+                }
+            }
+        }
+
         PluviaApp.events.on<AndroidEvent.LibraryInstallStatusChanged, Unit>(onInstallStatusChanged)
         PluviaApp.events.on<AndroidEvent.CustomGameImagesFetched, Unit>(onCustomGameImagesFetched)
     }
@@ -186,6 +202,11 @@ class LibraryViewModel @Inject constructor(
                 val newValue = !current.showEpicInLibrary
                 PrefManager.showEpicInLibrary = newValue
                 _state.update { it.copy(showEpicInLibrary = newValue) }
+            }
+            GameSource.AMAZON -> {
+                val newValue = !current.showAmazonInLibrary
+                PrefManager.showAmazonInLibrary = newValue
+                _state.update { it.copy(showAmazonInLibrary = newValue) }
             }
         }
         onFilterApps(paginationCurrentPage)
@@ -249,6 +270,10 @@ class LibraryViewModel @Inject constructor(
                 if (app.gamenative.service.gog.GOGService.hasStoredCredentials(context)) {
                     Timber.tag("LibraryViewModel").i("Triggering GOG library refresh")
                     app.gamenative.service.gog.GOGService.triggerLibrarySync(context)
+                }
+                if (AmazonService.hasStoredCredentials(context)) {
+                    Timber.tag("LibraryViewModel").i("Triggering Amazon library refresh")
+                    AmazonService.triggerLibrarySync(context)
                 }
             } catch (e: Exception) {
                 Timber.tag("LibraryViewModel").e(e, "Failed to refresh owned games from server")
@@ -437,6 +462,39 @@ class LibraryViewModel @Inject constructor(
                 )
             }
 
+            // Filter Amazon games
+            val filteredAmazonGames = amazonGameList
+                .asSequence()
+                .filter { game ->
+                    if (currentState.searchQuery.isNotEmpty()) {
+                        game.title.contains(currentState.searchQuery, ignoreCase = true)
+                    } else {
+                        true
+                    }
+                }
+                .filter { game ->
+                    if (currentState.appInfoSortType.contains(AppFilter.INSTALLED)) {
+                        game.isInstalled
+                    } else {
+                        true
+                    }
+                }
+                .toList()
+
+            val amazonEntries = filteredAmazonGames.map { game ->
+                LibraryEntry(
+                    item = LibraryItem(
+                        index = 0,
+                        appId = "AMAZON_${game.id}",
+                        name = game.title,
+                        iconHash = game.artUrl,
+                        isShared = false,
+                        gameSource = GameSource.AMAZON,
+                    ),
+                    isInstalled = game.isInstalled,
+                )
+            }
+
             // Calculate installed counts
             val gogInstalledCount = filteredGOGGames.count { it.isInstalled }
             val epicInstalledCount = filteredEpicGames.count { it.isInstalled }
@@ -457,6 +515,7 @@ class LibraryViewModel @Inject constructor(
             val includeOpen = _state.value.showCustomGamesInLibrary
             val includeGOG = _state.value.showGOGInLibrary
             val includeEpic = _state.value.showEpicInLibrary
+            val includeAmazon = _state.value.showAmazonInLibrary
 
             // Combine all lists and sort: installed games first, then alphabetically
             val combined = buildList<LibraryEntry> {
@@ -464,6 +523,7 @@ class LibraryViewModel @Inject constructor(
                 if (includeOpen) addAll(customEntries)
                 if (includeGOG) addAll(gogEntries)
                 if (includeEpic) addAll(epicEntries)
+                if (includeAmazon) addAll(amazonEntries)
             }.sortedWith(
                 // Primary sort: installed status (0 = installed at top, 1 = not installed at bottom)
                 // Secondary sort: alphabetically by name (case-insensitive)

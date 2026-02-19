@@ -54,10 +54,8 @@ import app.gamenative.service.SteamService
 import app.gamenative.service.epic.EpicService
 import app.gamenative.service.gog.GOGService
 import app.gamenative.ui.component.ConnectingServersScreen
-import app.gamenative.ui.component.dialog.GameFeedbackDialog
 import app.gamenative.ui.component.dialog.LoadingDialog
 import app.gamenative.ui.component.dialog.MessageDialog
-import app.gamenative.ui.component.dialog.state.GameFeedbackDialogState
 import app.gamenative.ui.component.dialog.state.MessageDialogState
 import app.gamenative.ui.components.BootingSplash
 import app.gamenative.ui.enums.DialogType
@@ -71,7 +69,6 @@ import app.gamenative.ui.screen.xserver.XServerScreen
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.CustomGameScanner
-import app.gamenative.utils.GameFeedbackUtils
 import app.gamenative.utils.IntentLaunchManager
 import app.gamenative.utils.UpdateChecker
 import app.gamenative.utils.UpdateInfo
@@ -109,10 +106,6 @@ fun PluviaMain(
         mutableStateOf(MessageDialogState(false))
     }
     val setMessageDialogState: (MessageDialogState) -> Unit = { msgDialogState = it }
-
-    var gameFeedbackState by rememberSaveable(stateSaver = GameFeedbackDialogState.Saver) {
-        mutableStateOf(GameFeedbackDialogState(false))
-    }
 
     var hasBack by rememberSaveable { mutableStateOf(navController.previousBackStackEntry?.destination?.route != null) }
 
@@ -232,6 +225,10 @@ fun PluviaMain(
                                         GameSource.CUSTOM_GAME -> {
                                             CustomGameScanner.isGameInstalled(gameId)
                                         }
+
+                                        GameSource.AMAZON -> {
+                                            app.gamenative.service.amazon.AmazonService.isGameInstalled(gameId.toString())
+                                        }
                                     }
 
                                     if (!isInstalled) {
@@ -337,13 +334,6 @@ fun PluviaMain(
                     )
                 }
 
-                is MainViewModel.MainUiEvent.ShowGameFeedbackDialog -> {
-                    gameFeedbackState = GameFeedbackDialogState(
-                        visible = true,
-                        appId = event.appId,
-                    )
-                }
-
                 is MainViewModel.MainUiEvent.ShowToast -> {
                     Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
                 }
@@ -423,6 +413,14 @@ fun PluviaMain(
                 app.gamenative.service.epic.EpicService.start(context)
             }
 
+            // Start AmazonService if user has Amazon credentials
+            if (app.gamenative.service.amazon.AmazonService.hasStoredCredentials(context) &&
+                !app.gamenative.service.amazon.AmazonService.isRunning
+            ) {
+                Timber.d("[PluviaMain]: Starting AmazonService for logged-in user")
+                app.gamenative.service.amazon.AmazonService.start(context)
+            }
+
             // Navigate from LoginUser to Home if user is already logged in
             if (SteamService.isLoggedIn && !SteamService.keepAlive && navController.currentDestination?.route == PluviaScreen.LoginUser.route) {
                 navController.navigate(PluviaScreen.Home.route)
@@ -461,28 +459,18 @@ fun PluviaMain(
         )
     }
 
-    // Listen for game feedback request
-    val onShowGameFeedback: (AndroidEvent.ShowGameFeedback) -> Unit = { event ->
-        gameFeedbackState = GameFeedbackDialogState(
-            visible = true,
-            appId = event.appId,
-        )
-    }
-
     val onOpenControlsEditor: (AndroidEvent.OpenControlsEditor) -> Unit = { event ->
         navController.navigate(PluviaScreen.ControlsEditor.route(event.profileId))
     }
 
     LaunchedEffect(Unit) {
         PluviaApp.events.on<AndroidEvent.PromptSaveContainerConfig, Unit>(onPromptSaveConfig)
-        PluviaApp.events.on<AndroidEvent.ShowGameFeedback, Unit>(onShowGameFeedback)
         PluviaApp.events.on<AndroidEvent.OpenControlsEditor, Unit>(onOpenControlsEditor)
     }
 
     DisposableEffect(Unit) {
         onDispose {
             PluviaApp.events.off<AndroidEvent.PromptSaveContainerConfig, Unit>(onPromptSaveConfig)
-            PluviaApp.events.off<AndroidEvent.ShowGameFeedback, Unit>(onShowGameFeedback)
             PluviaApp.events.off<AndroidEvent.OpenControlsEditor, Unit>(onOpenControlsEditor)
         }
     }
@@ -536,7 +524,7 @@ fun PluviaMain(
         DialogType.DISCORD -> {
             onConfirmClick = {
                 setMessageDialogState(MessageDialogState(false))
-                uriHandler.openUri("https://discord.gg/2hKv4VfZfE")
+                uriHandler.openUri("https://discord.gg/KWc5h7GZTK")
             }
             onDismissClick = {
                 setMessageDialogState(MessageDialogState(false))
@@ -561,7 +549,7 @@ fun PluviaMain(
             onActionClick = {
                 val shareIntent = Intent().apply {
                     action = Intent.ACTION_SEND
-                    putExtra(Intent.EXTRA_TEXT, "Check out GameNative - play your PC Steam games on Android, with full support for cloud saves!\nhttps://gamenative.app\nJoin the community: https://discord.gg/2hKv4VfZfE")
+                    putExtra(Intent.EXTRA_TEXT, "Check out GameNative - play your PC Steam games on Android, with full support for cloud saves!\nhttps://gamenative.app\nJoin the community: https://discord.gg/KWc5h7GZTK")
                     type = "text/plain"
                 }
                 context.startActivity(Intent.createChooser(shareIntent, "Share GameNative"))
@@ -865,61 +853,6 @@ fun PluviaMain(
             icon = msgDialogState.type.icon,
             title = msgDialogState.title,
             message = msgDialogState.message,
-        )
-
-        GameFeedbackDialog(
-            state = gameFeedbackState,
-            onStateChange = { gameFeedbackState = it },
-            onSubmit = { feedbackState ->
-                Timber.d("GameFeedback: onSubmit called with rating=${feedbackState.rating}, tags=${feedbackState.selectedTags}, text=${feedbackState.feedbackText.take(20)}")
-                try {
-                    // Get the container for the app
-                    val appId = feedbackState.appId
-                    Timber.d("GameFeedback: Got appId=$appId")
-
-                    // Submit feedback to Supabase
-                    Timber.d("GameFeedback: Starting coroutine for submission")
-                    viewModel.viewModelScope.launch {
-                        Timber.d("GameFeedback: Inside coroutine scope")
-                        try {
-                            Timber.d("GameFeedback: Calling submitGameFeedback with rating=${feedbackState.rating}")
-                            val result = GameFeedbackUtils.submitGameFeedback(
-                                context = context,
-                                supabase = PluviaApp.supabase,
-                                appId = appId,
-                                rating = feedbackState.rating,
-                                tags = feedbackState.selectedTags.toList(),
-                                notes = feedbackState.feedbackText.takeIf { it.isNotBlank() },
-                            )
-
-                            Timber.d("GameFeedback: Submission returned $result")
-                            if (result) {
-                                Timber.d("GameFeedback: Showing success toast")
-                                viewModel.showToast("Thank you for your feedback!")
-                            } else {
-                                Timber.d("GameFeedback: Showing failure toast")
-                                viewModel.showToast("Failed to submit feedback")
-                            }
-                        } catch (e: Exception) {
-                            Timber.e(e, "GameFeedback: Error submitting game feedback")
-                            viewModel.showToast("Error submitting feedback")
-                        }
-                    }
-                } catch (e: Exception) {
-                    Timber.e(e, "GameFeedback: Error preparing game feedback")
-                    viewModel.showToast("Failed to submit feedback")
-                } finally {
-                    // Close the dialog regardless of success
-                    Timber.d("GameFeedback: Closing dialog")
-                    gameFeedbackState = GameFeedbackDialogState(visible = false)
-                }
-            },
-            onDismiss = {
-                gameFeedbackState = GameFeedbackDialogState(visible = false)
-            },
-            onDiscordSupport = {
-                uriHandler.openUri("https://discord.gg/2hKv4VfZfE")
-            },
         )
 
         Box(modifier = Modifier.zIndex(10f)) {
@@ -1267,6 +1200,17 @@ fun preLaunchApp(
                 Timber.tag("GOG").i("[Cloud Saves] Download sync completed successfully for $appId")
             }
 
+            setLoadingDialogVisible(false)
+            onSuccess(context, appId)
+            return@launch
+        }
+
+        // For Amazon Games, skip cloud sync (Amazon doesn't support cloud saves) and start game session
+        val isAmazonGame = ContainerUtils.extractGameSourceFromContainerId(appId) == GameSource.AMAZON
+        if (isAmazonGame) {
+            Timber.tag("preLaunchApp").i("Amazon Game detected for $appId — skipping cloud sync and launching container")
+            val amazonProductId = appId.removePrefix("AMAZON_")
+            app.gamenative.service.amazon.AmazonService.startGameSession(amazonProductId)
             setLoadingDialogVisible(false)
             onSuccess(context, appId)
             return@launch
