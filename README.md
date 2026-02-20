@@ -24,9 +24,9 @@ GameNative-Performance is a high-performance fork of GameNative, optimized speci
 - **Error Resilience:** Added extensive try-catch wrapping around native performance calls to ensure the app remains stable on all Android versions.
 
 ## How to Use
-1. Download the latest release from the [Actions](https://github.com/maxjivi05/GameNative-Performance/actions) or Releases tab.
+1. Download the latest release from the Releases.
 2. Install the APK on your Android device.
-3. Configure your container in **Edit Container -> Graphics** to enable performance toggles.
+3. Configure your container in **Settings -> Graphics** to enable performance toggles and select Driver.
 4. Access internal files via **Settings -> Debug -> Embedded File Access**.
 
 ## Support
@@ -41,5 +41,13 @@ To report issues or receive support, join our community!
 
 ## License
 [GPL 3.0](https://github.com/maxjivi05/GameNative-Performance/blob/master/LICENSE)
+
+## Credits
+1.) Winlator Teams yes all of them from the Original Burno Builds to CMOD Builds by CoffinColors and the Ludashi Builds from StevenMXZ.
+2.) GameNative Development Team which is rather large but most of the source here is directly from their hard work and most of the credit goes out to them for their dedication and ever growing team of developers. ( Yes, I steal your open source code and modify it ) thank you.
+3.) Box64, Fex-Emu, DXVK, DXVK Gplasync, VKD3D, VKD3D-Proton, Mesa, Basically everyone who has any piece of software that we use and if I forgot to mention a component let me know and I'll give you credit where credit is due.
+
+## Thank You
+I'd like to thank everyone who recommends new features and helps bug test new features, builds and ensure stability on Discord.
 
 **Disclaimer: This software is intended for playing games that you legally own. Do not use this software for piracy. The maintainer assumes no responsibility for misuse.**
