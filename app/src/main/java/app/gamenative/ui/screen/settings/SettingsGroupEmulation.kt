@@ -51,15 +51,15 @@ fun SettingsGroupEmulation() {
         )
         SettingsMenuLink(
             colors = settingsTileColors(),
-            title = { Text(text = stringResource(R.string.settings_emulation_orientations_title)) },
-            subtitle = { Text(text = stringResource(R.string.settings_emulation_orientations_subtitle)) },
-            onClick = { showOrientationDialog = true },
-        )
-        SettingsMenuLink(
-            colors = settingsTileColors(),
             title = { Text(text = "Presets") },
             subtitle = { Text(text = "Manage Default Settings, Box64, and FEXCore presets") },
             onClick = { showPresetsDialog = true },
+        )
+        SettingsMenuLink(
+            colors = settingsTileColors(),
+            title = { Text(text = stringResource(R.string.settings_emulation_orientations_title)) },
+            subtitle = { Text(text = stringResource(R.string.settings_emulation_orientations_subtitle)) },
+            onClick = { showOrientationDialog = true },
         )
     }
 }
