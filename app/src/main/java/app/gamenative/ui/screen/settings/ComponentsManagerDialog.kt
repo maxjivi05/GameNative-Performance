@@ -3,6 +3,8 @@ package app.gamenative.ui.screen.settings
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -23,11 +25,15 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -79,7 +85,17 @@ internal enum class GNComponent(val displayName: String) {
     FEXCORE("FEXCore"),
     VKD3D("VKD3D"),
     WINE_PROTON("Wine/Proton"),
-    WOWBOX64("WowBox64"),
+    WOWBOX64("WowBox64");
+
+    fun getContentTypes(): List<com.winlator.contents.ContentProfile.ContentType> = when (this) {
+        BOX64 -> listOf(com.winlator.contents.ContentProfile.ContentType.CONTENT_TYPE_BOX64)
+        DRIVER -> listOf(com.winlator.contents.ContentProfile.ContentType.CONTENT_TYPE_TURNIP)
+        DXVK -> listOf(com.winlator.contents.ContentProfile.ContentType.CONTENT_TYPE_DXVK)
+        FEXCORE -> listOf(com.winlator.contents.ContentProfile.ContentType.CONTENT_TYPE_FEXCORE)
+        VKD3D -> listOf(com.winlator.contents.ContentProfile.ContentType.CONTENT_TYPE_VKD3D)
+        WINE_PROTON -> listOf(com.winlator.contents.ContentProfile.ContentType.CONTENT_TYPE_WINE, com.winlator.contents.ContentProfile.ContentType.CONTENT_TYPE_PROTON)
+        WOWBOX64 -> listOf(com.winlator.contents.ContentProfile.ContentType.CONTENT_TYPE_WOWBOX64)
+    }
 }
 
 // ─── GitHub release data models ──────────────────────────────────────────────
@@ -162,10 +178,78 @@ private const val XNICK_API_URL  =
 fun ComponentsManagerDialog(open: Boolean, onDismiss: () -> Unit) {
     if (!open) return
 
+    val ctx = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val mgr = remember(ctx) { ContentsManager(ctx) }
+
     var nav by remember { mutableStateOf(CompNav.SELECTOR) }
     var selectedComponent by remember { mutableStateOf<GNComponent?>(null) }
     var showDriverDialog by remember { mutableStateOf(false) }
     var showWineProtonDialog by remember { mutableStateOf(false) }
+
+    var isWorking by remember { mutableStateOf(false) }
+    var workMessage by remember { mutableStateOf("") }
+
+    val performInstall: (Uri) -> Unit = { uri ->
+        scope.launch {
+            isWorking = true
+            workMessage = "Validating..."
+            try {
+                val result = withContext(Dispatchers.IO) {
+                    var p: ContentProfile? = null
+                    var f: ContentsManager.InstallFailedReason? = null
+                    val latch = CountDownLatch(1)
+                    mgr.extraContentFile(uri, object : ContentsManager.OnInstallFinishedCallback {
+                        override fun onFailed(reason: ContentsManager.InstallFailedReason, e: Exception?) {
+                            f = reason; latch.countDown()
+                        }
+                        override fun onSucceed(prof: ContentProfile) {
+                            p = prof; latch.countDown()
+                        }
+                    })
+                    latch.await()
+                    p to f
+                }
+
+                val (profile, fail) = result
+                if (profile == null) {
+                    Toast.makeText(ctx, "Validation failed: $fail", Toast.LENGTH_SHORT).show()
+                    return@launch
+                }
+
+                workMessage = "Installing..."
+                val msg = withContext(Dispatchers.IO) {
+                    var res = ""
+                    val latch = CountDownLatch(1)
+                    mgr.finishInstallContent(profile, object : ContentsManager.OnInstallFinishedCallback {
+                        override fun onFailed(reason: ContentsManager.InstallFailedReason, e: Exception?) {
+                            res = when (reason) {
+                                ContentsManager.InstallFailedReason.ERROR_EXIST -> "Already installed"
+                                else -> "Install failed: $reason"
+                            }
+                            latch.countDown()
+                        }
+                        override fun onSucceed(prof: ContentProfile) {
+                            res = "Installed ${prof.verName} ✓"
+                            latch.countDown()
+                        }
+                    })
+                    latch.await()
+                    res
+                }
+                Toast.makeText(ctx, msg, Toast.LENGTH_SHORT).show()
+            } catch (e: Exception) {
+                Toast.makeText(ctx, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+            } finally {
+                isWorking = false
+                workMessage = ""
+            }
+        }
+    }
+
+    val customPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        uri?.let { performInstall(it) }
+    }
 
     // Sub-dialogs appear on top of main dialog
     if (showDriverDialog) {
@@ -209,6 +293,7 @@ fun ComponentsManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                             }
                         }
                     },
+                    onInstallCustom = { customPicker.launch(arrayOf("*/*")) },
                     onDismiss = onDismiss,
                 )
                 CompNav.DETAIL -> ComponentDetailScreen(
@@ -228,8 +313,17 @@ fun ComponentsManagerDialog(open: Boolean, onDismiss: () -> Unit) {
 @Composable
 private fun ComponentSelectorScreen(
     onSelectComponent: (GNComponent) -> Unit,
+    onInstallCustom: () -> Unit,
     onDismiss: () -> Unit,
 ) {
+    val ctx = LocalContext.current
+    val mgr = remember { ContentsManager(ctx) }
+    
+    // Periodically refresh if needed, but for now we sync on start
+    LaunchedEffect(Unit) {
+        withContext(Dispatchers.IO) { mgr.syncContents() }
+    }
+
     Column(modifier = Modifier.fillMaxSize()) {
 
         // Title bar
@@ -257,20 +351,63 @@ private fun ComponentSelectorScreen(
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             GNComponent.entries.forEach { component ->
+                val isInstalled = component.getContentTypes().any { type ->
+                    val profiles = mgr.getProfiles(type)
+                    profiles != null && profiles.any { it.remoteUrl == null }
+                }
+
                 Button(
-                    onClick = { onSelectComponent(component) },
+                    onClick = {
+                        if (isInstalled && component != GNComponent.DRIVER && component != GNComponent.WINE_PROTON) {
+                            Toast.makeText(ctx, "Already Installed", Toast.LENGTH_SHORT).show()
+                        }
+                        onSelectComponent(component)
+                    },
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        containerColor = if (isInstalled) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = if (isInstalled) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onPrimaryContainer,
                     ),
                 ) {
-                    Text(
-                        text = component.displayName,
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.padding(vertical = 4.dp),
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (isInstalled && component != GNComponent.DRIVER && component != GNComponent.WINE_PROTON) {
+                            Checkbox(
+                                checked = true,
+                                onCheckedChange = null,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(Modifier.width(8.dp))
+                        }
+                        Text(
+                            text = component.displayName,
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
                 }
+            }
+
+            Spacer(Modifier.height(8.dp))
+            HorizontalDivider()
+            Spacer(Modifier.height(8.dp))
+
+            // Install Custom Button
+            Button(
+                onClick = onInstallCustom,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.tertiary,
+                    contentColor = MaterialTheme.colorScheme.onTertiary,
+                ),
+            ) {
+                Text(
+                    text = "Install Custom",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(vertical = 4.dp),
+                )
             }
         }
 
@@ -303,6 +440,26 @@ private fun ComponentDetailScreen(
     var allReleases by remember { mutableStateOf<List<GHRelease>>(emptyList()) }
     var isLoading   by remember { mutableStateOf(true) }
     var loadError   by remember { mutableStateOf<String?>(null) }
+
+    // Installed profiles
+    var installedProfiles = remember { mutableStateListOf<ContentProfile>() }
+    val refreshInstalled: () -> Unit = {
+        scope.launch(Dispatchers.IO) {
+            mgr.syncContents()
+            val list = mutableListOf<ContentProfile>()
+            component.getContentTypes().forEach { type ->
+                mgr.getProfiles(type)?.let { list.addAll(it) }
+            }
+            withContext(Dispatchers.Main) {
+                installedProfiles.clear()
+                installedProfiles.addAll(list)
+            }
+        }
+    }
+
+    LaunchedEffect(component) {
+        refreshInstalled()
+    }
 
     // Derived lists
     val nightlyAssets = remember(allReleases) {
@@ -343,6 +500,7 @@ private fun ComponentDetailScreen(
     var workMessage      by remember { mutableStateOf("") }
     var downloadProgress by remember { mutableStateOf(-1f) } // -1 = indeterminate
     var selectedAsset    by remember { mutableStateOf<GHAsset?>(null) }
+    var deleteTarget     by remember { mutableStateOf<ContentProfile?>(null) }
 
     // Fetch releases when screen opens (or component changes)
     LaunchedEffect(component) {
@@ -467,6 +625,7 @@ private fun ComponentDetailScreen(
 
                 Toast.makeText(ctx, msg, Toast.LENGTH_SHORT).show()
                 destFile.delete()
+                refreshInstalled()
 
             } catch (e: Exception) {
                 Timber.e(e, "ComponentsManager: install error")
@@ -477,6 +636,26 @@ private fun ComponentDetailScreen(
                 downloadProgress = -1f
             }
         }
+    }
+
+    if (deleteTarget != null) {
+        AlertDialog(
+            onDismissRequest = { deleteTarget = null },
+            title = { Text("Remove Component") },
+            text = { Text("Are you sure you want to uninstall ${deleteTarget!!.verName}?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    scope.launch(Dispatchers.IO) {
+                        mgr.removeContent(deleteTarget!!)
+                        refreshInstalled()
+                        withContext(Dispatchers.Main) { deleteTarget = null }
+                    }
+                }) { Text("Remove") }
+            },
+            dismissButton = {
+                TextButton(onClick = { deleteTarget = null }) { Text("Cancel") }
+            }
+        )
     }
 
     // ── UI ────────────────────────────────────────────────────────────────────
@@ -586,12 +765,26 @@ private fun ComponentDetailScreen(
                 } else {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         nightlyAssets.forEach { asset ->
+                            val isInstalled = installedProfiles.any { 
+                                it.verName.contains(extractVersionFromFilename(asset.name)) || 
+                                it.verName.contains(nightlyLabel(asset.releaseName)) 
+                            }
                             Button(
-                                onClick = { if (!isWorking) downloadAndInstall(asset) },
+                                onClick = { 
+                                    if (isInstalled) Toast.makeText(ctx, "Already Installed", Toast.LENGTH_SHORT).show()
+                                    if (!isWorking) downloadAndInstall(asset) 
+                                },
                                 enabled = !isWorking,
                                 modifier = Modifier.fillMaxWidth(),
+                                colors = if (isInstalled) ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondaryContainer) else ButtonDefaults.buttonColors()
                             ) {
-                                Text("⬇ ${nightlyLabel(asset.releaseName)} Nightly")
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    if (isInstalled) {
+                                        Checkbox(checked = true, onCheckedChange = null, modifier = Modifier.size(24.dp))
+                                        Spacer(Modifier.width(8.dp))
+                                    }
+                                    Text("⬇ ${nightlyLabel(asset.releaseName)} Nightly")
+                                }
                             }
                         }
                     }
@@ -617,16 +810,26 @@ private fun ComponentDetailScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 } else {
+                    val isInstalled = installedProfiles.any { it.verName.contains(extractVersionFromFilename(latestStable.name)) }
                     Button(
-                        onClick = { if (!isWorking) downloadAndInstall(latestStable) },
+                        onClick = { 
+                            if (isInstalled) Toast.makeText(ctx, "Already Installed", Toast.LENGTH_SHORT).show()
+                            if (!isWorking) downloadAndInstall(latestStable) 
+                        },
                         enabled = !isWorking,
                         modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(
+                        colors = if (isInstalled) ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondaryContainer) else ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.secondary,
                             contentColor = MaterialTheme.colorScheme.onSecondary,
                         ),
                     ) {
-                        Text("⬇ Install Latest Stable")
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (isInstalled) {
+                                Checkbox(checked = true, onCheckedChange = null, modifier = Modifier.size(24.dp))
+                                Spacer(Modifier.width(8.dp))
+                            }
+                            Text("⬇ Install Latest Stable")
+                        }
                     }
                 }
 
@@ -669,12 +872,16 @@ private fun ComponentDetailScreen(
                 } else {
                     stableAssets.forEach { asset ->
                         val isSelected = selectedAsset == asset
+                        val matchingProfile = installedProfiles.find { it.verName.contains(extractVersionFromFilename(asset.name)) }
+                        val isInstalled = matchingProfile != null
+                        
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .selectable(
                                     selected = isSelected,
                                     onClick = {
+                                        if (isInstalled) Toast.makeText(ctx, "Already Installed", Toast.LENGTH_SHORT).show()
                                         selectedAsset = if (isSelected) null else asset
                                     },
                                 )
@@ -685,10 +892,14 @@ private fun ComponentDetailScreen(
                                 .padding(vertical = 6.dp, horizontal = 4.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            RadioButton(
-                                selected = isSelected,
-                                onClick = { selectedAsset = if (isSelected) null else asset },
-                            )
+                            if (isInstalled) {
+                                Checkbox(checked = true, onCheckedChange = null)
+                            } else {
+                                RadioButton(
+                                    selected = isSelected,
+                                    onClick = { selectedAsset = if (isSelected) null else asset },
+                                )
+                            }
                             Spacer(Modifier.width(8.dp))
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
@@ -701,6 +912,56 @@ private fun ComponentDetailScreen(
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
+                            }
+                            if (isInstalled) {
+                                IconButton(onClick = { deleteTarget = matchingProfile }) {
+                                    Icon(Icons.Default.Delete, contentDescription = "Uninstall", tint = MaterialTheme.colorScheme.error)
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // ── Custom / Installed Only section ──────────────────────────
+                val customInstalled = installedProfiles.filter { prof ->
+                    stableAssets.none { it.name.contains(prof.verName) || prof.verName.contains(extractVersionFromFilename(it.name)) } &&
+                    nightlyAssets.none { prof.verName.contains(extractVersionFromFilename(it.name)) }
+                }
+
+                if (customInstalled.isNotEmpty()) {
+                    Spacer(Modifier.height(20.dp))
+                    HorizontalDivider()
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        text = "Installed Custom",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(bottom = 6.dp),
+                    )
+                    customInstalled.forEach { prof ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 6.dp, horizontal = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Checkbox(checked = true, onCheckedChange = null)
+                            Spacer(Modifier.width(8.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = prof.verName,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                )
+                                if (!prof.desc.isNullOrEmpty()) {
+                                    Text(
+                                        text = prof.desc,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                            }
+                            IconButton(onClick = { deleteTarget = prof }) {
+                                Icon(Icons.Default.Delete, contentDescription = "Uninstall", tint = MaterialTheme.colorScheme.error)
                             }
                         }
                     }

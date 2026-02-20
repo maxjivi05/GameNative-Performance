@@ -20,36 +20,18 @@ import com.alorma.compose.settings.ui.SettingsMenuLink
 @Composable
 fun SettingsGroupEmulation() {
     SettingsGroup(title = { Text(text = stringResource(R.string.settings_emulation_title)) }) {
-        var showConfigDialog by rememberSaveable { mutableStateOf(false) }
         var showOrientationDialog by rememberSaveable { mutableStateOf(false) }
-        var showBox64PresetsDialog by rememberSaveable { mutableStateOf(false) }
+        var showPresetsDialog by rememberSaveable { mutableStateOf(false) }
 
         OrientationDialog(
             openDialog = showOrientationDialog,
             onDismiss = { showOrientationDialog = false },
         )
 
-        ContainerConfigDialog(
-            visible = showConfigDialog,
-            title = stringResource(R.string.settings_emulation_default_config_dialog_title),
-            default = true,
-            initialConfig = ContainerUtils.getDefaultContainerData(),
-            onDismissRequest = { showConfigDialog = false },
-            onSave = {
-                showConfigDialog = false
-                ContainerUtils.setDefaultContainerData(it)
-            },
-        )
-
-        Box64PresetsDialog(
-            visible = showBox64PresetsDialog,
-            onDismissRequest = { showBox64PresetsDialog = false },
-        )
-        var showFexcorePresetsDialog by rememberSaveable { mutableStateOf(false) }
-        if (showFexcorePresetsDialog) {
-            FEXCorePresetsDialog(
-                visible = showFexcorePresetsDialog,
-                onDismissRequest = { showFexcorePresetsDialog = false },
+        if (showPresetsDialog) {
+            PresetsDialog(
+                open = showPresetsDialog,
+                onDismiss = { showPresetsDialog = false },
             )
         }
 
@@ -75,21 +57,9 @@ fun SettingsGroupEmulation() {
         )
         SettingsMenuLink(
             colors = settingsTileColors(),
-            title = { Text(text = stringResource(R.string.settings_emulation_default_config_title)) },
-            subtitle = { Text(text = stringResource(R.string.settings_emulation_default_config_subtitle)) },
-            onClick = { showConfigDialog = true },
-        )
-        SettingsMenuLink(
-            colors = settingsTileColors(),
-            title = { Text(text = stringResource(R.string.settings_emulation_box64_presets_title)) },
-            subtitle = { Text(stringResource(R.string.settings_emulation_box64_presets_subtitle)) },
-            onClick = { showBox64PresetsDialog = true },
-        )
-        SettingsMenuLink(
-            colors = settingsTileColors(),
-            title = { Text(text = stringResource(R.string.fexcore_presets)) },
-            subtitle = { Text(text = stringResource(R.string.fexcore_presets_description)) },
-            onClick = { showFexcorePresetsDialog = true },
+            title = { Text(text = "Presets") },
+            subtitle = { Text(text = "Manage Default Settings, Box64, and FEXCore presets") },
+            onClick = { showPresetsDialog = true },
         )
     }
 }
