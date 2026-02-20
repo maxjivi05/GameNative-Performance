@@ -2059,9 +2059,13 @@ private fun setupXEnvironment(
     }
 
     // Request encrypted app ticket for Steam games at launch time
-    val isCustomGame = ContainerUtils.extractGameSourceFromContainerId(appId) == GameSource.CUSTOM_GAME
+    val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
+    val isCustomGame = gameSource == GameSource.CUSTOM_GAME
+    // Amazon games use a hashCode of their product ID as a fake Steam app ID. Steam has no record
+    // of it, so requesting an encrypted app ticket always returns AccessDenied. Skip the request.
+    val isAmazonGame = gameSource == GameSource.AMAZON
     val gameIdForTicket = ContainerUtils.extractGameIdFromContainerId(appId)
-    if (!bootToContainer && !isCustomGame && gameIdForTicket != null && !container.isLaunchRealSteam) {
+    if (!bootToContainer && !isCustomGame && !isAmazonGame && gameIdForTicket != null && !container.isLaunchRealSteam) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val ticket = SteamService.instance?.getEncryptedAppTicket(gameIdForTicket)

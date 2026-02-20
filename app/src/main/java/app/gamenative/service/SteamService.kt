@@ -3211,10 +3211,15 @@ class SteamService : Service(), IChallengeUrlChanged {
 
         // Timber.d("Persona state received: ${callback.name}")
 
+        // Capture steamClient before launching the coroutine to avoid a race condition where
+        // steamClient is nulled out (service stopped) by the time the coroutine runs inside
+        // db.withTransaction, which would cause a NullPointerException.
+        val localSteamClient = steamClient ?: return
+
         scope.launch {
             db.withTransaction {
                 // Send off an event if we change states.
-                if (callback.friendId == steamClient!!.steamID) {
+                if (callback.friendId == localSteamClient.steamID) {
                     Timber.d("Local persona state received: ${callback.playerName}")
 
                     val avatarHash = callback.avatarHash.toHexString()

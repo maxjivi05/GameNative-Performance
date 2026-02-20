@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -233,11 +234,24 @@ internal fun LibraryListPane(
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceBetween
                 ) {
-                    Column {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
                         Text(
                             text = "GameNative",
+                            style = MaterialTheme.typography.headlineSmall.copy(
+                                fontWeight = FontWeight.Bold,
+                                brush = Brush.horizontalGradient(
+                                    colors = listOf(
+                                        MaterialTheme.colorScheme.primary,
+                                        MaterialTheme.colorScheme.tertiary
+                                    )
+                                )
+                            )
+                        )
+                        Text(
+                            text = androidx.compose.ui.res.stringResource(app.gamenative.R.string.performance),
                             style = MaterialTheme.typography.headlineSmall.copy(
                                 fontWeight = FontWeight.Bold,
                                 brush = Brush.horizontalGradient(
@@ -254,10 +268,14 @@ internal fun LibraryListPane(
                                 state.totalAppsInFilter,
                                 installedCount
                             ),
-                            style = MaterialTheme.typography.bodyMedium,
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                fontSize = MaterialTheme.typography.bodySmall.fontSize * 1.125f
+                            ),
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
+
+                    Spacer(modifier = Modifier.weight(1f))
 
                     if (isViewWide) {
                         Box(
@@ -271,6 +289,8 @@ internal fun LibraryListPane(
                                 onSearchQuery = onSearchQuery,
                             )
                         }
+                    } else {
+                        Spacer(modifier = Modifier.weight(1f))
                     }
 
                     // User profile button

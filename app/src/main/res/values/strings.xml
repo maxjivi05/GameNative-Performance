@@ -629,6 +629,8 @@
     <string name="settings_emulation_default_config_dialog_title">Default Container Config</string>
     <string name="settings_emulation_box64_presets_title">Box64 Presets</string>
     <string name="settings_emulation_box64_presets_subtitle">View, modify, and create Box64 presets</string>
+    <string name="settings_emulation_components_title">Components</string>
+    <string name="settings_emulation_components_subtitle">Manage drivers, Wine/Proton, DXVK, VKD3D, Box64 &amp; more</string>
     <string name="settings_emulation_driver_manager_title">Driver Manager</string>
     <string name="settings_emulation_driver_manager_subtitle">Install or remove custom graphics driver packages</string>
     <string name="settings_emulation_contents_manager_title">Contents Manager</string>
@@ -989,7 +991,7 @@
     <string name="auth_webview_title">Authorization</string>
 
     <!-- GOG Integration -->
-    <string name="gog_integration_title">GOG Integration (Alpha)</string>
+    <string name="gog_integration_title">GOG Games</string>
     <string name="gog_settings_login_title">Sign in</string>
     <string name="gog_settings_login_subtitle">Sign in to your GOG account</string>
     <string name="gog_login_success_title">Login Successful</string>
@@ -1004,7 +1006,7 @@
     <string name="gog_logout_in_progress">Logging out from GOG…</string>
 
     <!-- Epic Games Integration -->
-    <string name="epic_integration_title">Epic Games Integration</string>
+    <string name="epic_integration_title">Epic Games</string>
     <string name="epic_settings_login_title">Sign in</string>
     <string name="epic_settings_login_subtitle">Sign in to your Epic Games account</string>
     <string name="epic_login_success_title">Login Successful</string>
@@ -1088,7 +1090,7 @@
     <string name="frame_synchronization">Frame Synchronization</string>
 
     <!-- Amazon Games Integration -->
-    <string name="amazon_integration_title">Amazon Games Integration (Alpha)</string>
+    <string name="amazon_integration_title">Amazon Games</string>
     <string name="amazon_games_integration_title">Amazon Games</string>
     <string name="amazon_settings_login_title">Sign in</string>
     <string name="amazon_settings_login_subtitle">Sign in to your Amazon Games account</string>

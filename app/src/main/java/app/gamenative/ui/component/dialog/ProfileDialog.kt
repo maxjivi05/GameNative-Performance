@@ -156,16 +156,10 @@ fun ProfileDialog(
                                     Text(text = stringResource(R.string.settings_text))
                                 }
 
-                                FilledTonalButton(modifier = Modifier.fillMaxWidth(), onClick = { uriHandler.openUri("https://discord.gg/2hKv4VfZfE") }) {
+                                FilledTonalButton(modifier = Modifier.fillMaxWidth(), onClick = { uriHandler.openUri("https://discord.gg/KWc5h7GZTK") }) {
                                     Icon(imageVector = Icons.AutoMirrored.Filled.Help, contentDescription = null)
                                     Spacer(modifier = Modifier.size(ButtonDefaults.IconSize))
                                     Text(text = stringResource(R.string.help_and_support))
-                                }
-
-                                FilledTonalButton(modifier = Modifier.fillMaxWidth(), onClick = { showSupporters = true }) {
-                                    Icon(imageVector = Icons.AutoMirrored.Filled.StarHalf, contentDescription = null)
-                                    Spacer(modifier = Modifier.size(ButtonDefaults.IconSize))
-                                    Text(text = stringResource(R.string.hall_of_fame))
                                 }
 
                                 if(isOffline) {

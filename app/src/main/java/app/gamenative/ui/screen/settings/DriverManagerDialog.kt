@@ -88,7 +88,11 @@ enum class DriverSource { GN, MTR }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DriverManagerDialog(open: Boolean, onDismiss: () -> Unit) {
+fun DriverManagerDialog(
+    open: Boolean,
+    onDismiss: () -> Unit,
+    initialSource: DriverSource = DriverSource.MTR,
+) {
     if (!open) return
     val ctx = LocalContext.current
     var lastMessage by remember { mutableStateOf<String?>(null) }
@@ -101,7 +105,7 @@ fun DriverManagerDialog(open: Boolean, onDismiss: () -> Unit) {
     val scope = rememberCoroutineScope()
 
     // Source selection
-    var selectedSource by remember { mutableStateOf(DriverSource.GN) }
+    var selectedSource by remember { mutableStateOf(initialSource) }
 
     // Driver manifest handling
     var driverManifest by remember { mutableStateOf<Map<String, String>>(emptyMap()) }

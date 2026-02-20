@@ -53,22 +53,20 @@ fun SettingsGroupEmulation() {
             )
         }
 
-        var showDriverManager by rememberSaveable { mutableStateOf(false) }
-        if (showDriverManager) {
-            // Lazy-load dialog composable to avoid cyclic imports
-            app.gamenative.ui.screen.settings.DriverManagerDialog(open = showDriverManager, onDismiss = { showDriverManager = false })
+        var showComponentsManager by rememberSaveable { mutableStateOf(false) }
+        if (showComponentsManager) {
+            app.gamenative.ui.screen.settings.ComponentsManagerDialog(
+                open = showComponentsManager,
+                onDismiss = { showComponentsManager = false },
+            )
         }
 
-        var showContentsManager by rememberSaveable { mutableStateOf(false) }
-        if (showContentsManager) {
-            app.gamenative.ui.screen.settings.ContentsManagerDialog(open = showContentsManager, onDismiss = { showContentsManager = false })
-        }
-
-        var showWineProtonManager by rememberSaveable { mutableStateOf(false) }
-        if (showWineProtonManager) {
-            app.gamenative.ui.screen.settings.WineProtonManagerDialog(open = showWineProtonManager, onDismiss = { showWineProtonManager = false })
-        }
-
+        SettingsMenuLink(
+            colors = settingsTileColors(),
+            title = { Text(text = stringResource(R.string.settings_emulation_components_title)) },
+            subtitle = { Text(text = stringResource(R.string.settings_emulation_components_subtitle)) },
+            onClick = { showComponentsManager = true },
+        )
         SettingsMenuLink(
             colors = settingsTileColors(),
             title = { Text(text = stringResource(R.string.settings_emulation_orientations_title)) },
@@ -92,24 +90,6 @@ fun SettingsGroupEmulation() {
             title = { Text(text = stringResource(R.string.fexcore_presets)) },
             subtitle = { Text(text = stringResource(R.string.fexcore_presets_description)) },
             onClick = { showFexcorePresetsDialog = true },
-        )
-        SettingsMenuLink(
-            colors = settingsTileColors(),
-            title = { Text(text = stringResource(R.string.settings_emulation_driver_manager_title)) },
-            subtitle = { Text(text = stringResource(R.string.settings_emulation_driver_manager_subtitle)) },
-            onClick = { showDriverManager = true },
-        )
-        SettingsMenuLink(
-            colors = settingsTileColors(),
-            title = { Text(text = stringResource(R.string.settings_emulation_contents_manager_title)) },
-            subtitle = { Text(text = stringResource(R.string.settings_emulation_contents_manager_subtitle)) },
-            onClick = { showContentsManager = true },
-        )
-        SettingsMenuLink(
-            colors = settingsTileColors(),
-            title = { Text(text = stringResource(R.string.settings_emulation_wine_proton_manager_title)) },
-            subtitle = { Text(text = stringResource(R.string.settings_emulation_wine_proton_manager_subtitle)) },
-            onClick = { showWineProtonManager = true },
         )
     }
 }
