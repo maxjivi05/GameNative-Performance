@@ -43,9 +43,9 @@ To report issues or receive support, join our community!
 [GPL 3.0](https://github.com/maxjivi05/GameNative-Performance/blob/master/LICENSE)
 
 ## Credits
-1.) Winlator Teams yes all of them from the Original Burno Builds to CMOD Builds by CoffinColors and the Ludashi Builds from StevenMXZ.
-2.) GameNative Development Team which is rather large but most of the source here is directly from their hard work and most of the credit goes out to them for their dedication and ever growing team of developers. ( Yes, I steal your open source code and modify it ) thank you.
-3.) Box64, Fex-Emu, DXVK, DXVK Gplasync, VKD3D, VKD3D-Proton, Mesa, Basically everyone who has any piece of software that we use and if I forgot to mention a component let me know and I'll give you credit where credit is due.
+1. **Winlator Teams** yes all of them from the Original **Bruno** Builds to CMOD Builds by **CoffinColors** and the Ludashi Builds from **StevenMXZ**.
+2. **GameNative Development Team** which is rather large but most of the source here is directly from their hard work and most of the credit goes out to them for their dedication and ever growing team of developers. ( Yes, I steal your open source code and modify it ) thank you.
+3. **Box64**, **Fex-Emu**, **DXVK**, **DXVK Gplasync**, **VKD3D**, **VKD3D-Proton**, **Mesa**, Basically everyone who has any piece of software that we use and if I forgot to mention a component let me know and I'll give you credit where credit is due.
 
 ## Thank You
 I'd like to thank everyone who recommends new features and helps bug test new features, builds and ensure stability on Discord.
