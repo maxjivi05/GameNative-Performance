@@ -150,6 +150,29 @@ internal fun AppItem(
         ),
         border = border,
     ) {
+        var isInstalled by remember(appInfo.appId, appInfo.gameSource) { mutableStateOf(false) }
+        val isSteam = appInfo.gameSource == GameSource.STEAM
+        val downloadInfo = remember(appInfo.appId) { if (isSteam) SteamService.getAppDownloadInfo(appInfo.gameId) else null }
+        var downloadProgress by remember(downloadInfo) { mutableFloatStateOf(downloadInfo?.getProgress() ?: 0f) }
+        val isDownloading = downloadInfo != null && downloadProgress < 1f
+
+        LaunchedEffect(appInfo.appId, appInfo.gameSource, isRefreshing) {
+            isInstalled = when (appInfo.gameSource) {
+                GameSource.STEAM -> SteamService.isAppInstalled(appInfo.gameId)
+                GameSource.GOG -> GOGService.isGameInstalled(appInfo.gameId.toString())
+                GameSource.EPIC -> EpicService.isGameInstalled(appInfo.gameId)
+                GameSource.CUSTOM_GAME -> true
+                GameSource.AMAZON -> app.gamenative.service.amazon.AmazonService.isGameInstalled(appInfo.appId.removePrefix("AMAZON_"))
+                else -> false
+            }
+        }
+
+        DisposableEffect(downloadInfo) {
+            val onDownloadProgress: (Float) -> Unit = { progress -> downloadProgress = progress }
+            downloadInfo?.addProgressListener(onDownloadProgress)
+            onDispose { downloadInfo?.removeProgressListener(onDownloadProgress) }
+        }
+
         val hPadding = if (paneType == PaneType.LIST) 16.dp else 0.dp
         val topPadding = if (paneType == PaneType.LIST) 8.dp else 0.dp
         val bottomPadding = if (paneType == PaneType.LIST) 2.dp else 0.dp
@@ -234,11 +257,12 @@ internal fun AppItem(
                                             val heroUrl = gameFolderPath?.let { path ->
                                                 val folder = java.io.File(path)
                                                 val heroFile = folder.listFiles()?.firstOrNull { file ->
-                                                    file.name.startsWith("steamgriddb_hero") &&
-                                                        !file.name.contains("grid") &&
-                                                        (file.name.endsWith(".png", ignoreCase = true) ||
-                                                            file.name.endsWith(".jpg", ignoreCase = true) ||
-                                                            file.name.endsWith(".webp", ignoreCase = true))
+                                                    val fileName = file.name
+                                                    fileName.startsWith("steamgriddb_hero") &&
+                                                        !fileName.contains("grid") &&
+                                                        (fileName.endsWith(".png", ignoreCase = true) ||
+                                                            fileName.endsWith(".jpg", ignoreCase = true) ||
+                                                            fileName.endsWith(".webp", ignoreCase = true))
                                                 }
                                                 heroFile?.let { android.net.Uri.fromFile(it).toString() }
                                             }
@@ -319,19 +343,7 @@ internal fun AppItem(
                                 compatibilityStatus = compatibilityStatus,
                             )
                         } else {
-                            var isInstalled by remember(appInfo.appId, appInfo.gameSource) { mutableStateOf(false) }
-
-                            LaunchedEffect(appInfo.appId, appInfo.gameSource) {
-                                isInstalled = when (appInfo.gameSource) {
-                                    GameSource.STEAM -> SteamService.isAppInstalled(appInfo.gameId)
-                                    GameSource.GOG -> GOGService.isGameInstalled(appInfo.gameId.toString())
-                                    GameSource.EPIC -> EpicService.isGameInstalled(appInfo.gameId)
-                                    GameSource.CUSTOM_GAME -> true
-                                    GameSource.AMAZON -> app.gamenative.service.amazon.AmazonService.isGameInstalled(appInfo.appId.removePrefix("AMAZON_"))
-                                    else -> false
-                                }
-                            }
-
+                            // We use isInstalled calculated above
                             LaunchedEffect(isRefreshing) {
                                 if (!isRefreshing) {
                                     isInstalled = when (appInfo.gameSource) {
@@ -384,29 +396,6 @@ internal fun AppItem(
                 }
 
                 if (paneType == PaneType.LIST) {
-                    var isInstalled by remember(appInfo.appId, appInfo.gameSource) { mutableStateOf(false) }
-                    val isSteam = appInfo.gameSource == GameSource.STEAM
-                    val downloadInfo = remember(appInfo.appId) { if (isSteam) SteamService.getAppDownloadInfo(appInfo.gameId) else null }
-                    var downloadProgress by remember(downloadInfo) { mutableFloatStateOf(downloadInfo?.getProgress() ?: 0f) }
-                    val isDownloading = downloadInfo != null && downloadProgress < 1f
-
-                    LaunchedEffect(appInfo.appId, appInfo.gameSource, isRefreshing) {
-                        isInstalled = when (appInfo.gameSource) {
-                            GameSource.STEAM -> SteamService.isAppInstalled(appInfo.gameId)
-                            GameSource.GOG -> GOGService.isGameInstalled(appInfo.gameId.toString())
-                            GameSource.EPIC -> EpicService.isGameInstalled(appInfo.gameId)
-                            GameSource.CUSTOM_GAME -> true
-                            GameSource.AMAZON -> app.gamenative.service.amazon.AmazonService.isGameInstalled(appInfo.appId.removePrefix("AMAZON_"))
-                            else -> false
-                        }
-                    }
-
-                    DisposableEffect(downloadInfo) {
-                        val onDownloadProgress: (Float) -> Unit = { progress -> downloadProgress = progress }
-                        downloadInfo?.addProgressListener(onDownloadProgress)
-                        onDispose { downloadInfo?.removeProgressListener(onDownloadProgress) }
-                    }
-
                     GameInfoBlock(
                         modifier = Modifier.weight(1f),
                         appInfo = appInfo,
@@ -445,26 +434,25 @@ internal fun AppItem(
                             Text(text = stringResource(R.string.edit), style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold))
                         }
                     }
-                    
-                    // Move the playtime text inside this block to access isInstalled
-                    if (isInstalled) {
-                        // Formatting for accurate last/total playtime
-                        val totalHours = appInfo.playTime / 60
-                        val totalMinutes = appInfo.playTime % 60
-                        val totalString = "${totalHours.toString().padStart(2, '0')}:${totalMinutes.toString().padStart(2, '0')}"
-                        
-                        val lastHours = appInfo.lastSessionTime / 60
-                        val lastMinutes = appInfo.lastSessionTime % 60
-                        val lastString = "${lastHours.toString().padStart(2, '0')}:${lastMinutes.toString().padStart(2, '0')}"
-
-                        Text(
-                            text = "( $lastString Last / $totalString Total )",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(top = 0.dp)
-                        )
-                    }
                 }
+            }
+
+            if (paneType == PaneType.LIST && isInstalled) {
+                // Formatting for accurate last/total playtime
+                val totalHours = appInfo.playTime / 60
+                val totalMinutes = appInfo.playTime % 60
+                val totalString = "${totalHours.toString().padStart(2, '0')}:${totalMinutes.toString().padStart(2, '0')}"
+                
+                val lastHours = appInfo.lastSessionTime / 60
+                val lastMinutes = appInfo.lastSessionTime % 60
+                val lastString = "${lastHours.toString().padStart(2, '0')}:${lastMinutes.toString().padStart(2, '0')}"
+
+                Text(
+                    text = "( $lastString Last / $totalString Total )",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 0.dp)
+                )
             }
         }
     }
