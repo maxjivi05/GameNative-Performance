@@ -384,6 +384,29 @@ internal fun AppItem(
                 }
 
                 if (paneType == PaneType.LIST) {
+                    var isInstalled by remember(appInfo.appId, appInfo.gameSource) { mutableStateOf(false) }
+                    val isSteam = appInfo.gameSource == GameSource.STEAM
+                    val downloadInfo = remember(appInfo.appId) { if (isSteam) SteamService.getAppDownloadInfo(appInfo.gameId) else null }
+                    var downloadProgress by remember(downloadInfo) { mutableFloatStateOf(downloadInfo?.getProgress() ?: 0f) }
+                    val isDownloading = downloadInfo != null && downloadProgress < 1f
+
+                    LaunchedEffect(appInfo.appId, appInfo.gameSource, isRefreshing) {
+                        isInstalled = when (appInfo.gameSource) {
+                            GameSource.STEAM -> SteamService.isAppInstalled(appInfo.gameId)
+                            GameSource.GOG -> GOGService.isGameInstalled(appInfo.gameId.toString())
+                            GameSource.EPIC -> EpicService.isGameInstalled(appInfo.gameId)
+                            GameSource.CUSTOM_GAME -> true
+                            GameSource.AMAZON -> app.gamenative.service.amazon.AmazonService.isGameInstalled(appInfo.appId.removePrefix("AMAZON_"))
+                            else -> false
+                        }
+                    }
+
+                    DisposableEffect(downloadInfo) {
+                        val onDownloadProgress: (Float) -> Unit = { progress -> downloadProgress = progress }
+                        downloadInfo?.addProgressListener(onDownloadProgress)
+                        onDispose { downloadInfo?.removeProgressListener(onDownloadProgress) }
+                    }
+
                     GameInfoBlock(
                         modifier = Modifier.weight(1f),
                         appInfo = appInfo,
@@ -402,37 +425,46 @@ internal fun AppItem(
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier.height(36.dp).width(100.dp),
                         ) {
-                            Text(text = stringResource(R.string.run_app), style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold))
+                            val playText = if (isInstalled) stringResource(R.string.run_app) else stringResource(R.string.install)
+                            Text(text = playText, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold))
                         }
 
+                        val editEnabled = isInstalled || isDownloading
                         Button(
                             onClick = onEditClick,
-                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondaryContainer, contentColor = MaterialTheme.colorScheme.onSecondaryContainer),
+                            enabled = editEnabled,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                                disabledContainerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
+                                disabledContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                            ),
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier.height(36.dp).width(100.dp),
                         ) {
                             Text(text = stringResource(R.string.edit), style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold))
                         }
                     }
+                    
+                    // Move the playtime text inside this block to access isInstalled
+                    if (isInstalled) {
+                        // Formatting for accurate last/total playtime
+                        val totalHours = appInfo.playTime / 60
+                        val totalMinutes = appInfo.playTime % 60
+                        val totalString = "${totalHours.toString().padStart(2, '0')}:${totalMinutes.toString().padStart(2, '0')}"
+                        
+                        val lastHours = appInfo.lastSessionTime / 60
+                        val lastMinutes = appInfo.lastSessionTime % 60
+                        val lastString = "${lastHours.toString().padStart(2, '0')}:${lastMinutes.toString().padStart(2, '0')}"
+
+                        Text(
+                            text = "( $lastString Last / $totalString Total )",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 0.dp)
+                        )
+                    }
                 }
-            }
-
-            if (paneType == PaneType.LIST) {
-                // Formatting for accurate last/total playtime
-                val totalHours = appInfo.playTime / 60
-                val totalMinutes = appInfo.playTime % 60
-                val totalString = "${totalHours.toString().padStart(2, '0')}:${totalMinutes.toString().padStart(2, '0')}"
-                
-                val lastHours = appInfo.lastSessionTime / 60
-                val lastMinutes = appInfo.lastSessionTime % 60
-                val lastString = "${lastHours.toString().padStart(2, '0')}:${lastMinutes.toString().padStart(2, '0')}"
-
-                Text(
-                    text = "( $lastString Last / $totalString Total )",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 0.dp)
-                )
             }
         }
     }
