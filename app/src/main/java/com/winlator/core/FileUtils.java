@@ -65,12 +65,16 @@ public abstract class FileUtils {
     }
 
     public static String readString(Context context, Uri uri) {
-        StringBuilder sb = new StringBuilder();
-        try (InputStream inputStream = context.getContentResolver().openInputStream(uri);
-             BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
-            String line;
-            while ((line = reader.readLine()) != null) sb.append(line);
-            return sb.toString();
+        try (InputStream inputStream = context.getContentResolver().openInputStream(uri)) {
+            if (inputStream == null) return null;
+            byte[] bytes = StreamUtils.copyToByteArray(inputStream);
+            String content = new String(bytes, StandardCharsets.UTF_8);
+            
+            // Remove UTF-8 BOM if present
+            if (content.startsWith("\uFEFF")) {
+                content = content.substring(1);
+            }
+            return content.trim();
         }
         catch (IOException e) {
             return null;

@@ -28,6 +28,7 @@ import app.gamenative.events.AndroidEvent
 import app.gamenative.utils.CustomGameScanner
 import app.gamenative.utils.GameCompatibilityCache
 import app.gamenative.utils.GameCompatibilityService
+import app.gamenative.utils.LocalPlaytimeManager
 import app.gamenative.data.GameCompatibilityStatus
 import com.winlator.core.GPUInformation
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -373,13 +374,18 @@ class LibraryViewModel @Inject constructor(
             data class LibraryEntry(val item: LibraryItem, val isInstalled: Boolean)
             val steamEntries: List<LibraryEntry> = filteredSteamApps.map { item ->
                 val isInstalled = installedAppIds.contains(item.id)
+                val appId = "${GameSource.STEAM.name}_${item.id}"
+                val localPlaytime = LocalPlaytimeManager.getPlaytime(context, appId)
                 LibraryEntry(
                     item = LibraryItem(
                         index = 0, // temporary, will be re-indexed after combining and paginating
-                        appId = "${GameSource.STEAM.name}_${item.id}",
+                        appId = appId,
                         name = item.name,
                         iconHash = item.clientIconHash,
                         isShared = (PrefManager.steamUserAccountId != 0 && !item.ownerAccountId.contains(PrefManager.steamUserAccountId)),
+                        playTime = localPlaytime.totalMinutes,
+                        lastSessionTime = localPlaytime.lastSessionMinutes,
+                        lastPlayed = localPlaytime.lastPlayed,
                     ),
                     isInstalled = isInstalled,
                 )
@@ -390,7 +396,14 @@ class LibraryViewModel @Inject constructor(
             val customGameItems = if (currentState.appInfoSortType.contains(AppFilter.GAME)) {
                 CustomGameScanner.scanAsLibraryItems(
                     query = currentState.searchQuery
-                )
+                ).map { item ->
+                    val localPlaytime = LocalPlaytimeManager.getPlaytime(context, item.appId)
+                    item.copy(
+                        playTime = localPlaytime.totalMinutes,
+                        lastSessionTime = localPlaytime.lastSessionMinutes,
+                        lastPlayed = localPlaytime.lastPlayed
+                    )
+                }
             } else {
                 emptyList()
             }
@@ -416,14 +429,19 @@ class LibraryViewModel @Inject constructor(
                 .toList()
 
             val gogEntries = filteredGOGGames.map { game ->
+                val appId = "${GameSource.GOG.name}_${game.id}"
+                val localPlaytime = LocalPlaytimeManager.getPlaytime(context, appId)
                 LibraryEntry(
                     item = LibraryItem(
                         index = 0,
-                        appId = "${GameSource.GOG.name}_${game.id}",
+                        appId = appId,
                         name = game.title,
                         iconHash = game.imageUrl.ifEmpty { game.iconUrl },
                         isShared = false,
                         gameSource = GameSource.GOG,
+                        playTime = localPlaytime.totalMinutes,
+                        lastSessionTime = localPlaytime.lastSessionMinutes,
+                        lastPlayed = localPlaytime.lastPlayed,
                     ),
                     isInstalled = game.isInstalled,
                 )
@@ -449,14 +467,19 @@ class LibraryViewModel @Inject constructor(
                 .toList()
 
             val epicEntries = filteredEpicGames.map { game ->
+                val appId = "EPIC_${game.id}"
+                val localPlaytime = LocalPlaytimeManager.getPlaytime(context, appId)
                 LibraryEntry(
                     item = LibraryItem(
                         index = 0,
-                        appId = "EPIC_${game.id}",
+                        appId = appId,
                         name = game.title,
                         iconHash = game.artCover,
                         isShared = false,
                         gameSource = GameSource.EPIC,
+                        playTime = localPlaytime.totalMinutes,
+                        lastSessionTime = localPlaytime.lastSessionMinutes,
+                        lastPlayed = localPlaytime.lastPlayed,
                     ),
                     isInstalled = game.isInstalled,
                 )
@@ -482,14 +505,19 @@ class LibraryViewModel @Inject constructor(
                 .toList()
 
             val amazonEntries = filteredAmazonGames.map { game ->
+                val appId = "AMAZON_${game.id}"
+                val localPlaytime = LocalPlaytimeManager.getPlaytime(context, appId)
                 LibraryEntry(
                     item = LibraryItem(
                         index = 0,
-                        appId = "AMAZON_${game.id}",
+                        appId = appId,
                         name = game.title,
                         iconHash = game.artUrl,
                         isShared = false,
                         gameSource = GameSource.AMAZON,
+                        playTime = localPlaytime.totalMinutes,
+                        lastSessionTime = localPlaytime.lastSessionMinutes,
+                        lastPlayed = localPlaytime.lastPlayed,
                     ),
                     isInstalled = game.isInstalled,
                 )

@@ -4,6 +4,7 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ActivityInfo
 import android.content.res.Configuration
 import android.graphics.Color.TRANSPARENT
 import android.os.Build
@@ -96,7 +97,23 @@ class MainActivity : ComponentActivity() {
     private val onSetAllowedOrientation: (AndroidEvent.SetAllowedOrientation) -> Unit = {
         // Log.d("MainActivity", "Requested allowed orientations of $it")
         availableOrientations = it.orientations
-        setOrientationTo(currentOrientationChangeValue, availableOrientations)
+        
+        // Check if both LANDSCAPE and REVERSE_LANDSCAPE are allowed (and potentially UNSPECIFIED if default)
+        val hasLandscape = availableOrientations.contains(Orientation.LANDSCAPE)
+        val hasReverseLandscape = availableOrientations.contains(Orientation.REVERSE_LANDSCAPE)
+        
+        // If generally allowing landscape (both sides), let system sensor handle it
+        if (hasLandscape && hasReverseLandscape) {
+             requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+             // Disable manual orientator to avoid fighting system
+             orientationSensorListener?.disable()
+        } else {
+             // Fallback to manual locking if restrictive
+             if (orientationSensorListener?.canDetectOrientation() == true) {
+                 orientationSensorListener?.enable()
+             }
+             setOrientationTo(currentOrientationChangeValue, availableOrientations)
+        }
     }
 
     private val onStartOrientator: (AndroidEvent.StartOrientator) -> Unit = {

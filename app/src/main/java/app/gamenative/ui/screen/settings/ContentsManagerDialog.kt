@@ -43,6 +43,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import app.gamenative.R
+import app.gamenative.utils.Net
 import app.gamenative.service.SteamService
 import com.winlator.contents.ContentProfile
 import com.winlator.contents.ContentsManager
@@ -119,7 +120,7 @@ fun ContentsManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                 try {
                     val url = "https://raw.githubusercontent.com/maxjivi05/Components/main/contents.json"
                     val request = Request.Builder().url(url).build()
-                    app.gamenative.ui.screen.settings.Net.http.newCall(request).execute().use { response ->
+                    Net.http.newCall(request).execute().use { response ->
                         if (response.isSuccessful) {
                             val jsonString = response.body?.string() ?: "[]"
                             val jsonArray = Json.parseToJsonElement(jsonString).jsonArray
@@ -163,7 +164,7 @@ fun ContentsManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                 
                 withContext(Dispatchers.IO) {
                     val request = Request.Builder().url(profile.remoteUrl!!).build()
-                    app.gamenative.ui.screen.settings.Net.http.newCall(request).execute().use { response ->
+                    Net.http.newCall(request).execute().use { response ->
                         if (!response.isSuccessful) throw java.io.IOException("Unexpected code $response")
                         val body = response.body ?: throw java.io.IOException("Empty body")
                         val inputStream = body.byteStream()

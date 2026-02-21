@@ -164,9 +164,18 @@ public class InputControlsManager {
 
     public ControlsProfile importProfile(android.net.Uri uri) {
         String content = FileUtils.readString(context, uri);
-        if (content == null) return null;
+        if (content == null || content.isEmpty()) return null;
         try {
-            JSONObject data = new JSONObject(content);
+            JSONObject data;
+            content = content.trim();
+            if (content.startsWith("[")) {
+                org.json.JSONArray array = new org.json.JSONArray(content);
+                if (array.length() > 0) {
+                    data = array.getJSONObject(0);
+                } else return null;
+            } else {
+                data = new JSONObject(content);
+            }
             
             // Try to get filename from URI to use as profile name
             String filename = null;
@@ -181,7 +190,11 @@ public class InputControlsManager {
                 // Remove extension
                 int lastDot = filename.lastIndexOf('.');
                 if (lastDot > 0) filename = filename.substring(0, lastDot);
-                data.put("name", filename);
+                
+                // Use filename if name is missing or generic
+                if (!data.has("name") || data.optString("name").toLowerCase().contains("template") || data.optString("name").isEmpty()) {
+                    data.put("name", filename);
+                }
             }
 
             return importProfile(data);
@@ -193,16 +206,25 @@ public class InputControlsManager {
 
     public ControlsProfile importProfile(JSONObject data) {
         try {
+            if (profiles == null) getProfiles();
             int newId = ++maxProfileId;
             File newFile = ControlsProfile.getProfileFile(context, newId);
             data.put("id", newId);
-            if (!data.has("name")) data.put("name", "Imported Profile " + newId);
+            
+            String name = data.optString("name", "");
+            if (name.isEmpty()) name = "Imported Profile " + newId;
+            data.put("name", name);
+            
+            // Support "controls" as alias for "elements"
+            if (!data.has("elements") && data.has("controls")) {
+                data.put("elements", data.get("controls"));
+            }
+
             FileUtils.writeString(newFile, data.toString());
-            ControlsProfile newProfile = loadProfile(context, newFile);
-
-            if (newProfile == null) return null;
-
-            if (profiles == null) getProfiles();
+            
+            ControlsProfile newProfile = new ControlsProfile(context, newId);
+            newProfile.setName(name);
+            newProfile.setCursorSpeed((float)data.optDouble("cursorSpeed", 1.0));
 
             if (profiles != null) {
                 int foundIndex = -1;
@@ -265,37 +287,34 @@ public class InputControlsManager {
         try (JsonReader reader = new JsonReader(new InputStreamReader(inStream, StandardCharsets.UTF_8))) {
             int profileId = 0;
             String profileName = null;
-            float cursorSpeed = Float.NaN;
-            int fieldsRead = 0;
+            float cursorSpeed = 1.0f;
 
             reader.beginObject();
             while (reader.hasNext()) {
-                String name = reader.nextName();
+                String key = reader.nextName();
 
-                if (name.equals("id")) {
+                if (key.equals("id")) {
                     profileId = reader.nextInt();
-                    fieldsRead++;
                 }
-                else if (name.equals("name")) {
+                else if (key.equals("name")) {
                     profileName = reader.nextString();
-                    fieldsRead++;
                 }
-                else if (name.equals("cursorSpeed")) {
+                else if (key.equals("cursorSpeed")) {
                     cursorSpeed = (float) reader.nextDouble();
-                    fieldsRead++;
                 }
                 else {
-                    if (fieldsRead == 3) break;
                     reader.skipValue();
                 }
             }
+
+            if (profileName == null || profileName.isEmpty()) profileName = "Profile " + profileId;
 
             ControlsProfile profile = new ControlsProfile(context, profileId);
             profile.setName(profileName);
             profile.setCursorSpeed(cursorSpeed);
             return profile;
         }
-        catch (IOException e) {
+        catch (Exception e) {
             return null;
         }
     }

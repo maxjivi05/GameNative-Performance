@@ -199,25 +199,30 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
 
         try {
             JSONObject profileJSONObject = new JSONObject(FileUtils.readString(file));
-            if (!profileJSONObject.has("controllers")) {
+            JSONArray controllersJSONArray = profileJSONObject.optJSONArray("controllers");
+            if (controllersJSONArray == null) {
                 Log.d("ControlsProfile", "No controllers section in profile: " + name);
                 return controllers;
             }
-            JSONArray controllersJSONArray = profileJSONObject.getJSONArray("controllers");
             for (int i = 0; i < controllersJSONArray.length(); i++) {
-                JSONObject controllerJSONObject = controllersJSONArray.getJSONObject(i);
-                String id = controllerJSONObject.getString("id");
+                JSONObject controllerJSONObject = controllersJSONArray.optJSONObject(i);
+                if (controllerJSONObject == null) continue;
+                String id = controllerJSONObject.optString("id");
+                if (id == null || id.isEmpty()) continue;
                 ExternalController controller = new ExternalController();
                 controller.setId(id);
-                controller.setName(controllerJSONObject.getString("name"));
+                controller.setName(controllerJSONObject.optString("name", "Physical Controller"));
 
-                JSONArray controllerBindingsJSONArray = controllerJSONObject.getJSONArray("controllerBindings");
-                for (int j = 0; j < controllerBindingsJSONArray.length(); j++) {
-                    JSONObject controllerBindingJSONObject = controllerBindingsJSONArray.getJSONObject(j);
-                    ExternalControllerBinding controllerBinding = new ExternalControllerBinding();
-                    controllerBinding.setKeyCode(controllerBindingJSONObject.getInt("keyCode"));
-                    controllerBinding.setBinding(Binding.fromString(controllerBindingJSONObject.getString("binding")));
-                    controller.addControllerBinding(controllerBinding);
+                JSONArray controllerBindingsJSONArray = controllerJSONObject.optJSONArray("controllerBindings");
+                if (controllerBindingsJSONArray != null) {
+                    for (int j = 0; j < controllerBindingsJSONArray.length(); j++) {
+                        JSONObject controllerBindingJSONObject = controllerBindingsJSONArray.optJSONObject(j);
+                        if (controllerBindingJSONObject == null) continue;
+                        ExternalControllerBinding controllerBinding = new ExternalControllerBinding();
+                        controllerBinding.setKeyCode(controllerBindingJSONObject.optInt("keyCode", 0));
+                        controllerBinding.setBinding(Binding.fromString(controllerBindingJSONObject.optString("binding", "NONE")));
+                        controller.addControllerBinding(controllerBinding);
+                    }
                 }
                 controllers.add(controller);
             }
@@ -226,7 +231,6 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
         }
         catch (JSONException e) {
             Log.e("ControlsProfile", "Failed to load controllers for profile: " + name + " (ID: " + id + ")", e);
-            e.printStackTrace();
         }
         return controllers;
     }
@@ -253,28 +257,42 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
 
         try {
             JSONObject profileJSONObject = new JSONObject(FileUtils.readString(file));
-            JSONArray elementsJSONArray = profileJSONObject.getJSONArray("elements");
+            JSONArray elementsJSONArray = profileJSONObject.optJSONArray("elements");
+            if (elementsJSONArray == null) {
+                Log.d("ControlsProfile", "No elements section in profile: " + name);
+                return;
+            }
             for (int i = 0; i < elementsJSONArray.length(); i++) {
-                JSONObject elementJSONObject = elementsJSONArray.getJSONObject(i);
+                JSONObject elementJSONObject = elementsJSONArray.optJSONObject(i);
+                if (elementJSONObject == null) continue;
                 ControlElement element = new ControlElement(inputControlsView);
-                element.setType(ControlElement.Type.valueOf(elementJSONObject.getString("type")));
-                element.setShape(ControlElement.Shape.valueOf(elementJSONObject.getString("shape")));
-                element.setToggleSwitch(elementJSONObject.getBoolean("toggleSwitch"));
-                element.setX((int)(elementJSONObject.getDouble("x") * inputControlsView.getMaxWidth()));
-                element.setY((int)(elementJSONObject.getDouble("y") * inputControlsView.getMaxHeight()));
-                element.setScale((float)elementJSONObject.getDouble("scale"));
-                element.setText(elementJSONObject.getString("text"));
-                element.setIconId(elementJSONObject.getInt("iconId"));
-                if (elementJSONObject.has("range")) element.setRange(ControlElement.Range.valueOf(elementJSONObject.getString("range")));
-                if (elementJSONObject.has("orientation")) element.setOrientation((byte)elementJSONObject.getInt("orientation"));
+                try {
+                    element.setType(ControlElement.Type.valueOf(elementJSONObject.optString("type", "BUTTON")));
+                    element.setShape(ControlElement.Shape.valueOf(elementJSONObject.optString("shape", "RECT")));
+                    if (elementJSONObject.has("range")) element.setRange(ControlElement.Range.valueOf(elementJSONObject.optString("range", "MEDIUM")));
+                } catch (IllegalArgumentException e) {
+                    Log.e("ControlsProfile", "Invalid enum value in profile", e);
+                    continue;
+                }
+                
+                element.setToggleSwitch(elementJSONObject.optBoolean("toggleSwitch", false));
+                element.setX((int)(elementJSONObject.optDouble("x", 0.0) * inputControlsView.getMaxWidth()));
+                element.setY((int)(elementJSONObject.optDouble("y", 0.0) * inputControlsView.getMaxHeight()));
+                element.setScale((float)elementJSONObject.optDouble("scale", 1.0));
+                element.setText(elementJSONObject.optString("text", ""));
+                element.setIconId(elementJSONObject.optInt("iconId", 0));
+                if (elementJSONObject.has("orientation")) element.setOrientation((byte)elementJSONObject.optInt("orientation", 0));
 
                 boolean hasGamepadBinding = true;
-                JSONArray bindingsJSONArray = elementJSONObject.getJSONArray("bindings");
-                for (int j = 0; j < bindingsJSONArray.length(); j++) {
-                    Binding binding = Binding.fromString(bindingsJSONArray.getString(j));
-                    element.setBindingAt(j, Binding.fromString(bindingsJSONArray.getString(j)));
-                    if (!binding.isGamepad()) hasGamepadBinding = false;
-                }
+                JSONArray bindingsJSONArray = elementJSONObject.optJSONArray("bindings");
+                if (bindingsJSONArray != null) {
+                    for (int j = 0; j < bindingsJSONArray.length(); j++) {
+                        String bindingStr = bindingsJSONArray.optString(j, "NONE");
+                        Binding binding = Binding.fromString(bindingStr);
+                        element.setBindingAt(j, binding);
+                        if (!binding.isGamepad()) hasGamepadBinding = false;
+                    }
+                } else hasGamepadBinding = false;
 
                 if (!virtualGamepad && hasGamepadBinding) virtualGamepad = true;
                 elements.add(element);
@@ -284,7 +302,6 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
         }
         catch (JSONException e) {
             Log.e("ControlsProfile", "Failed to load elements for profile: " + name + " (ID: " + id + ")", e);
-            e.printStackTrace();
         }
     }
 }

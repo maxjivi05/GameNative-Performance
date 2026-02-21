@@ -342,9 +342,18 @@ class GOGManager @Inject constructor(
                                     installSize = detectedGame.installSize,
                                 )
                                 updateGame(updatedGame)
+                                autoConfigureContainer(updatedGame)
                                 detectedCount++
                                 Timber.i("Detected existing installation: ${existingGame.title} at ${installDir.absolutePath}")
                             } else if (existingGame != null) {
+                                // Even if already marked installed, ensure container is configured
+                                if (existingGame.installPath.isEmpty() && detectedGame.installPath.isNotEmpty()) {
+                                     val updatedGame = existingGame.copy(installPath = detectedGame.installPath)
+                                     updateGame(updatedGame)
+                                     autoConfigureContainer(updatedGame)
+                                } else {
+                                     autoConfigureContainer(existingGame)
+                                }
                                 Timber.d("Game ${existingGame.title} already marked as installed")
                             }
                         }
@@ -427,6 +436,53 @@ class GOGManager @Inject constructor(
         }
 
         return null
+    }
+
+    /**
+     * Auto-configure the container for a GOG game (executable path)
+     */
+    private suspend fun autoConfigureContainer(game: GOGGame) {
+        if (game.installPath.isEmpty()) return
+
+        val appId = "GOG_${game.id}"
+        // Container access might require main thread depending on implementation
+        val container = withContext(Dispatchers.Main) {
+             ContainerUtils.getOrCreateContainer(context, appId)
+        }
+
+        if (container.executablePath.isEmpty()) {
+            val installPath = game.installPath
+            // Reuse logic from getInstalledExe
+            val exe = try {
+                // Try V2 structure first (game_$gameId subdirectory)
+                val v2GameDir = File(installPath, "game_${game.id}")
+                if (v2GameDir.exists()) {
+                    getGameExecutable(installPath, v2GameDir)
+                } else {
+                    // Try V1 structure
+                    val installDirFile = File(installPath)
+                    val subdirs = installDirFile.listFiles()?.filter {
+                        it.isDirectory && it.name != "saves"
+                    } ?: emptyList()
+
+                    if (subdirs.isNotEmpty()) {
+                        getGameExecutable(installPath, subdirs.first())
+                    } else {
+                        // Try root
+                        getGameExecutable(installPath, installDirFile)
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to auto-detect executable for ${game.title}")
+                ""
+            }
+
+            if (exe.isNotEmpty()) {
+                container.executablePath = exe
+                container.saveData()
+                Timber.i("Auto-configured executable for ${game.title}: $exe")
+            }
+        }
     }
 
     suspend fun refreshSingleGame(gameId: String, context: Context): Result<GOGGame?> {

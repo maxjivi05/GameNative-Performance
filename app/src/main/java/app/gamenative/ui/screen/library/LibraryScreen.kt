@@ -75,6 +75,7 @@ import app.gamenative.PluviaApp
 import app.gamenative.data.GameCompatibilityStatus
 import app.gamenative.ui.internal.fakeAppInfo
 import app.gamenative.ui.model.LibraryViewModel
+import app.gamenative.ui.component.dialog.GameEditDialog
 import app.gamenative.ui.screen.library.components.LibraryDetailPane
 import app.gamenative.ui.screen.library.components.LibraryListPane
 import app.gamenative.ui.theme.PluviaTheme
@@ -146,6 +147,7 @@ private fun LibraryScreenContent(
     var selectedAppId by remember { mutableStateOf<String?>(null) }
     // Keep a stable reference to the selected item so detail view doesn't disappear during list refresh/pagination.
     var selectedLibraryItem by remember { mutableStateOf<LibraryItem?>(null) }
+    var editedLibraryItem by remember { mutableStateOf<LibraryItem?>(null) }
     val filterFabExpanded by remember { derivedStateOf { listState.firstVisibleItemIndex == 0 } }
 
     // Dialog state for add custom game prompt
@@ -233,6 +235,8 @@ private fun LibraryScreenContent(
                 onModalBottomSheet = onModalBottomSheet,
                 onIsSearching = onIsSearching,
                 onSearchQuery = onSearchQuery,
+                onClickPlay = onClickPlay,
+                onEdit = { editedLibraryItem = it },
                 onNavigateRoute = onNavigateRoute,
                 onLogout = onLogout,
                 onNavigate = { appId ->
@@ -340,6 +344,23 @@ private fun LibraryScreenContent(
                         onClick = { showAddCustomGameDialog = false }
                     ) {
                         Text("Cancel")
+                    }
+                }
+            )
+        }
+
+        if (editedLibraryItem != null) {
+            GameEditDialog(
+                libraryItem = editedLibraryItem!!,
+                onDismiss = { editedLibraryItem = null },
+                onClickPlay = { bootToContainer ->
+                    editedLibraryItem?.let {
+                        onClickPlay(it.appId, bootToContainer)
+                    }
+                },
+                onTestGraphics = {
+                    editedLibraryItem?.let {
+                        onTestGraphics(it.appId)
                     }
                 }
             )

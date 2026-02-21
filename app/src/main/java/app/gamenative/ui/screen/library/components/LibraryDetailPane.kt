@@ -64,6 +64,8 @@ internal fun LibraryDetailPane(
                 onLogout = {},
                 onNavigate = {},
                 onSearchQuery = {},
+                onClickPlay = { _, _ -> },
+                onEdit = {},
                 onNavigateRoute = {},
                 onGoOnline = {},
                 onRefresh = {},

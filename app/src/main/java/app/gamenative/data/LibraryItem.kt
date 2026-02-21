@@ -30,6 +30,9 @@ data class LibraryItem(
     val isShared: Boolean = false,
     val gameSource: GameSource = GameSource.STEAM,
     val compatibilityStatus: GameCompatibilityStatus? = null,
+    val playTime: Long = 0, // Minutes
+    val lastSessionTime: Long = 0, // Minutes
+    val lastPlayed: Long = 0, // Timestamp
 ) {
     val clientIconUrl: String
         get() = when (gameSource) {

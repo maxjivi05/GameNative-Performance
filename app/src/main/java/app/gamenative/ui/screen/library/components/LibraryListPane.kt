@@ -141,6 +141,8 @@ internal fun LibraryListPane(
     onLogout: () -> Unit,
     onNavigate: (String) -> Unit,
     onSearchQuery: (String) -> Unit,
+    onClickPlay: (String, Boolean) -> Unit,
+    onEdit: (LibraryItem) -> Unit,
     onNavigateRoute: (String) -> Unit,
     onGoOnline: () -> Unit,
     onRefresh: () -> Unit,
@@ -175,7 +177,7 @@ internal fun LibraryListPane(
     val columnType = remember(paneType) {
         when (paneType) {
             PaneType.GRID_HERO -> GridCells.Adaptive(minSize = 200.dp)
-            PaneType.GRID_CAPSULE -> GridCells.Adaptive(minSize = 150.dp)
+            PaneType.GRID_CAPSULE -> GridCells.Fixed(3)
             else -> GridCells.Fixed(1)
         }
     }
@@ -196,12 +198,7 @@ internal fun LibraryListPane(
     LaunchedEffect(isViewWide, paneType) {
         // Set initial paneType at first launch depending on orientation
         if (paneType == PaneType.UNDECIDED) {
-            // Default hero for landscape/tablets, or list for portrait phones
-            if (isViewWide) {
-                paneType = PaneType.GRID_HERO
-            } else {
-                paneType = PaneType.GRID_CAPSULE
-            }
+            paneType = PaneType.LIST
             PrefManager.libraryLayout = paneType
         }
 
@@ -412,6 +409,8 @@ internal fun LibraryListPane(
                                     AppItem(
                                         appInfo = item,
                                         onClick = { onNavigate(item.appId) },
+                                        onEditClick = { onEdit(item) },
+                                        onPlayClick = { onClickPlay(item.appId, false) },
                                         paneType = paneType,
                                         onFocus = { targetOfScroll = item.index },
                                         imageRefreshCounter = state.imageRefreshCounter,
@@ -539,6 +538,8 @@ private fun Preview_LibraryListPane() {
                 },
                 onIsSearching = { },
                 onSearchQuery = { },
+                onClickPlay = { _, _ -> },
+                onEdit = { },
                 onNavigateRoute = { },
                 onLogout = { },
                 onNavigate = { },

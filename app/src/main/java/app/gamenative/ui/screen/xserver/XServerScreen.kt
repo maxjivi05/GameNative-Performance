@@ -327,6 +327,7 @@ fun XServerScreen(
     var showElementEditor by remember { mutableStateOf(false) }
     var elementToEdit by remember { mutableStateOf<com.winlator.inputcontrols.ControlElement?>(null) }
     var showPhysicalControllerDialog by remember { mutableStateOf(false) }
+    var showTaskManagerDialog by remember { mutableStateOf(false) }
     var isGamePaused by remember { mutableStateOf(false) }
 
     fun startExitWatchForUnmappedGameWindow(window: Window) {
@@ -557,6 +558,10 @@ fun XServerScreen(
                                     areControlsVisible.value = true
                                 }
                             }
+                        }
+
+                        NavigationDialog.ACTION_TASK_MANAGER -> {
+                            showTaskManagerDialog = true
                         }
 
                         NavigationDialog.ACTION_EDIT_PHYSICAL_CONTROLLER -> {
@@ -1430,6 +1435,16 @@ fun XServerScreen(
                     )
                 }
             }
+        }
+    }
+
+    if (showTaskManagerDialog) {
+        val winHandler = xServerView?.getxServer()?.winHandler
+        if (winHandler != null) {
+            app.gamenative.ui.component.dialog.TaskManagerDialog(
+                winHandler = winHandler,
+                onDismiss = { showTaskManagerDialog = false }
+            )
         }
     }
 

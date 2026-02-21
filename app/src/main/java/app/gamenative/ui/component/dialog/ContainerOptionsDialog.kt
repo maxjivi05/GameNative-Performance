@@ -18,7 +18,8 @@ import app.gamenative.R
 fun ContainerOptionsDialog(
     onDismiss: () -> Unit,
     onOpen: () -> Unit,
-    onReset: () -> Unit
+    onReset: () -> Unit,
+    onTestGraphics: (() -> Unit)? = null
 ) {
     Dialog(onDismissRequest = onDismiss) {
         Surface(
@@ -51,6 +52,14 @@ fun ContainerOptionsDialog(
                     icon = Icons.Default.Refresh,
                     onClick = onReset
                 )
+
+                if (onTestGraphics != null) {
+                    OptionButton(
+                        text = "Test Graphics",
+                        icon = Icons.Default.PlayArrow,
+                        onClick = onTestGraphics
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(8.dp))
 

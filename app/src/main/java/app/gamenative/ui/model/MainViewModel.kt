@@ -271,11 +271,13 @@ class MainViewModel @Inject constructor(
             apiJob.await()
 
             _uiEvent.send(MainUiEvent.LaunchApp)
+            app.gamenative.utils.LocalPlaytimeManager.startSession(appId)
         }
     }
 
     fun exitSteamApp(context: Context, appId: String) {
         viewModelScope.launch {
+            app.gamenative.utils.LocalPlaytimeManager.endSession(context, appId)
             Timber.tag("Exit").i("Exiting, getting feedback for appId: $appId")
             bootingSplashTimeoutJob?.cancel()
             bootingSplashTimeoutJob = null

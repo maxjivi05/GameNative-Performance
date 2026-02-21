@@ -33,6 +33,7 @@ public class NavigationDialog extends ContentDialog {
     public static final int ACTION_CONTROLLER_MANAGER = 7;
     public static final int ACTION_MOTION_CONTROLS = 8;
     public static final int ACTION_PAUSE_GAME = 9;
+    public static final int ACTION_TASK_MANAGER = 10;
 
     public interface NavigationListener {
         void onNavigationItemSelected(int itemId);
@@ -50,7 +51,7 @@ public class NavigationDialog extends ContentDialog {
         GridLayout grid = findViewById(R.id.main_menu_grid);
         int orientation = context.getResources().getConfiguration().orientation;
         if (orientation == Configuration.ORIENTATION_LANDSCAPE) {
-            grid.setColumnCount(5);
+            grid.setColumnCount(6);
         } else {
             grid.setColumnCount(2);
         }
@@ -64,16 +65,25 @@ public class NavigationDialog extends ContentDialog {
         int pauseText = isGamePaused ? R.string.resume_game : R.string.pause_game;
         addMenuItem(context, grid, pauseIcon, pauseText, ACTION_PAUSE_GAME, listener, 1.0f);
 
-        addMenuItem(context, grid, R.drawable.icon_keyboard, R.string.keyboard, ACTION_KEYBOARD, listener, 1.0f);
-        int controlsTextRes = areControlsVisible ? R.string.hide_controls : R.string.show_controls;
-        addMenuItem(context, grid, R.drawable.icon_input_controls, controlsTextRes, ACTION_INPUT_CONTROLS, listener,1.0f);
-        addMenuItem(context, grid, R.drawable.icon_popup_menu_edit, R.string.edit_controls, ACTION_EDIT_CONTROLS, listener, 1.0f);
         addMenuItem(context, grid, R.drawable.icon_monitor, R.string.stretch_to_fullscreen, ACTION_STRETCH_TO_FULLSCREEN, listener, 1.0f);
+
+        int controlsTextRes = areControlsVisible ? R.string.hide_controls : R.string.show_controls;
+        addMenuItem(context, grid, R.drawable.icon_input_controls, controlsTextRes, ACTION_INPUT_CONTROLS, listener, 1.0f);
+
+        addMenuItem(context, grid, R.drawable.icon_popup_menu_edit, R.string.edit_controls, ACTION_EDIT_CONTROLS, listener, 1.0f);
+
+        addMenuItem(context, grid, R.drawable.icon_keyboard, R.string.keyboard, ACTION_KEYBOARD, listener, 1.0f);
+
+        addMenuItem(context, grid, R.drawable.icon_task_manager, R.string.task_manager, ACTION_TASK_MANAGER, listener, 1.0f);
+
         addMenuItem(context, grid, R.drawable.icon_gamepad, R.string.controller_manager, ACTION_CONTROLLER_MANAGER, listener, 1.0f);
-        addMenuItem(context, grid, R.drawable.icon_motion_controls, R.string.motion_controls, ACTION_MOTION_CONTROLS, listener, 1.0f);
+
         if (hasPhysicalController) {
             addMenuItem(context, grid, R.drawable.icon_gamepad, R.string.edit_physical_controller, ACTION_EDIT_PHYSICAL_CONTROLLER, listener, 1.0f);
         }
+
+        addMenuItem(context, grid, R.drawable.icon_motion_controls, R.string.motion_controls, ACTION_MOTION_CONTROLS, listener, 1.0f);
+
         addMenuItem(context, grid, R.drawable.icon_exit, R.string.exit_game, ACTION_EXIT_GAME, listener, 1.0f);
     }
 
