@@ -409,7 +409,7 @@ internal fun AppItem(
                         horizontalAlignment = Alignment.End
                     ) {
                         Button(
-                            onClick = onPlayClick,
+                            onClick = if (isInstalled) onPlayClick else onClick,
                             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier.height(36.dp).width(100.dp),
