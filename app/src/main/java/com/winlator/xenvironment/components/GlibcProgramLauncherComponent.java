@@ -432,26 +432,40 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
         if (this.envVars != null) envVars.putAll(this.envVars);
 
         String box64Path = rootDir.getPath() + "/usr/local/bin/box64";
-
-        String finalCommand = box64Path + " " + command;
+        String emulator = container != null ? container.getEmulator() : "box64";
+        String finalCommand = getFinalCommand(winePath, emulator, envVars, box64Path, command);
 
         // Execute the command and capture its output
         try {
             Log.d("GlibcProgramLauncherComponent", "Shell command is " + finalCommand);
             java.lang.Process process = Runtime.getRuntime().exec(finalCommand, envVars.toStringArray(), workingDir != null ? workingDir : imageFs.getRootDir());
-            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-            BufferedReader errorReader = new BufferedReader(new InputStreamReader(process.getErrorStream()));
-
-            String line;
-            while ((line = reader.readLine()) != null) {
-                output.append(line).append("\n");
-            }
-            if (includeStderr) {
-                while ((line = errorReader.readLine()) != null) {
-                    output.append(line).append("\n");
-                }
-            }
+            
+            final StringBuilder stdout = new StringBuilder();
+            final StringBuilder stderr = new StringBuilder();
+            
+            Thread stdoutThread = new Thread(() -> {
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+                    String line;
+                    while ((line = reader.readLine()) != null) stdout.append(line).append("\n");
+                } catch (IOException e) {}
+            });
+            
+            Thread stderrThread = new Thread(() -> {
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getErrorStream()))) {
+                    String line;
+                    while ((line = reader.readLine()) != null) stderr.append(line).append("\n");
+                } catch (IOException e) {}
+            });
+            
+            stdoutThread.start();
+            stderrThread.start();
+            
             process.waitFor();
+            stdoutThread.join(5000);
+            stderrThread.join(5000);
+            
+            output.append(stdout);
+            if (includeStderr) output.append(stderr);
         } catch (Exception e) {
             output.append("Error: ").append(e.getMessage());
         }

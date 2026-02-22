@@ -2736,10 +2736,16 @@ private fun unpackExecutableFile(
     if (needsUnpacking || containerVariantChanged){
         try {
             PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Installing Mono..."))
-            val monoCmd = "wine msiexec /i Z:\\opt\\mono-gecko-offline\\wine-mono-9.0.0-x86.msi && wineserver -k"
+            // Split the command into two parts because Runtime.exec does not handle && shell operator
+            // Also add /quiet /norestart to msiexec to prevent hidden dialogs
+            val monoCmd = "wine msiexec /i Z:\\opt\\mono-gecko-offline\\wine-mono-9.0.0-x86.msi /quiet /norestart"
             Timber.i("Install mono command $monoCmd")
             val monoOutput = guestProgramLauncherComponent.execShellCommand(monoCmd)
             output.append(monoOutput)
+            
+            // Explicitly kill wineserver after installation
+            guestProgramLauncherComponent.execShellCommand("wineserver -k")
+            
             Timber.i("Result of mono command " + output)
         } catch (e: Exception) {
             Timber.e("Error during mono installation: $e")
