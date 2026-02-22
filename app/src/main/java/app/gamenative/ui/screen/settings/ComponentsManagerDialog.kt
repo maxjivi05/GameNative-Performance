@@ -74,6 +74,8 @@ import app.gamenative.utils.Net
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resume
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -205,52 +207,22 @@ fun ComponentsManagerDialog(open: Boolean, onDismiss: () -> Unit) {
     val performInstall: (Uri) -> Unit = { uri ->
         scope.launch {
             isWorking = true
-            workMessage = "Validating..."
+            workMessage = "Processing .wcp..."
             try {
-                val result = withContext(Dispatchers.IO) {
-                    var p: ContentProfile? = null
-                    var f: ContentsManager.InstallFailedReason? = null
-                    val latch = CountDownLatch(1)
-                    mgr.extraContentFile(uri, object : ContentsManager.OnInstallFinishedCallback {
-                        override fun onFailed(reason: ContentsManager.InstallFailedReason, e: Exception?) {
-                            f = reason; latch.countDown()
-                        }
-                        override fun onSucceed(prof: ContentProfile) {
-                            p = prof; latch.countDown()
-                        }
-                    })
-                    latch.await()
-                    p to f
+                val success = withContext(Dispatchers.IO) {
+                    installWcpRobustly(ctx, mgr, uri) { currentStatus ->
+                        scope.launch(Dispatchers.Main) { workMessage = currentStatus }
+                    }
                 }
-
-                val (profile, fail) = result
-                if (profile == null) {
-                    Toast.makeText(ctx, "Validation failed: $fail", Toast.LENGTH_SHORT).show()
-                    return@launch
+                
+                if (success) {
+                    mgr.syncContents()
+                    Toast.makeText(ctx, "Installation Complete ✓", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(ctx, "Installation Failed", Toast.LENGTH_SHORT).show()
                 }
-
-                workMessage = "Installing..."
-                val msg = withContext(Dispatchers.IO) {
-                    var res = ""
-                    val latch = CountDownLatch(1)
-                    mgr.finishInstallContent(profile, object : ContentsManager.OnInstallFinishedCallback {
-                        override fun onFailed(reason: ContentsManager.InstallFailedReason, e: Exception?) {
-                            res = when (reason) {
-                                ContentsManager.InstallFailedReason.ERROR_EXIST -> "Already installed"
-                                else -> "Install failed: $reason"
-                            }
-                            latch.countDown()
-                        }
-                        override fun onSucceed(prof: ContentProfile) {
-                            res = "Installed ${prof.verName} ✓"
-                            latch.countDown()
-                        }
-                    })
-                    latch.await()
-                    res
-                }
-                Toast.makeText(ctx, msg, Toast.LENGTH_SHORT).show()
             } catch (e: Exception) {
+                Timber.e(e, "performInstall error")
                 Toast.makeText(ctx, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
             } finally {
                 isWorking = false
@@ -1458,29 +1430,24 @@ private fun WineProtonDetailScreen(
                 }
 
                 statusMsg = "Installing..."
-                withContext(Dispatchers.IO) {
-                    val latch = CountDownLatch(1)
-                    var success = false
-                    mgr.extraContentFile(Uri.fromFile(dest), object : ContentsManager.OnInstallFinishedCallback {
-                        override fun onFailed(r: ContentsManager.InstallFailedReason, e: Exception?) { latch.countDown() }
-                        override fun onSucceed(p: ContentProfile) {
-                            mgr.finishInstallContent(p, object : ContentsManager.OnInstallFinishedCallback {
-                                override fun onFailed(r: ContentsManager.InstallFailedReason, e: Exception?) { latch.countDown() }
-                                override fun onSucceed(pp: ContentProfile) { success = true; latch.countDown() }
-                            })
-                        }
-                    })
-                    latch.await()
-                    dest.delete()
-                    if (success) {
-                        mgr.syncContents()
-                        withContext(Dispatchers.Main) { 
-                            Toast.makeText(ctx, "Installed Successfully", Toast.LENGTH_SHORT).show()
-                            refreshInstalled()
-                        }
-                    } else {
-                         withContext(Dispatchers.Main) { Toast.makeText(ctx, "Install Failed", Toast.LENGTH_SHORT).show() }
+                progress = -1f // indeterminate
+                
+                val installSuccess = withContext(Dispatchers.IO) {
+                    installWcpRobustly(ctx, mgr, Uri.fromFile(dest)) { currentStatus ->
+                        scope.launch(Dispatchers.Main) { statusMsg = currentStatus }
                     }
+                }
+                
+                dest.delete()
+                
+                if (installSuccess) {
+                    mgr.syncContents()
+                    withContext(Dispatchers.Main) { 
+                        Toast.makeText(ctx, "Installed Successfully", Toast.LENGTH_SHORT).show()
+                        refreshInstalled()
+                    }
+                } else {
+                     withContext(Dispatchers.Main) { Toast.makeText(ctx, "Install Failed", Toast.LENGTH_SHORT).show() }
                 }
             } catch (e: Exception) {
                 Toast.makeText(ctx, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
@@ -1491,26 +1458,32 @@ private fun WineProtonDetailScreen(
     val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri?.let {
              scope.launch {
-                 isBusy = true; statusMsg = "Importing..."
-                 // Minimal import logic for brevity - in real app full logic needed
-                 // Assuming standard flow
                  try {
-                     val latch = CountDownLatch(1)
-                     mgr.extraContentFile(it, object : ContentsManager.OnInstallFinishedCallback {
-                         override fun onFailed(r: ContentsManager.InstallFailedReason, e: Exception?) { latch.countDown() }
-                         override fun onSucceed(p: ContentProfile) {
-                             mgr.finishInstallContent(p, object : ContentsManager.OnInstallFinishedCallback {
-                                 override fun onFailed(r: ContentsManager.InstallFailedReason, e: Exception?) { latch.countDown() }
-                                 override fun onSucceed(pp: ContentProfile) { latch.countDown() }
-                             })
+                     isBusy = true
+                     progress = -1f // indeterminate for initial extraction
+                     statusMsg = "Importing .wcp package..."
+                     
+                     val success = withContext(Dispatchers.IO) {
+                         installWcpRobustly(ctx, mgr, it) { currentStatus ->
+                             scope.launch(Dispatchers.Main) { statusMsg = currentStatus }
                          }
-                     })
-                     withContext(Dispatchers.IO) { latch.await() }
-                     mgr.syncContents()
-                     refreshInstalled()
-                     Toast.makeText(ctx, "Import Attempted", Toast.LENGTH_SHORT).show()
-                 } catch(e: Exception) {}
-                 isBusy = false; statusMsg = ""
+                     }
+                     
+                     if (success) {
+                         mgr.syncContents()
+                         refreshInstalled()
+                         Toast.makeText(ctx, "Imported Successfully", Toast.LENGTH_SHORT).show()
+                     } else {
+                         Toast.makeText(ctx, "Import Failed", Toast.LENGTH_SHORT).show()
+                     }
+                 } catch (e: Exception) {
+                     Timber.e(e, "Manual import error")
+                     Toast.makeText(ctx, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                 } finally {
+                     isBusy = false
+                     statusMsg = ""
+                     progress = 0f
+                 }
              }
         }
     }
@@ -1630,4 +1603,59 @@ private fun parseGHReleases(jsonStr: String): List<GHRelease> = try {
 } catch (e: Exception) {
     Timber.e(e, "ComponentsManager: JSON parse error")
     emptyList()
+}
+
+/**
+ * Performs a robust, non-blocking installation of a .wcp package using coroutines.
+ * Replaces old latch-based logic that caused UI freezes.
+ */
+private suspend fun installWcpRobustly(
+    context: android.content.Context,
+    mgr: ContentsManager,
+    uri: Uri,
+    onStatusUpdate: (String) -> Unit
+): Boolean = withContext(Dispatchers.IO) {
+    try {
+        onStatusUpdate("Validating package...")
+        val profile = suspendInstallCallback<ContentProfile> { callback ->
+            mgr.extraContentFile(uri, callback)
+        } ?: return@withContext false
+
+        onStatusUpdate("Installing ${profile.verName}...")
+        val finishedProfile = suspendInstallCallback<ContentProfile> { callback ->
+            mgr.finishInstallContent(profile, callback)
+        }
+        
+        finishedProfile != null
+    } catch (e: Exception) {
+        Timber.e(e, "Robust install failed")
+        false
+    }
+}
+
+/**
+ * Helper to convert legacy async callbacks into suspendable functions.
+ */
+private suspend fun <T> suspendInstallCallback(
+    block: (ContentsManager.OnInstallFinishedCallback) -> Unit
+): T? = kotlinx.coroutines.suspendCancellableCoroutine { continuation ->
+    block(object : ContentsManager.OnInstallFinishedCallback {
+        override fun onFailed(reason: ContentsManager.InstallFailedReason, e: Exception?) {
+            if (continuation.isActive) {
+                if (reason == ContentsManager.InstallFailedReason.ERROR_EXIST) {
+                    // Treat "already exists" as a special success or at least non-terminal error
+                    continuation.resume(null) { /* cancel cleanup */ }
+                } else {
+                    continuation.resume(null) { /* cancel cleanup */ }
+                }
+            }
+        }
+
+        @Suppress("UNCHECKED_CAST")
+        override fun onSucceed(result: ContentProfile) {
+            if (continuation.isActive) {
+                continuation.resume(result as T) { /* cancel cleanup */ }
+            }
+        }
+    })
 }
