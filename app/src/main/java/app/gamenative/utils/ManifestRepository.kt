@@ -10,7 +10,7 @@ import timber.log.Timber
 
 object ManifestRepository {
     private const val ONE_DAY_MS = 24 * 60 * 60 * 1000L
-    private const val MANIFEST_URL = "https://raw.githubusercontent.com/utkarshdalal/GameNative/refs/heads/master/manifest.json"
+    private const val MANIFEST_URL = "https://raw.githubusercontent.com/maxjivi05/GameNative-Performance/refs/heads/main/manifest.json"
     private val json = Json { ignoreUnknownKeys = true }
 
     suspend fun loadManifest(context: Context): ManifestData {

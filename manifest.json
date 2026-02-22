@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": "2026-01-26",
+  "updatedAt": "2026-02-21",
   "items": {
     "driver": [
       {
@@ -644,9 +644,15 @@
     ],
     "proton": [
       {
+        "id": "proton-10.0-x86_64-0",
+        "name": "Proton 10.0 x86_64",
+        "url": "https://github.com/GameNative/proton-wine/releases/download/build-10/proton-10.0-x86_64.wcp",
+        "variant": "bionic"
+      },
+      {
         "id": "proton-10.0-arm64ec-2",
         "name": "Proton 10.0 ARM64ec",
-        "url": "https://downloads.gamenative.app/proton-10.0-arm64ec.wcp",
+        "url": "https://github.com/GameNative/proton-wine/releases/download/build-10/proton-10.0-arm64ec.wcp",
         "variant": "bionic"
       }
     ],

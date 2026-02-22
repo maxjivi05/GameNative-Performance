@@ -55,8 +55,6 @@ build CMakeFiles/winlator.dir/winlator/drawable.c.o: C_COMPILER__winlator_RelWit
   FLAGS = -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -march=armv7-a -mthumb -Wformat -Werror=format-security  -O2 -Wno-unused-function -Wimplicit-function-declaration -O2 -g -DNDEBUG -fPIC
   OBJECT_DIR = CMakeFiles/winlator.dir
   OBJECT_FILE_DIR = CMakeFiles/winlator.dir/winlator
-  TARGET_COMPILE_PDB = CMakeFiles/winlator.dir/
-  TARGET_PDB = /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/build/intermediates/cxx/RelWithDebInfo/5k2v4553/obj/armeabi-v7a/libwinlator.pdb
 
 build CMakeFiles/winlator.dir/winlator/gpu_image.c.o: C_COMPILER__winlator_RelWithDebInfo /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/winlator/gpu_image.c || cmake_object_order_depends_target_winlator
   DEFINES = -Dwinlator_EXPORTS
@@ -64,8 +62,6 @@ build CMakeFiles/winlator.dir/winlator/gpu_image.c.o: C_COMPILER__winlator_RelWi
   FLAGS = -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -march=armv7-a -mthumb -Wformat -Werror=format-security  -O2 -Wno-unused-function -Wimplicit-function-declaration -O2 -g -DNDEBUG -fPIC
   OBJECT_DIR = CMakeFiles/winlator.dir
   OBJECT_FILE_DIR = CMakeFiles/winlator.dir/winlator
-  TARGET_COMPILE_PDB = CMakeFiles/winlator.dir/
-  TARGET_PDB = /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/build/intermediates/cxx/RelWithDebInfo/5k2v4553/obj/armeabi-v7a/libwinlator.pdb
 
 build CMakeFiles/winlator.dir/winlator/sysvshared_memory.c.o: C_COMPILER__winlator_RelWithDebInfo /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/winlator/sysvshared_memory.c || cmake_object_order_depends_target_winlator
   DEFINES = -Dwinlator_EXPORTS
@@ -73,8 +69,6 @@ build CMakeFiles/winlator.dir/winlator/sysvshared_memory.c.o: C_COMPILER__winlat
   FLAGS = -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -march=armv7-a -mthumb -Wformat -Werror=format-security  -O2 -Wno-unused-function -Wimplicit-function-declaration -O2 -g -DNDEBUG -fPIC
   OBJECT_DIR = CMakeFiles/winlator.dir
   OBJECT_FILE_DIR = CMakeFiles/winlator.dir/winlator
-  TARGET_COMPILE_PDB = CMakeFiles/winlator.dir/
-  TARGET_PDB = /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/build/intermediates/cxx/RelWithDebInfo/5k2v4553/obj/armeabi-v7a/libwinlator.pdb
 
 build CMakeFiles/winlator.dir/winlator/xconnector_epoll.c.o: C_COMPILER__winlator_RelWithDebInfo /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/winlator/xconnector_epoll.c || cmake_object_order_depends_target_winlator
   DEFINES = -Dwinlator_EXPORTS
@@ -82,8 +76,6 @@ build CMakeFiles/winlator.dir/winlator/xconnector_epoll.c.o: C_COMPILER__winlato
   FLAGS = -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -march=armv7-a -mthumb -Wformat -Werror=format-security  -O2 -Wno-unused-function -Wimplicit-function-declaration -O2 -g -DNDEBUG -fPIC
   OBJECT_DIR = CMakeFiles/winlator.dir
   OBJECT_FILE_DIR = CMakeFiles/winlator.dir/winlator
-  TARGET_COMPILE_PDB = CMakeFiles/winlator.dir/
-  TARGET_PDB = /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/build/intermediates/cxx/RelWithDebInfo/5k2v4553/obj/armeabi-v7a/libwinlator.pdb
 
 build CMakeFiles/winlator.dir/winlator/alsa_client.c.o: C_COMPILER__winlator_RelWithDebInfo /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/winlator/alsa_client.c || cmake_object_order_depends_target_winlator
   DEFINES = -Dwinlator_EXPORTS
@@ -91,8 +83,6 @@ build CMakeFiles/winlator.dir/winlator/alsa_client.c.o: C_COMPILER__winlator_Rel
   FLAGS = -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -march=armv7-a -mthumb -Wformat -Werror=format-security  -O2 -Wno-unused-function -Wimplicit-function-declaration -O2 -g -DNDEBUG -fPIC
   OBJECT_DIR = CMakeFiles/winlator.dir
   OBJECT_FILE_DIR = CMakeFiles/winlator.dir/winlator
-  TARGET_COMPILE_PDB = CMakeFiles/winlator.dir/
-  TARGET_PDB = /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/build/intermediates/cxx/RelWithDebInfo/5k2v4553/obj/armeabi-v7a/libwinlator.pdb
 
 build CMakeFiles/winlator.dir/winlator/patchelf_wrapper.cpp.o: CXX_COMPILER__winlator_RelWithDebInfo /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/winlator/patchelf_wrapper.cpp || cmake_object_order_depends_target_winlator
   DEFINES = -Dwinlator_EXPORTS
@@ -100,8 +90,6 @@ build CMakeFiles/winlator.dir/winlator/patchelf_wrapper.cpp.o: CXX_COMPILER__win
   FLAGS = -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -march=armv7-a -mthumb -Wformat -Werror=format-security   -O2 -g -DNDEBUG -fPIC -std=gnu++17
   OBJECT_DIR = CMakeFiles/winlator.dir
   OBJECT_FILE_DIR = CMakeFiles/winlator.dir/winlator
-  TARGET_COMPILE_PDB = CMakeFiles/winlator.dir/
-  TARGET_PDB = /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/build/intermediates/cxx/RelWithDebInfo/5k2v4553/obj/armeabi-v7a/libwinlator.pdb
 
 
 # =============================================================================
@@ -120,9 +108,8 @@ build /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/build/int
   PRE_LINK = :
   SONAME = libwinlator.so
   SONAME_FLAG = -Wl,-soname,
-  TARGET_COMPILE_PDB = CMakeFiles/winlator.dir/
   TARGET_FILE = /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/build/intermediates/cxx/RelWithDebInfo/5k2v4553/obj/armeabi-v7a/libwinlator.so
-  TARGET_PDB = /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/build/intermediates/cxx/RelWithDebInfo/5k2v4553/obj/armeabi-v7a/libwinlator.pdb
+  TARGET_PDB = winlator.so.dbg
 
 # =============================================================================
 # Object build statements for SHARED_LIBRARY target evshim
@@ -140,8 +127,6 @@ build CMakeFiles/evshim.dir/winlator/evshim.c.o: C_COMPILER__evshim_RelWithDebIn
   INCLUDES = -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/include
   OBJECT_DIR = CMakeFiles/evshim.dir
   OBJECT_FILE_DIR = CMakeFiles/evshim.dir/winlator
-  TARGET_COMPILE_PDB = CMakeFiles/evshim.dir/
-  TARGET_PDB = /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/build/intermediates/cxx/RelWithDebInfo/5k2v4553/obj/armeabi-v7a/libevshim.pdb
 
 
 # =============================================================================
@@ -160,9 +145,8 @@ build /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/build/int
   PRE_LINK = :
   SONAME = libevshim.so
   SONAME_FLAG = -Wl,-soname,
-  TARGET_COMPILE_PDB = CMakeFiles/evshim.dir/
   TARGET_FILE = /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/build/intermediates/cxx/RelWithDebInfo/5k2v4553/obj/armeabi-v7a/libevshim.so
-  TARGET_PDB = /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/build/intermediates/cxx/RelWithDebInfo/5k2v4553/obj/armeabi-v7a/libevshim.pdb
+  TARGET_PDB = evshim.so.dbg
 
 
 #############################################
@@ -208,8 +192,6 @@ build virglrenderer/CMakeFiles/virglrenderer.dir/src/iov.c.o: C_COMPILER__virglr
   INCLUDES = -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/include -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary/util -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/server
   OBJECT_DIR = virglrenderer/CMakeFiles/virglrenderer.dir
   OBJECT_FILE_DIR = virglrenderer/CMakeFiles/virglrenderer.dir/src
-  TARGET_COMPILE_PDB = virglrenderer/CMakeFiles/virglrenderer.dir/
-  TARGET_PDB = /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/build/intermediates/cxx/RelWithDebInfo/5k2v4553/obj/armeabi-v7a/libvirglrenderer.pdb
 
 build virglrenderer/CMakeFiles/virglrenderer.dir/src/vrend_blitter.c.o: C_COMPILER__virglrenderer_RelWithDebInfo /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/vrend_blitter.c || cmake_object_order_depends_target_virglrenderer
   DEFINES = -Dvirglrenderer_EXPORTS
@@ -218,8 +200,6 @@ build virglrenderer/CMakeFiles/virglrenderer.dir/src/vrend_blitter.c.o: C_COMPIL
   INCLUDES = -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/include -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary/util -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/server
   OBJECT_DIR = virglrenderer/CMakeFiles/virglrenderer.dir
   OBJECT_FILE_DIR = virglrenderer/CMakeFiles/virglrenderer.dir/src
-  TARGET_COMPILE_PDB = virglrenderer/CMakeFiles/virglrenderer.dir/
-  TARGET_PDB = /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/build/intermediates/cxx/RelWithDebInfo/5k2v4553/obj/armeabi-v7a/libvirglrenderer.pdb
 
 build virglrenderer/CMakeFiles/virglrenderer.dir/src/vrend_decode.c.o: C_COMPILER__virglrenderer_RelWithDebInfo /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/vrend_decode.c || cmake_object_order_depends_target_virglrenderer
   DEFINES = -Dvirglrenderer_EXPORTS
@@ -228,8 +208,6 @@ build virglrenderer/CMakeFiles/virglrenderer.dir/src/vrend_decode.c.o: C_COMPILE
   INCLUDES = -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/include -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary/util -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/server
   OBJECT_DIR = virglrenderer/CMakeFiles/virglrenderer.dir
   OBJECT_FILE_DIR = virglrenderer/CMakeFiles/virglrenderer.dir/src
-  TARGET_COMPILE_PDB = virglrenderer/CMakeFiles/virglrenderer.dir/
-  TARGET_PDB = /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/build/intermediates/cxx/RelWithDebInfo/5k2v4553/obj/armeabi-v7a/libvirglrenderer.pdb
 
 build virglrenderer/CMakeFiles/virglrenderer.dir/src/vrend_formats.c.o: C_COMPILER__virglrenderer_RelWithDebInfo /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/vrend_formats.c || cmake_object_order_depends_target_virglrenderer
   DEFINES = -Dvirglrenderer_EXPORTS
@@ -238,8 +216,6 @@ build virglrenderer/CMakeFiles/virglrenderer.dir/src/vrend_formats.c.o: C_COMPIL
   INCLUDES = -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/include -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary/util -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/server
   OBJECT_DIR = virglrenderer/CMakeFiles/virglrenderer.dir
   OBJECT_FILE_DIR = virglrenderer/CMakeFiles/virglrenderer.dir/src
-  TARGET_COMPILE_PDB = virglrenderer/CMakeFiles/virglrenderer.dir/
-  TARGET_PDB = /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/build/intermediates/cxx/RelWithDebInfo/5k2v4553/obj/armeabi-v7a/libvirglrenderer.pdb
 
 build virglrenderer/CMakeFiles/virglrenderer.dir/src/vrend_object.c.o: C_COMPILER__virglrenderer_RelWithDebInfo /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/vrend_object.c || cmake_object_order_depends_target_virglrenderer
   DEFINES = -Dvirglrenderer_EXPORTS
@@ -248,8 +224,6 @@ build virglrenderer/CMakeFiles/virglrenderer.dir/src/vrend_object.c.o: C_COMPILE
   INCLUDES = -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/include -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary/util -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/server
   OBJECT_DIR = virglrenderer/CMakeFiles/virglrenderer.dir
   OBJECT_FILE_DIR = virglrenderer/CMakeFiles/virglrenderer.dir/src
-  TARGET_COMPILE_PDB = virglrenderer/CMakeFiles/virglrenderer.dir/
-  TARGET_PDB = /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/build/intermediates/cxx/RelWithDebInfo/5k2v4553/obj/armeabi-v7a/libvirglrenderer.pdb
 
 build virglrenderer/CMakeFiles/virglrenderer.dir/src/vrend_renderer.c.o: C_COMPILER__virglrenderer_RelWithDebInfo /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/vrend_renderer.c || cmake_object_order_depends_target_virglrenderer
   DEFINES = -Dvirglrenderer_EXPORTS
@@ -258,8 +232,6 @@ build virglrenderer/CMakeFiles/virglrenderer.dir/src/vrend_renderer.c.o: C_COMPI
   INCLUDES = -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/include -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary/util -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/server
   OBJECT_DIR = virglrenderer/CMakeFiles/virglrenderer.dir
   OBJECT_FILE_DIR = virglrenderer/CMakeFiles/virglrenderer.dir/src
-  TARGET_COMPILE_PDB = virglrenderer/CMakeFiles/virglrenderer.dir/
-  TARGET_PDB = /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/build/intermediates/cxx/RelWithDebInfo/5k2v4553/obj/armeabi-v7a/libvirglrenderer.pdb
 
 build virglrenderer/CMakeFiles/virglrenderer.dir/src/vrend_shader.c.o: C_COMPILER__virglrenderer_RelWithDebInfo /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/vrend_shader.c || cmake_object_order_depends_target_virglrenderer
   DEFINES = -Dvirglrenderer_EXPORTS
@@ -268,8 +240,6 @@ build virglrenderer/CMakeFiles/virglrenderer.dir/src/vrend_shader.c.o: C_COMPILE
   INCLUDES = -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/include -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary/util -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/server
   OBJECT_DIR = virglrenderer/CMakeFiles/virglrenderer.dir
   OBJECT_FILE_DIR = virglrenderer/CMakeFiles/virglrenderer.dir/src
-  TARGET_COMPILE_PDB = virglrenderer/CMakeFiles/virglrenderer.dir/
-  TARGET_PDB = /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/build/intermediates/cxx/RelWithDebInfo/5k2v4553/obj/armeabi-v7a/libvirglrenderer.pdb
 
 build virglrenderer/CMakeFiles/virglrenderer.dir/server/virgl_server.c.o: C_COMPILER__virglrenderer_RelWithDebInfo /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/server/virgl_server.c || cmake_object_order_depends_target_virglrenderer
   DEFINES = -Dvirglrenderer_EXPORTS
@@ -278,8 +248,6 @@ build virglrenderer/CMakeFiles/virglrenderer.dir/server/virgl_server.c.o: C_COMP
   INCLUDES = -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/include -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary/util -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/server
   OBJECT_DIR = virglrenderer/CMakeFiles/virglrenderer.dir
   OBJECT_FILE_DIR = virglrenderer/CMakeFiles/virglrenderer.dir/server
-  TARGET_COMPILE_PDB = virglrenderer/CMakeFiles/virglrenderer.dir/
-  TARGET_PDB = /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/build/intermediates/cxx/RelWithDebInfo/5k2v4553/obj/armeabi-v7a/libvirglrenderer.pdb
 
 build virglrenderer/CMakeFiles/virglrenderer.dir/server/virgl_server_shm.c.o: C_COMPILER__virglrenderer_RelWithDebInfo /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/server/virgl_server_shm.c || cmake_object_order_depends_target_virglrenderer
   DEFINES = -Dvirglrenderer_EXPORTS
@@ -288,8 +256,6 @@ build virglrenderer/CMakeFiles/virglrenderer.dir/server/virgl_server_shm.c.o: C_
   INCLUDES = -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/include -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary/util -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/server
   OBJECT_DIR = virglrenderer/CMakeFiles/virglrenderer.dir
   OBJECT_FILE_DIR = virglrenderer/CMakeFiles/virglrenderer.dir/server
-  TARGET_COMPILE_PDB = virglrenderer/CMakeFiles/virglrenderer.dir/
-  TARGET_PDB = /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/build/intermediates/cxx/RelWithDebInfo/5k2v4553/obj/armeabi-v7a/libvirglrenderer.pdb
 
 build virglrenderer/CMakeFiles/virglrenderer.dir/server/virgl_server_renderer.c.o: C_COMPILER__virglrenderer_RelWithDebInfo /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/server/virgl_server_renderer.c || cmake_object_order_depends_target_virglrenderer
   DEFINES = -Dvirglrenderer_EXPORTS
@@ -298,8 +264,6 @@ build virglrenderer/CMakeFiles/virglrenderer.dir/server/virgl_server_renderer.c.
   INCLUDES = -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/include -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary/util -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/server
   OBJECT_DIR = virglrenderer/CMakeFiles/virglrenderer.dir
   OBJECT_FILE_DIR = virglrenderer/CMakeFiles/virglrenderer.dir/server
-  TARGET_COMPILE_PDB = virglrenderer/CMakeFiles/virglrenderer.dir/
-  TARGET_PDB = /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/build/intermediates/cxx/RelWithDebInfo/5k2v4553/obj/armeabi-v7a/libvirglrenderer.pdb
 
 build virglrenderer/CMakeFiles/virglrenderer.dir/src/gallium/auxiliary/util/u_format.c.o: C_COMPILER__virglrenderer_RelWithDebInfo /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary/util/u_format.c || cmake_object_order_depends_target_virglrenderer
   DEFINES = -Dvirglrenderer_EXPORTS
@@ -308,8 +272,6 @@ build virglrenderer/CMakeFiles/virglrenderer.dir/src/gallium/auxiliary/util/u_fo
   INCLUDES = -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/include -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary/util -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/server
   OBJECT_DIR = virglrenderer/CMakeFiles/virglrenderer.dir
   OBJECT_FILE_DIR = virglrenderer/CMakeFiles/virglrenderer.dir/src/gallium/auxiliary/util
-  TARGET_COMPILE_PDB = virglrenderer/CMakeFiles/virglrenderer.dir/
-  TARGET_PDB = /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/build/intermediates/cxx/RelWithDebInfo/5k2v4553/obj/armeabi-v7a/libvirglrenderer.pdb
 
 build virglrenderer/CMakeFiles/virglrenderer.dir/src/gallium/auxiliary/util/u_format_table.c.o: C_COMPILER__virglrenderer_RelWithDebInfo /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary/util/u_format_table.c || cmake_object_order_depends_target_virglrenderer
   DEFINES = -Dvirglrenderer_EXPORTS
@@ -318,8 +280,6 @@ build virglrenderer/CMakeFiles/virglrenderer.dir/src/gallium/auxiliary/util/u_fo
   INCLUDES = -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/include -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary/util -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/server
   OBJECT_DIR = virglrenderer/CMakeFiles/virglrenderer.dir
   OBJECT_FILE_DIR = virglrenderer/CMakeFiles/virglrenderer.dir/src/gallium/auxiliary/util
-  TARGET_COMPILE_PDB = virglrenderer/CMakeFiles/virglrenderer.dir/
-  TARGET_PDB = /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/build/intermediates/cxx/RelWithDebInfo/5k2v4553/obj/armeabi-v7a/libvirglrenderer.pdb
 
 build virglrenderer/CMakeFiles/virglrenderer.dir/src/gallium/auxiliary/util/u_texture.c.o: C_COMPILER__virglrenderer_RelWithDebInfo /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary/util/u_texture.c || cmake_object_order_depends_target_virglrenderer
   DEFINES = -Dvirglrenderer_EXPORTS
@@ -328,8 +288,6 @@ build virglrenderer/CMakeFiles/virglrenderer.dir/src/gallium/auxiliary/util/u_te
   INCLUDES = -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/include -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary/util -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/server
   OBJECT_DIR = virglrenderer/CMakeFiles/virglrenderer.dir
   OBJECT_FILE_DIR = virglrenderer/CMakeFiles/virglrenderer.dir/src/gallium/auxiliary/util
-  TARGET_COMPILE_PDB = virglrenderer/CMakeFiles/virglrenderer.dir/
-  TARGET_PDB = /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/build/intermediates/cxx/RelWithDebInfo/5k2v4553/obj/armeabi-v7a/libvirglrenderer.pdb
 
 build virglrenderer/CMakeFiles/virglrenderer.dir/src/gallium/auxiliary/util/u_hash_table.c.o: C_COMPILER__virglrenderer_RelWithDebInfo /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary/util/u_hash_table.c || cmake_object_order_depends_target_virglrenderer
   DEFINES = -Dvirglrenderer_EXPORTS
@@ -338,8 +296,6 @@ build virglrenderer/CMakeFiles/virglrenderer.dir/src/gallium/auxiliary/util/u_ha
   INCLUDES = -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/include -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary/util -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/server
   OBJECT_DIR = virglrenderer/CMakeFiles/virglrenderer.dir
   OBJECT_FILE_DIR = virglrenderer/CMakeFiles/virglrenderer.dir/src/gallium/auxiliary/util
-  TARGET_COMPILE_PDB = virglrenderer/CMakeFiles/virglrenderer.dir/
-  TARGET_PDB = /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/build/intermediates/cxx/RelWithDebInfo/5k2v4553/obj/armeabi-v7a/libvirglrenderer.pdb
 
 build virglrenderer/CMakeFiles/virglrenderer.dir/src/gallium/auxiliary/util/u_debug.c.o: C_COMPILER__virglrenderer_RelWithDebInfo /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary/util/u_debug.c || cmake_object_order_depends_target_virglrenderer
   DEFINES = -Dvirglrenderer_EXPORTS
@@ -348,8 +304,6 @@ build virglrenderer/CMakeFiles/virglrenderer.dir/src/gallium/auxiliary/util/u_de
   INCLUDES = -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/include -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary/util -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/server
   OBJECT_DIR = virglrenderer/CMakeFiles/virglrenderer.dir
   OBJECT_FILE_DIR = virglrenderer/CMakeFiles/virglrenderer.dir/src/gallium/auxiliary/util
-  TARGET_COMPILE_PDB = virglrenderer/CMakeFiles/virglrenderer.dir/
-  TARGET_PDB = /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/build/intermediates/cxx/RelWithDebInfo/5k2v4553/obj/armeabi-v7a/libvirglrenderer.pdb
 
 build virglrenderer/CMakeFiles/virglrenderer.dir/src/gallium/auxiliary/util/u_cpu_detect.c.o: C_COMPILER__virglrenderer_RelWithDebInfo /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary/util/u_cpu_detect.c || cmake_object_order_depends_target_virglrenderer
   DEFINES = -Dvirglrenderer_EXPORTS
@@ -358,8 +312,6 @@ build virglrenderer/CMakeFiles/virglrenderer.dir/src/gallium/auxiliary/util/u_cp
   INCLUDES = -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/include -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary/util -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/server
   OBJECT_DIR = virglrenderer/CMakeFiles/virglrenderer.dir
   OBJECT_FILE_DIR = virglrenderer/CMakeFiles/virglrenderer.dir/src/gallium/auxiliary/util
-  TARGET_COMPILE_PDB = virglrenderer/CMakeFiles/virglrenderer.dir/
-  TARGET_PDB = /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/build/intermediates/cxx/RelWithDebInfo/5k2v4553/obj/armeabi-v7a/libvirglrenderer.pdb
 
 build virglrenderer/CMakeFiles/virglrenderer.dir/src/gallium/auxiliary/util/u_bitmask.c.o: C_COMPILER__virglrenderer_RelWithDebInfo /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary/util/u_bitmask.c || cmake_object_order_depends_target_virglrenderer
   DEFINES = -Dvirglrenderer_EXPORTS
@@ -368,8 +320,6 @@ build virglrenderer/CMakeFiles/virglrenderer.dir/src/gallium/auxiliary/util/u_bi
   INCLUDES = -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/include -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary/util -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/server
   OBJECT_DIR = virglrenderer/CMakeFiles/virglrenderer.dir
   OBJECT_FILE_DIR = virglrenderer/CMakeFiles/virglrenderer.dir/src/gallium/auxiliary/util
-  TARGET_COMPILE_PDB = virglrenderer/CMakeFiles/virglrenderer.dir/
-  TARGET_PDB = /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/build/intermediates/cxx/RelWithDebInfo/5k2v4553/obj/armeabi-v7a/libvirglrenderer.pdb
 
 build virglrenderer/CMakeFiles/virglrenderer.dir/src/gallium/auxiliary/util/u_surface.c.o: C_COMPILER__virglrenderer_RelWithDebInfo /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary/util/u_surface.c || cmake_object_order_depends_target_virglrenderer
   DEFINES = -Dvirglrenderer_EXPORTS
@@ -378,8 +328,6 @@ build virglrenderer/CMakeFiles/virglrenderer.dir/src/gallium/auxiliary/util/u_su
   INCLUDES = -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/include -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary/util -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/server
   OBJECT_DIR = virglrenderer/CMakeFiles/virglrenderer.dir
   OBJECT_FILE_DIR = virglrenderer/CMakeFiles/virglrenderer.dir/src/gallium/auxiliary/util
-  TARGET_COMPILE_PDB = virglrenderer/CMakeFiles/virglrenderer.dir/
-  TARGET_PDB = /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/build/intermediates/cxx/RelWithDebInfo/5k2v4553/obj/armeabi-v7a/libvirglrenderer.pdb
 
 build virglrenderer/CMakeFiles/virglrenderer.dir/src/gallium/auxiliary/util/u_math.c.o: C_COMPILER__virglrenderer_RelWithDebInfo /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary/util/u_math.c || cmake_object_order_depends_target_virglrenderer
   DEFINES = -Dvirglrenderer_EXPORTS
@@ -388,8 +336,6 @@ build virglrenderer/CMakeFiles/virglrenderer.dir/src/gallium/auxiliary/util/u_ma
   INCLUDES = -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/include -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary/util -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/server
   OBJECT_DIR = virglrenderer/CMakeFiles/virglrenderer.dir
   OBJECT_FILE_DIR = virglrenderer/CMakeFiles/virglrenderer.dir/src/gallium/auxiliary/util
-  TARGET_COMPILE_PDB = virglrenderer/CMakeFiles/virglrenderer.dir/
-  TARGET_PDB = /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/build/intermediates/cxx/RelWithDebInfo/5k2v4553/obj/armeabi-v7a/libvirglrenderer.pdb
 
 build virglrenderer/CMakeFiles/virglrenderer.dir/src/gallium/auxiliary/util/u_debug_describe.c.o: C_COMPILER__virglrenderer_RelWithDebInfo /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary/util/u_debug_describe.c || cmake_object_order_depends_target_virglrenderer
   DEFINES = -Dvirglrenderer_EXPORTS
@@ -398,8 +344,6 @@ build virglrenderer/CMakeFiles/virglrenderer.dir/src/gallium/auxiliary/util/u_de
   INCLUDES = -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/include -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary/util -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/server
   OBJECT_DIR = virglrenderer/CMakeFiles/virglrenderer.dir
   OBJECT_FILE_DIR = virglrenderer/CMakeFiles/virglrenderer.dir/src/gallium/auxiliary/util
-  TARGET_COMPILE_PDB = virglrenderer/CMakeFiles/virglrenderer.dir/
-  TARGET_PDB = /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/build/intermediates/cxx/RelWithDebInfo/5k2v4553/obj/armeabi-v7a/libvirglrenderer.pdb
 
 build virglrenderer/CMakeFiles/virglrenderer.dir/src/gallium/auxiliary/cso_cache/cso_cache.c.o: C_COMPILER__virglrenderer_RelWithDebInfo /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary/cso_cache/cso_cache.c || cmake_object_order_depends_target_virglrenderer
   DEFINES = -Dvirglrenderer_EXPORTS
@@ -408,8 +352,6 @@ build virglrenderer/CMakeFiles/virglrenderer.dir/src/gallium/auxiliary/cso_cache
   INCLUDES = -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/include -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary/util -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/server
   OBJECT_DIR = virglrenderer/CMakeFiles/virglrenderer.dir
   OBJECT_FILE_DIR = virglrenderer/CMakeFiles/virglrenderer.dir/src/gallium/auxiliary/cso_cache
-  TARGET_COMPILE_PDB = virglrenderer/CMakeFiles/virglrenderer.dir/
-  TARGET_PDB = /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/build/intermediates/cxx/RelWithDebInfo/5k2v4553/obj/armeabi-v7a/libvirglrenderer.pdb
 
 build virglrenderer/CMakeFiles/virglrenderer.dir/src/gallium/auxiliary/cso_cache/cso_hash.c.o: C_COMPILER__virglrenderer_RelWithDebInfo /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary/cso_cache/cso_hash.c || cmake_object_order_depends_target_virglrenderer
   DEFINES = -Dvirglrenderer_EXPORTS
@@ -418,8 +360,6 @@ build virglrenderer/CMakeFiles/virglrenderer.dir/src/gallium/auxiliary/cso_cache
   INCLUDES = -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/include -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary/util -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/server
   OBJECT_DIR = virglrenderer/CMakeFiles/virglrenderer.dir
   OBJECT_FILE_DIR = virglrenderer/CMakeFiles/virglrenderer.dir/src/gallium/auxiliary/cso_cache
-  TARGET_COMPILE_PDB = virglrenderer/CMakeFiles/virglrenderer.dir/
-  TARGET_PDB = /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/build/intermediates/cxx/RelWithDebInfo/5k2v4553/obj/armeabi-v7a/libvirglrenderer.pdb
 
 build virglrenderer/CMakeFiles/virglrenderer.dir/src/gallium/auxiliary/tgsi/tgsi_dump.c.o: C_COMPILER__virglrenderer_RelWithDebInfo /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary/tgsi/tgsi_dump.c || cmake_object_order_depends_target_virglrenderer
   DEFINES = -Dvirglrenderer_EXPORTS
@@ -428,8 +368,6 @@ build virglrenderer/CMakeFiles/virglrenderer.dir/src/gallium/auxiliary/tgsi/tgsi
   INCLUDES = -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/include -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary/util -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/server
   OBJECT_DIR = virglrenderer/CMakeFiles/virglrenderer.dir
   OBJECT_FILE_DIR = virglrenderer/CMakeFiles/virglrenderer.dir/src/gallium/auxiliary/tgsi
-  TARGET_COMPILE_PDB = virglrenderer/CMakeFiles/virglrenderer.dir/
-  TARGET_PDB = /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/build/intermediates/cxx/RelWithDebInfo/5k2v4553/obj/armeabi-v7a/libvirglrenderer.pdb
 
 build virglrenderer/CMakeFiles/virglrenderer.dir/src/gallium/auxiliary/tgsi/tgsi_ureg.c.o: C_COMPILER__virglrenderer_RelWithDebInfo /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary/tgsi/tgsi_ureg.c || cmake_object_order_depends_target_virglrenderer
   DEFINES = -Dvirglrenderer_EXPORTS
@@ -438,8 +376,6 @@ build virglrenderer/CMakeFiles/virglrenderer.dir/src/gallium/auxiliary/tgsi/tgsi
   INCLUDES = -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/include -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary/util -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/server
   OBJECT_DIR = virglrenderer/CMakeFiles/virglrenderer.dir
   OBJECT_FILE_DIR = virglrenderer/CMakeFiles/virglrenderer.dir/src/gallium/auxiliary/tgsi
-  TARGET_COMPILE_PDB = virglrenderer/CMakeFiles/virglrenderer.dir/
-  TARGET_PDB = /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/build/intermediates/cxx/RelWithDebInfo/5k2v4553/obj/armeabi-v7a/libvirglrenderer.pdb
 
 build virglrenderer/CMakeFiles/virglrenderer.dir/src/gallium/auxiliary/tgsi/tgsi_build.c.o: C_COMPILER__virglrenderer_RelWithDebInfo /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary/tgsi/tgsi_build.c || cmake_object_order_depends_target_virglrenderer
   DEFINES = -Dvirglrenderer_EXPORTS
@@ -448,8 +384,6 @@ build virglrenderer/CMakeFiles/virglrenderer.dir/src/gallium/auxiliary/tgsi/tgsi
   INCLUDES = -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/include -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary/util -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/server
   OBJECT_DIR = virglrenderer/CMakeFiles/virglrenderer.dir
   OBJECT_FILE_DIR = virglrenderer/CMakeFiles/virglrenderer.dir/src/gallium/auxiliary/tgsi
-  TARGET_COMPILE_PDB = virglrenderer/CMakeFiles/virglrenderer.dir/
-  TARGET_PDB = /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/build/intermediates/cxx/RelWithDebInfo/5k2v4553/obj/armeabi-v7a/libvirglrenderer.pdb
 
 build virglrenderer/CMakeFiles/virglrenderer.dir/src/gallium/auxiliary/tgsi/tgsi_scan.c.o: C_COMPILER__virglrenderer_RelWithDebInfo /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary/tgsi/tgsi_scan.c || cmake_object_order_depends_target_virglrenderer
   DEFINES = -Dvirglrenderer_EXPORTS
@@ -458,8 +392,6 @@ build virglrenderer/CMakeFiles/virglrenderer.dir/src/gallium/auxiliary/tgsi/tgsi
   INCLUDES = -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/include -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary/util -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/server
   OBJECT_DIR = virglrenderer/CMakeFiles/virglrenderer.dir
   OBJECT_FILE_DIR = virglrenderer/CMakeFiles/virglrenderer.dir/src/gallium/auxiliary/tgsi
-  TARGET_COMPILE_PDB = virglrenderer/CMakeFiles/virglrenderer.dir/
-  TARGET_PDB = /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/build/intermediates/cxx/RelWithDebInfo/5k2v4553/obj/armeabi-v7a/libvirglrenderer.pdb
 
 build virglrenderer/CMakeFiles/virglrenderer.dir/src/gallium/auxiliary/tgsi/tgsi_info.c.o: C_COMPILER__virglrenderer_RelWithDebInfo /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary/tgsi/tgsi_info.c || cmake_object_order_depends_target_virglrenderer
   DEFINES = -Dvirglrenderer_EXPORTS
@@ -468,8 +400,6 @@ build virglrenderer/CMakeFiles/virglrenderer.dir/src/gallium/auxiliary/tgsi/tgsi
   INCLUDES = -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/include -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary/util -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/server
   OBJECT_DIR = virglrenderer/CMakeFiles/virglrenderer.dir
   OBJECT_FILE_DIR = virglrenderer/CMakeFiles/virglrenderer.dir/src/gallium/auxiliary/tgsi
-  TARGET_COMPILE_PDB = virglrenderer/CMakeFiles/virglrenderer.dir/
-  TARGET_PDB = /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/build/intermediates/cxx/RelWithDebInfo/5k2v4553/obj/armeabi-v7a/libvirglrenderer.pdb
 
 build virglrenderer/CMakeFiles/virglrenderer.dir/src/gallium/auxiliary/tgsi/tgsi_parse.c.o: C_COMPILER__virglrenderer_RelWithDebInfo /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary/tgsi/tgsi_parse.c || cmake_object_order_depends_target_virglrenderer
   DEFINES = -Dvirglrenderer_EXPORTS
@@ -478,8 +408,6 @@ build virglrenderer/CMakeFiles/virglrenderer.dir/src/gallium/auxiliary/tgsi/tgsi
   INCLUDES = -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/include -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary/util -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/server
   OBJECT_DIR = virglrenderer/CMakeFiles/virglrenderer.dir
   OBJECT_FILE_DIR = virglrenderer/CMakeFiles/virglrenderer.dir/src/gallium/auxiliary/tgsi
-  TARGET_COMPILE_PDB = virglrenderer/CMakeFiles/virglrenderer.dir/
-  TARGET_PDB = /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/build/intermediates/cxx/RelWithDebInfo/5k2v4553/obj/armeabi-v7a/libvirglrenderer.pdb
 
 build virglrenderer/CMakeFiles/virglrenderer.dir/src/gallium/auxiliary/tgsi/tgsi_text.c.o: C_COMPILER__virglrenderer_RelWithDebInfo /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary/tgsi/tgsi_text.c || cmake_object_order_depends_target_virglrenderer
   DEFINES = -Dvirglrenderer_EXPORTS
@@ -488,8 +416,6 @@ build virglrenderer/CMakeFiles/virglrenderer.dir/src/gallium/auxiliary/tgsi/tgsi
   INCLUDES = -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/include -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary/util -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/server
   OBJECT_DIR = virglrenderer/CMakeFiles/virglrenderer.dir
   OBJECT_FILE_DIR = virglrenderer/CMakeFiles/virglrenderer.dir/src/gallium/auxiliary/tgsi
-  TARGET_COMPILE_PDB = virglrenderer/CMakeFiles/virglrenderer.dir/
-  TARGET_PDB = /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/build/intermediates/cxx/RelWithDebInfo/5k2v4553/obj/armeabi-v7a/libvirglrenderer.pdb
 
 build virglrenderer/CMakeFiles/virglrenderer.dir/src/gallium/auxiliary/tgsi/tgsi_strings.c.o: C_COMPILER__virglrenderer_RelWithDebInfo /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary/tgsi/tgsi_strings.c || cmake_object_order_depends_target_virglrenderer
   DEFINES = -Dvirglrenderer_EXPORTS
@@ -498,8 +424,6 @@ build virglrenderer/CMakeFiles/virglrenderer.dir/src/gallium/auxiliary/tgsi/tgsi
   INCLUDES = -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/include -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary/util -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/server
   OBJECT_DIR = virglrenderer/CMakeFiles/virglrenderer.dir
   OBJECT_FILE_DIR = virglrenderer/CMakeFiles/virglrenderer.dir/src/gallium/auxiliary/tgsi
-  TARGET_COMPILE_PDB = virglrenderer/CMakeFiles/virglrenderer.dir/
-  TARGET_PDB = /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/build/intermediates/cxx/RelWithDebInfo/5k2v4553/obj/armeabi-v7a/libvirglrenderer.pdb
 
 build virglrenderer/CMakeFiles/virglrenderer.dir/src/gallium/auxiliary/tgsi/tgsi_sanity.c.o: C_COMPILER__virglrenderer_RelWithDebInfo /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary/tgsi/tgsi_sanity.c || cmake_object_order_depends_target_virglrenderer
   DEFINES = -Dvirglrenderer_EXPORTS
@@ -508,8 +432,6 @@ build virglrenderer/CMakeFiles/virglrenderer.dir/src/gallium/auxiliary/tgsi/tgsi
   INCLUDES = -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/include -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary/util -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/server
   OBJECT_DIR = virglrenderer/CMakeFiles/virglrenderer.dir
   OBJECT_FILE_DIR = virglrenderer/CMakeFiles/virglrenderer.dir/src/gallium/auxiliary/tgsi
-  TARGET_COMPILE_PDB = virglrenderer/CMakeFiles/virglrenderer.dir/
-  TARGET_PDB = /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/build/intermediates/cxx/RelWithDebInfo/5k2v4553/obj/armeabi-v7a/libvirglrenderer.pdb
 
 build virglrenderer/CMakeFiles/virglrenderer.dir/src/gallium/auxiliary/tgsi/tgsi_iterate.c.o: C_COMPILER__virglrenderer_RelWithDebInfo /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary/tgsi/tgsi_iterate.c || cmake_object_order_depends_target_virglrenderer
   DEFINES = -Dvirglrenderer_EXPORTS
@@ -518,8 +440,6 @@ build virglrenderer/CMakeFiles/virglrenderer.dir/src/gallium/auxiliary/tgsi/tgsi
   INCLUDES = -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/include -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary/util -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/server
   OBJECT_DIR = virglrenderer/CMakeFiles/virglrenderer.dir
   OBJECT_FILE_DIR = virglrenderer/CMakeFiles/virglrenderer.dir/src/gallium/auxiliary/tgsi
-  TARGET_COMPILE_PDB = virglrenderer/CMakeFiles/virglrenderer.dir/
-  TARGET_PDB = /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/build/intermediates/cxx/RelWithDebInfo/5k2v4553/obj/armeabi-v7a/libvirglrenderer.pdb
 
 build virglrenderer/CMakeFiles/virglrenderer.dir/src/gallium/auxiliary/tgsi/tgsi_util.c.o: C_COMPILER__virglrenderer_RelWithDebInfo /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary/tgsi/tgsi_util.c || cmake_object_order_depends_target_virglrenderer
   DEFINES = -Dvirglrenderer_EXPORTS
@@ -528,8 +448,6 @@ build virglrenderer/CMakeFiles/virglrenderer.dir/src/gallium/auxiliary/tgsi/tgsi
   INCLUDES = -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/include -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary/util -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/server
   OBJECT_DIR = virglrenderer/CMakeFiles/virglrenderer.dir
   OBJECT_FILE_DIR = virglrenderer/CMakeFiles/virglrenderer.dir/src/gallium/auxiliary/tgsi
-  TARGET_COMPILE_PDB = virglrenderer/CMakeFiles/virglrenderer.dir/
-  TARGET_PDB = /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/build/intermediates/cxx/RelWithDebInfo/5k2v4553/obj/armeabi-v7a/libvirglrenderer.pdb
 
 build virglrenderer/CMakeFiles/virglrenderer.dir/src/gallium/auxiliary/tgsi/tgsi_transform.c.o: C_COMPILER__virglrenderer_RelWithDebInfo /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary/tgsi/tgsi_transform.c || cmake_object_order_depends_target_virglrenderer
   DEFINES = -Dvirglrenderer_EXPORTS
@@ -538,8 +456,6 @@ build virglrenderer/CMakeFiles/virglrenderer.dir/src/gallium/auxiliary/tgsi/tgsi
   INCLUDES = -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/include -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary/util -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/server
   OBJECT_DIR = virglrenderer/CMakeFiles/virglrenderer.dir
   OBJECT_FILE_DIR = virglrenderer/CMakeFiles/virglrenderer.dir/src/gallium/auxiliary/tgsi
-  TARGET_COMPILE_PDB = virglrenderer/CMakeFiles/virglrenderer.dir/
-  TARGET_PDB = /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/build/intermediates/cxx/RelWithDebInfo/5k2v4553/obj/armeabi-v7a/libvirglrenderer.pdb
 
 build virglrenderer/CMakeFiles/virglrenderer.dir/src/gallium/auxiliary/os/os_misc.c.o: C_COMPILER__virglrenderer_RelWithDebInfo /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary/os/os_misc.c || cmake_object_order_depends_target_virglrenderer
   DEFINES = -Dvirglrenderer_EXPORTS
@@ -548,8 +464,6 @@ build virglrenderer/CMakeFiles/virglrenderer.dir/src/gallium/auxiliary/os/os_mis
   INCLUDES = -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/include -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/src/gallium/auxiliary/util -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/server
   OBJECT_DIR = virglrenderer/CMakeFiles/virglrenderer.dir
   OBJECT_FILE_DIR = virglrenderer/CMakeFiles/virglrenderer.dir/src/gallium/auxiliary/os
-  TARGET_COMPILE_PDB = virglrenderer/CMakeFiles/virglrenderer.dir/
-  TARGET_PDB = /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/build/intermediates/cxx/RelWithDebInfo/5k2v4553/obj/armeabi-v7a/libvirglrenderer.pdb
 
 
 # =============================================================================
@@ -568,9 +482,8 @@ build /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/build/int
   PRE_LINK = :
   SONAME = libvirglrenderer.so
   SONAME_FLAG = -Wl,-soname,
-  TARGET_COMPILE_PDB = virglrenderer/CMakeFiles/virglrenderer.dir/
   TARGET_FILE = /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/build/intermediates/cxx/RelWithDebInfo/5k2v4553/obj/armeabi-v7a/libvirglrenderer.so
-  TARGET_PDB = /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/build/intermediates/cxx/RelWithDebInfo/5k2v4553/obj/armeabi-v7a/libvirglrenderer.pdb
+  TARGET_PDB = virglrenderer.so.dbg
 
 
 #############################################
@@ -616,8 +529,6 @@ build patchelf/CMakeFiles/patchelf.dir/src/patchelf.cc.o: CXX_COMPILER__patchelf
   INCLUDES = -I/home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/patchelf/src
   OBJECT_DIR = patchelf/CMakeFiles/patchelf.dir
   OBJECT_FILE_DIR = patchelf/CMakeFiles/patchelf.dir/src
-  TARGET_COMPILE_PDB = patchelf/CMakeFiles/patchelf.dir/
-  TARGET_PDB = /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/build/intermediates/cxx/RelWithDebInfo/5k2v4553/obj/armeabi-v7a/libpatchelf.pdb
 
 
 # =============================================================================
@@ -636,9 +547,8 @@ build /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/build/int
   PRE_LINK = :
   SONAME = libpatchelf.so
   SONAME_FLAG = -Wl,-soname,
-  TARGET_COMPILE_PDB = patchelf/CMakeFiles/patchelf.dir/
   TARGET_FILE = /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/build/intermediates/cxx/RelWithDebInfo/5k2v4553/obj/armeabi-v7a/libpatchelf.so
-  TARGET_PDB = /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/build/intermediates/cxx/RelWithDebInfo/5k2v4553/obj/armeabi-v7a/libpatchelf.pdb
+  TARGET_PDB = patchelf.so.dbg
 
 
 #############################################
@@ -713,14 +623,14 @@ build virglrenderer/all: phony /home/max/Build/GameNative-Enh-source/GameNative-
 #############################################
 # Re-run CMake if any of its inputs changed.
 
-build build.ninja: RERUN_CMAKE | /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/CMakeLists.txt /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/patchelf/CMakeLists.txt /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/CMakeLists.txt /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeCCompiler.cmake.in /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeCCompilerABI.c /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeCInformation.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeCXXCompiler.cmake.in /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeCXXCompilerABI.cpp /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeCXXInformation.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeCommonLanguageInclude.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeCompilerIdDetection.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeDetermineCCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeDetermineCXXCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeDetermineCompileFeatures.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeDetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeDetermineCompilerABI.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeDetermineCompilerId.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeDetermineSystem.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeFindBinUtils.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeGenericSystem.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeInitializeConfigs.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeLanguageInformation.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeParseImplicitIncludeInfo.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeParseImplicitLinkInfo.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeParseLibraryArchitecture.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeSystem.cmake.in /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeSystemSpecificInformation.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeSystemSpecificInitialize.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeTestCCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeTestCXXCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeTestCompilerCommon.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/ADSP-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/ARMCC-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/ARMClang-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/AppleClang-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/Borland-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/Bruce-C-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/CMakeCommonCompilerMacros.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/Clang-C.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/Clang-CXX.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/Clang-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/Clang-DetermineCompilerInternal.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/Clang-FindBinUtils.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/Clang.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/Comeau-CXX-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/Compaq-C-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/Compaq-CXX-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/Cray-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/Embarcadero-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/Fujitsu-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/FujitsuClang-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/GHS-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/GNU-C-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/GNU-CXX-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/GNU.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/HP-C-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/HP-CXX-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/IAR-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/IBMCPP-C-DetermineVersionInternal.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/IBMCPP-CXX-DetermineVersionInternal.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/Intel-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/IntelLLVM-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/MSVC-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/NVHPC-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/NVIDIA-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/OpenWatcom-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/PGI-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/PathScale-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/SCO-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/SDCC-C-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/SunPro-C-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/SunPro-CXX-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/TI-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/TinyCC-C-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/VisualAge-C-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/VisualAge-CXX-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/Watcom-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/XL-C-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/XL-CXX-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/XLClang-C-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/XLClang-CXX-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/zOS-C-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/zOS-CXX-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Internal/FeatureTesting.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Platform/Android-Clang-C.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Platform/Android-Clang-CXX.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Platform/Android-Clang.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Platform/Android-Determine-C.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Platform/Android-Determine-CXX.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Platform/Android-Determine.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Platform/Android-Initialize.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Platform/Android.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Platform/Android/Determine-Compiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Platform/Linux.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Platform/UnixPaths.cmake /home/max/android-sdk/ndk/22.1.7171670/build/cmake/android.toolchain.cmake /home/max/android-sdk/ndk/22.1.7171670/build/cmake/platforms.cmake CMakeCache.txt CMakeFiles/3.22.1-g37088a8/CMakeCCompiler.cmake CMakeFiles/3.22.1-g37088a8/CMakeCXXCompiler.cmake CMakeFiles/3.22.1-g37088a8/CMakeSystem.cmake
+build build.ninja: RERUN_CMAKE | /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/CMakeLists.txt /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/patchelf/CMakeLists.txt /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/CMakeLists.txt /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeCInformation.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeCXXInformation.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeCommonLanguageInclude.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeGenericSystem.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeInitializeConfigs.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeLanguageInformation.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeSystemSpecificInformation.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeSystemSpecificInitialize.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/CMakeCommonCompilerMacros.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/Clang-C.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/Clang-CXX.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/Clang.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/GNU.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Platform/Android-Clang-C.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Platform/Android-Clang-CXX.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Platform/Android-Clang.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Platform/Android-Initialize.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Platform/Android.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Platform/Linux.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Platform/UnixPaths.cmake /home/max/android-sdk/ndk/22.1.7171670/build/cmake/android.toolchain.cmake /home/max/android-sdk/ndk/22.1.7171670/build/cmake/platforms.cmake CMakeCache.txt CMakeFiles/3.22.1-g37088a8/CMakeCCompiler.cmake CMakeFiles/3.22.1-g37088a8/CMakeCXXCompiler.cmake CMakeFiles/3.22.1-g37088a8/CMakeSystem.cmake
   pool = console
 
 
 #############################################
 # A missing CMake input file is not an error.
 
-build /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/CMakeLists.txt /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/patchelf/CMakeLists.txt /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/CMakeLists.txt /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeCCompiler.cmake.in /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeCCompilerABI.c /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeCInformation.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeCXXCompiler.cmake.in /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeCXXCompilerABI.cpp /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeCXXInformation.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeCommonLanguageInclude.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeCompilerIdDetection.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeDetermineCCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeDetermineCXXCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeDetermineCompileFeatures.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeDetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeDetermineCompilerABI.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeDetermineCompilerId.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeDetermineSystem.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeFindBinUtils.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeGenericSystem.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeInitializeConfigs.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeLanguageInformation.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeParseImplicitIncludeInfo.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeParseImplicitLinkInfo.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeParseLibraryArchitecture.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeSystem.cmake.in /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeSystemSpecificInformation.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeSystemSpecificInitialize.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeTestCCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeTestCXXCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeTestCompilerCommon.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/ADSP-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/ARMCC-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/ARMClang-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/AppleClang-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/Borland-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/Bruce-C-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/CMakeCommonCompilerMacros.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/Clang-C.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/Clang-CXX.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/Clang-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/Clang-DetermineCompilerInternal.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/Clang-FindBinUtils.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/Clang.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/Comeau-CXX-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/Compaq-C-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/Compaq-CXX-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/Cray-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/Embarcadero-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/Fujitsu-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/FujitsuClang-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/GHS-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/GNU-C-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/GNU-CXX-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/GNU.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/HP-C-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/HP-CXX-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/IAR-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/IBMCPP-C-DetermineVersionInternal.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/IBMCPP-CXX-DetermineVersionInternal.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/Intel-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/IntelLLVM-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/MSVC-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/NVHPC-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/NVIDIA-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/OpenWatcom-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/PGI-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/PathScale-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/SCO-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/SDCC-C-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/SunPro-C-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/SunPro-CXX-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/TI-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/TinyCC-C-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/VisualAge-C-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/VisualAge-CXX-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/Watcom-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/XL-C-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/XL-CXX-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/XLClang-C-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/XLClang-CXX-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/zOS-C-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/zOS-CXX-DetermineCompiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Internal/FeatureTesting.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Platform/Android-Clang-C.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Platform/Android-Clang-CXX.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Platform/Android-Clang.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Platform/Android-Determine-C.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Platform/Android-Determine-CXX.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Platform/Android-Determine.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Platform/Android-Initialize.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Platform/Android.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Platform/Android/Determine-Compiler.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Platform/Linux.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Platform/UnixPaths.cmake /home/max/android-sdk/ndk/22.1.7171670/build/cmake/android.toolchain.cmake /home/max/android-sdk/ndk/22.1.7171670/build/cmake/platforms.cmake CMakeCache.txt CMakeFiles/3.22.1-g37088a8/CMakeCCompiler.cmake CMakeFiles/3.22.1-g37088a8/CMakeCXXCompiler.cmake CMakeFiles/3.22.1-g37088a8/CMakeSystem.cmake: phony
+build /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/CMakeLists.txt /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/patchelf/CMakeLists.txt /home/max/Build/GameNative-Enh-source/GameNative-Performance/app/src/main/cpp/virglrenderer/CMakeLists.txt /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeCInformation.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeCXXInformation.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeCommonLanguageInclude.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeGenericSystem.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeInitializeConfigs.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeLanguageInformation.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeSystemSpecificInformation.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeSystemSpecificInitialize.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/CMakeCommonCompilerMacros.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/Clang-C.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/Clang-CXX.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/Clang.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Compiler/GNU.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Platform/Android-Clang-C.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Platform/Android-Clang-CXX.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Platform/Android-Clang.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Platform/Android-Initialize.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Platform/Android.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Platform/Linux.cmake /home/max/android-sdk/cmake/3.22.1/share/cmake-3.22/Modules/Platform/UnixPaths.cmake /home/max/android-sdk/ndk/22.1.7171670/build/cmake/android.toolchain.cmake /home/max/android-sdk/ndk/22.1.7171670/build/cmake/platforms.cmake CMakeCache.txt CMakeFiles/3.22.1-g37088a8/CMakeCCompiler.cmake CMakeFiles/3.22.1-g37088a8/CMakeCXXCompiler.cmake CMakeFiles/3.22.1-g37088a8/CMakeSystem.cmake: phony
 
 
 #############################################

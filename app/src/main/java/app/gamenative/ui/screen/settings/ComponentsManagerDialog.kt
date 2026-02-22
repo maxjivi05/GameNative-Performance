@@ -1361,7 +1361,7 @@ private fun WineProtonDetailScreen(
                                 val name = obj["name"]?.jsonPrimitive?.content ?: return@mapNotNull null
                                 val url = obj["browser_download_url"]?.jsonPrimitive?.content ?: return@mapNotNull null
                                 if (!name.endsWith(".wcp", ignoreCase = true)) return@mapNotNull null
-                                
+
                                 // Extract version from filename
                                 val ver = extractVersionFromFilename(name)
                                 val displayName = name.removeSuffix(".wcp")
@@ -1374,8 +1374,35 @@ private fun WineProtonDetailScreen(
                     emptyList()
                 }
 
-                // 3. Merge and Sort (Newest Version First)
-                val combined = (gnItems + ghItems).sortedWith { a, b ->
+                // 3. Fetch GameNative Proton 10.0 releases (x86_64 + arm64ec)
+                val gnProtonItems = try {
+                    val req = Request.Builder()
+                        .url("https://api.github.com/repos/GameNative/proton-wine/releases/tags/build-10")
+                        .header("Accept", "application/vnd.github.v3+json")
+                        .build()
+                    Net.http.newCall(req).execute().use { resp ->
+                        if (resp.isSuccessful) {
+                            val json = Json.parseToJsonElement(resp.body?.string() ?: "{}").jsonObject
+                            val assets = json["assets"]?.jsonArray ?: emptyList()
+                            assets.mapNotNull { element ->
+                                val obj = element.jsonObject
+                                val name = obj["name"]?.jsonPrimitive?.content ?: return@mapNotNull null
+                                val url = obj["browser_download_url"]?.jsonPrimitive?.content ?: return@mapNotNull null
+                                if (!name.endsWith(".wcp", ignoreCase = true)) return@mapNotNull null
+                                if (!name.startsWith("proton", ignoreCase = true)) return@mapNotNull null
+                                val ver = "10.0"
+                                val displayName = name.removeSuffix(".wcp")
+                                WineReleaseItem(displayName, ver, url, name)
+                            }
+                        } else emptyList()
+                    }
+                } catch (e: Exception) {
+                    Timber.e(e, "GN Proton manifest error")
+                    emptyList()
+                }
+
+                // 4. Merge and Sort (Newest Version First)
+                val combined = (gnItems + ghItems + gnProtonItems).sortedWith { a, b ->
                     compareVersionStrings(b.version, a.version)
                 }
 
