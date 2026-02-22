@@ -242,8 +242,6 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
             envVars.put("WINE_LOG_PEB_DATA", "1");
         }
 
-        EnvVars envVars = new EnvVars();
-
         // Use the ControllerManager's dynamic count for the environment variable
         envVars.put("EVSHIM_MAX_PLAYERS", String.valueOf(enabledPlayerCount));
         if (true) {
