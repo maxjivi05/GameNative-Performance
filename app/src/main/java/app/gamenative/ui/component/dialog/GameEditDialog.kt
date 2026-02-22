@@ -321,6 +321,17 @@ fun GameEditDialog(
         }
     }
     
+    // Render any additional dialogs from the screen model (e.g., Uninstall confirmation)
+    screenModel.AdditionalDialogs(
+        libraryItem = libraryItem,
+        onDismiss = onDismiss,
+        onEditContainer = {
+            containerData = screenModel.loadContainerData(context, libraryItem)
+            currentView = EditView.SETTINGS
+        },
+        onBack = onDismiss
+    )
+    
     // Listen for Container Options event to inject Test Graphics
     // This is a bit hacky: The Container option emits ShowContainerOptions.
     // BaseAppScreen handles this by showing ContainerOptionsDialog.

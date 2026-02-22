@@ -121,27 +121,60 @@ object SaveManager {
         if (!driveC.exists()) driveC.mkdirs()
 
         return try {
+            // First pass: Analyze the ZIP structure to determine the "base" path mapping
+            val entryMappings = mutableMapOf<String, String>() // ZipPath -> FinalPath (relative to wineDir)
+            
             context.contentResolver.openInputStream(sourceUri)?.use { `is` ->
                 ZipInputStream(BufferedInputStream(`is`)).use { zis ->
                     var entry: ZipEntry?
                     while (zis.nextEntry.also { entry = it } != null) {
-                        var entryName = entry!!.name
-                        entryName = entryName.replace('\\', '/')
-
-                        // Remap steamuser to xuser
-                        if (entryName.contains("users/$WINE_USER_STEAMUSER", ignoreCase = true)) {
-                            entryName = entryName.replace("users/$WINE_USER_STEAMUSER", "users/$WINE_USER_XUSER", ignoreCase = true)
-                        }
+                        val originalName = entry!!.name.replace('\\', '/')
+                        if (originalName.isEmpty()) continue
                         
-                        val targetFile = if (entryName.startsWith("drive_c/", ignoreCase = true)) {
-                            File(wineDir, entryName)
-                        } else if (entryName.startsWith("users/", ignoreCase = true) || 
-                                   entryName.startsWith("ProgramData/", ignoreCase = true) ||
-                                   entryName.startsWith("windows/", ignoreCase = true)) {
-                            File(driveC, entryName)
-                        } else {
-                            File(driveC, entryName)
+                        var targetRelativePath = originalName
+
+                        // 1. Remap steamuser to xuser
+                        if (targetRelativePath.contains("users/$WINE_USER_STEAMUSER", ignoreCase = true)) {
+                            targetRelativePath = targetRelativePath.replace("users/$WINE_USER_STEAMUSER", "users/$WINE_USER_XUSER", ignoreCase = true)
                         }
+
+                        // 2. Identify and handle "blind" imports (GameHub style or just folders)
+                        // If it doesn't start with drive_c/, we need to guess where it goes.
+                        if (!targetRelativePath.startsWith("drive_c/", ignoreCase = true)) {
+                            // Check for common subfolders that should be under drive_c/
+                            val rootFolders = listOf("users/", "ProgramData/", "windows/", "Program Files/", "Program Files (x86)/")
+                            val shouldBeUnderDriveC = rootFolders.any { targetRelativePath.startsWith(it, ignoreCase = true) }
+                            
+                            if (shouldBeUnderDriveC) {
+                                targetRelativePath = "drive_c/$targetRelativePath"
+                            } else {
+                                // Smart detection: if it starts with "Saved Games", "AppData", "Documents", "Local Settings"
+                                // it likely belongs to drive_c/users/xuser/
+                                val userFolders = listOf("Saved Games/", "AppData/", "Documents/", "Local Settings/")
+                                val isUserFolder = userFolders.any { targetRelativePath.startsWith(it, ignoreCase = true) }
+                                
+                                if (isUserFolder) {
+                                    targetRelativePath = "drive_c/users/$WINE_USER_XUSER/$targetRelativePath"
+                                } else {
+                                    // Fallback: put in drive_c/ if it's not drive_c already
+                                    targetRelativePath = "drive_c/$targetRelativePath"
+                                }
+                            }
+                        }
+
+                        entryMappings[entry!!.name] = targetRelativePath
+                        zis.closeEntry()
+                    }
+                }
+            }
+
+            // Second pass: Perform the actual extraction using the mappings
+            context.contentResolver.openInputStream(sourceUri)?.use { `is` ->
+                ZipInputStream(BufferedInputStream(`is`)).use { zis ->
+                    var entry: ZipEntry?
+                    while (zis.nextEntry.also { entry = it } != null) {
+                        val targetRelativePath = entryMappings[entry!!.name] ?: continue
+                        val targetFile = File(wineDir, targetRelativePath)
                         
                         if (entry!!.isDirectory) {
                             targetFile.mkdirs()
@@ -153,6 +186,7 @@ object SaveManager {
                                 }
                             }
                         }
+                        zis.closeEntry()
                     }
                 }
             }

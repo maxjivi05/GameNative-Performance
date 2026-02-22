@@ -1296,7 +1296,7 @@ private fun WineProtonDetailScreen(
         refreshInstalled()
         scope.launch(Dispatchers.IO) {
             try {
-                // 1. Fetch GameNative Manifest
+                // 1. Fetch GameNative internal component manifest
                 val gnItems = try {
                     val req = Request.Builder().url("https://downloads.gamenative.app/component-manifest.json").build()
                     Net.http.newCall(req).execute().use { resp ->
@@ -1307,7 +1307,7 @@ private fun WineProtonDetailScreen(
                                 .map { 
                                     val name = it.key
                                     val file = it.value.toString().removeSurrounding("\"")
-                                    // Extract version: "wine-9.3" -> "9.3"
+                                    // Extract version for sorting: "wine-9.3" -> "9.3"
                                     val ver = extractVersionFromFilename(name)
                                     WineReleaseItem(name, ver, null, file)
                                 }
@@ -1318,67 +1318,50 @@ private fun WineProtonDetailScreen(
                     emptyList() 
                 }
 
-                // 2. Fetch GitHub Releases (Xnick417x)
-                val ghItems = try {
+                // 2. Fetch ALL GameNative proton-wine releases (X86_64, ARM64EC, etc.)
+                val gnProtonWineItems = try {
                     val req = Request.Builder()
-                        .url("https://api.github.com/repos/Xnick417x/Winlator-Bionic-Nightly-wcp/releases/tags/Wine")
+                        .url("https://api.github.com/repos/GameNative/proton-wine/releases?per_page=50")
                         .header("Accept", "application/vnd.github.v3+json")
                         .build()
                     Net.http.newCall(req).execute().use { resp ->
                         if (resp.isSuccessful) {
-                            val json = Json.parseToJsonElement(resp.body?.string() ?: "{}").jsonObject
-                            val assets = json["assets"]?.jsonArray ?: emptyList()
-                            assets.mapNotNull { element ->
-                                val obj = element.jsonObject
-                                val name = obj["name"]?.jsonPrimitive?.content ?: return@mapNotNull null
-                                val url = obj["browser_download_url"]?.jsonPrimitive?.content ?: return@mapNotNull null
-                                if (!name.endsWith(".wcp", ignoreCase = true)) return@mapNotNull null
+                            val releases = Json.parseToJsonElement(resp.body?.string() ?: "[]").jsonArray
+                            releases.flatMap { release ->
+                                val assets = release.jsonObject["assets"]?.jsonArray ?: emptyList()
+                                assets.mapNotNull { element ->
+                                    val obj = element.jsonObject
+                                    val name = obj["name"]?.jsonPrimitive?.content ?: return@mapNotNull null
+                                    val url = obj["browser_download_url"]?.jsonPrimitive?.content ?: return@mapNotNull null
+                                    if (!name.endsWith(".wcp", ignoreCase = true)) return@mapNotNull null
 
-                                // Extract version from filename
-                                val ver = extractVersionFromFilename(name)
-                                val displayName = name.removeSuffix(".wcp")
-                                WineReleaseItem(displayName, ver, url, name)
+                                    // For display name, use the full filename without extension to avoid confusion (e.g. Proton-10.0-4)
+                                    val displayName = name.removeSuffix(".wcp")
+                                    
+                                    // For sorting, extract the version part
+                                    val ver = extractVersionFromFilename(name)
+                                    
+                                    WineReleaseItem(displayName, ver, url, name)
+                                }
                             }
                         } else emptyList()
                     }
                 } catch (e: Exception) {
-                    Timber.e(e, "Wine GH manifest error")
+                    Timber.e(e, "GameNative proton-wine manifest error")
                     emptyList()
                 }
 
-                // 3. Fetch GameNative Proton 10.0 releases (x86_64 + arm64ec)
-                val gnProtonItems = try {
-                    val req = Request.Builder()
-                        .url("https://api.github.com/repos/GameNative/proton-wine/releases/tags/build-10")
-                        .header("Accept", "application/vnd.github.v3+json")
-                        .build()
-                    Net.http.newCall(req).execute().use { resp ->
-                        if (resp.isSuccessful) {
-                            val json = Json.parseToJsonElement(resp.body?.string() ?: "{}").jsonObject
-                            val assets = json["assets"]?.jsonArray ?: emptyList()
-                            assets.mapNotNull { element ->
-                                val obj = element.jsonObject
-                                val name = obj["name"]?.jsonPrimitive?.content ?: return@mapNotNull null
-                                val url = obj["browser_download_url"]?.jsonPrimitive?.content ?: return@mapNotNull null
-                                if (!name.endsWith(".wcp", ignoreCase = true)) return@mapNotNull null
-                                if (!name.startsWith("proton", ignoreCase = true)) return@mapNotNull null
-                                val ver = "10.0"
-                                val displayName = name.removeSuffix(".wcp")
-                                WineReleaseItem(displayName, ver, url, name)
-                            }
-                        } else emptyList()
-                    }
-                } catch (e: Exception) {
-                    Timber.e(e, "GN Proton manifest error")
-                    emptyList()
+                // 3. Merge and Sort (Newest Version First)
+                // Filter out Nick's repo as requested and combine GN internal + GN proton-wine
+                val combined = (gnItems + gnProtonWineItems).sortedWith { a, b ->
+                    // Primary sort by version string
+                    val verCmp = compareVersionStrings(b.version, a.version)
+                    if (verCmp != 0) verCmp else b.name.compareTo(a.name) // Secondary sort by full name
                 }
 
-                // 4. Merge and Sort (Newest Version First)
-                val combined = (gnItems + ghItems + gnProtonItems).sortedWith { a, b ->
-                    compareVersionStrings(b.version, a.version)
+                withContext(Dispatchers.Main) { 
+                    wineReleases = combined.distinctBy { it.fileName } 
                 }
-
-                withContext(Dispatchers.Main) { wineReleases = combined }
             } catch (e: Exception) { 
                 Timber.e(e, "Wine manifest error") 
             }
