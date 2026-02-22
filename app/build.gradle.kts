@@ -37,7 +37,7 @@ android {
     compileSdk = 35
 
     // https://developer.android.com/ndk/downloads
-    ndkVersion = "22.1.7171670"
+    ndkVersion = "27.3.13750724"
 
     signingConfigs {
         create("pluvia") {

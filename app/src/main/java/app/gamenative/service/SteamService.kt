@@ -1602,6 +1602,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                 // Total expected size (used for ETA based on recent download speed)
                 val totalBytes = sizes.sum()
                 di.setTotalExpectedBytes(totalBytes)
+                di.updateStatusMessage("Preparing download...")
 
                 // Load persisted bytes downloaded value on resume
                 val persistedBytes = di.loadPersistedBytesDownloaded(appDirPath)
@@ -1621,32 +1622,42 @@ class SteamService : Service(), IChallengeUrlChanged {
                             try {
                                 if (attempt > 1) {
                                     Timber.i("Retry attempt $attempt/$maxRetries for appId: $appId")
+                                    di.updateStatusMessage("Retrying download (attempt $attempt/$maxRetries)...")
                                     withContext(Dispatchers.Main) {
                                         Toast.makeText(instance?.applicationContext ?: return@withContext, "Retrying download (attempt $attempt/$maxRetries)...", Toast.LENGTH_SHORT).show()
                                     }
                                     kotlinx.coroutines.delay(3000L * attempt) // Exponential backoff
                                 }
 
-                                // Wait for steamClient to be connected
+                                // Wait for steamClient to be connected and logged in
                                 var client = instance?.steamClient
                                 var waitAttempts = 0
-                                while (client == null && waitAttempts < 10) {
-                                    Timber.i("Waiting for Steam client to initialize (attempt $waitAttempts)...")
+                                while ((client == null || !isConnected || !isLoggedIn) && waitAttempts < 15) {
+                                    val reason = when {
+                                        client == null -> "initializing"
+                                        !isConnected -> "connecting"
+                                        !isLoggedIn -> "logging in"
+                                        else -> "waiting"
+                                    }
+                                    Timber.i("Waiting for Steam client ($reason, attempt $waitAttempts)...")
+                                    di.updateStatusMessage("Waiting for Steam ($reason)...")
                                     delay(1000L)
                                     client = instance?.steamClient
                                     waitAttempts++
                                 }
 
-                                if (client == null) {
-                                    throw Exception("Steam client not connected")
+                                if (client == null || !isConnected || !isLoggedIn) {
+                                    throw Exception("Steam client not connected or logged in. Please check your connection and login status.")
                                 }
 
                                 // Get licenses from database
                                 Timber.i("Retrieving licenses from database for appId: $appId")
+                                di.updateStatusMessage("Retrieving licenses...")
                                 var licenses = getLicensesFromDb()
                                 waitAttempts = 0
                                 while (licenses.isEmpty() && waitAttempts < 10) {
                                     Timber.i("Waiting for licenses to be available (attempt $waitAttempts)...")
+                                    di.updateStatusMessage("Waiting for licenses...")
                                     delay(1000L)
                                     licenses = getLicensesFromDb()
                                     waitAttempts++
@@ -1692,6 +1703,7 @@ class SteamService : Service(), IChallengeUrlChanged {
 
                                 // Create DepotDownloader instance
                                 Timber.i("Initializing DepotDownloader for appId: $appId (attempt $attempt)")
+                                di.updateStatusMessage("Initializing downloader...")
                                 val depotDownloader = DepotDownloader(
                                     client,
                                     licenses,
@@ -1872,6 +1884,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                                 depotDownloader.finishAdding()
 
                                 // Start Download
+                                di.updateStatusMessage("Starting download...")
                                 depotDownloader.startDownloading()
 
                                 Timber.i("Downloading game to $appDirPath (attempt $attempt)")
