@@ -1070,28 +1070,28 @@ fun preLaunchApp(
                 context = context,
             ).await()
         } else {
-            if (container.wineVersion.contains("proton-9.0-arm64ec") &&
-                !SteamService.isFileInstallable(context, "proton-9.0-arm64ec.txz")
+            if (container.wineVersion.contains("arm64ec") &&
+                !SteamService.isFileInstallable(context, "${container.wineVersion}.txz")
             ) {
-                setLoadingMessage("Downloading arm64ec Proton")
+                setLoadingMessage("Downloading ${container.wineVersion}")
                 SteamService.downloadFile(
                     onDownloadProgress = { setLoadingProgress(it / 1.0f) },
                     this,
                     context = context,
-                    "proton-9.0-arm64ec.txz",
+                    "${container.wineVersion}.txz",
                 ).await()
-            } else if (container.wineVersion.contains("proton-9.0-x86_64") &&
-                !SteamService.isFileInstallable(context, "proton-9.0-x86_64.txz")
+            } else if (container.wineVersion.contains("x86_64") &&
+                !SteamService.isFileInstallable(context, "${container.wineVersion}.txz")
             ) {
-                setLoadingMessage("Downloading x86_64 Proton")
+                setLoadingMessage("Downloading ${container.wineVersion}")
                 SteamService.downloadFile(
                     onDownloadProgress = { setLoadingProgress(it / 1.0f) },
                     this,
                     context = context,
-                    "proton-9.0-x86_64.txz",
+                    "${container.wineVersion}.txz",
                 ).await()
             }
-            if (container.wineVersion.contains("proton-9.0-x86_64") || container.wineVersion.contains("proton-9.0-arm64ec")) {
+            if (container.wineVersion.contains("x86_64") || container.wineVersion.contains("arm64ec")) {
                 val protonVersion = container.wineVersion
                 val imageFs = ImageFs.find(context)
                 val outFile = File(imageFs.rootDir, "/opt/$protonVersion")
@@ -1101,11 +1101,13 @@ fun preLaunchApp(
                     setLoadingMessage("Extracting $protonVersion")
                     setLoadingProgress(-1f)
                     val downloaded = File(imageFs.getFilesDir(), "$protonVersion.txz")
-                    TarCompressorUtils.extract(
-                        TarCompressorUtils.Type.XZ,
-                        downloaded,
-                        outFile,
-                    )
+                    if (downloaded.exists()) {
+                        TarCompressorUtils.extract(
+                            TarCompressorUtils.Type.XZ,
+                            downloaded,
+                            outFile,
+                        )
+                    }
                 }
             }
         }

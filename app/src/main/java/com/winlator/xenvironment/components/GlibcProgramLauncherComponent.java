@@ -34,6 +34,8 @@ import java.util.Arrays;
 import java.util.List;
 
 import com.winlator.core.PerformanceTuner;
+import com.winlator.core.WineInfo;
+import com.winlator.xenvironment.components.GuestProgramLauncherComponent;
 import app.gamenative.PluviaApp;
 import app.gamenative.events.AndroidEvent;
 import app.gamenative.service.SteamService;
@@ -55,6 +57,14 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
     private final ContentProfile wineProfile;
     private File workingDir;
     private Container container;
+    private WineInfo wineInfo;
+
+    public void setWineInfo(WineInfo wineInfo) {
+        this.wineInfo = wineInfo;
+    }
+    public WineInfo getWineInfo() {
+        return this.wineInfo;
+    }
 
     public Container getContainer() { return this.container; }
     public void setContainer(Container container) { this.container = container; }
@@ -71,7 +81,10 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
         Log.d("GlibcProgramLauncherComponent", "Starting...");
         synchronized (lock) {
             stop();
-            extractBox64Files();
+            if (wineInfo != null && wineInfo.isArm64EC())
+                extractEmulatorsDlls();
+            else
+                extractBox64Files();
             copyDefaultBox64RCFile();
             if (preUnpack != null) preUnpack.run();
             
@@ -257,7 +270,8 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
         File box64File = new File(box64Path);
         Log.d("GlibcProgramLauncherComponent", "About to execute box64 from: " + box64Path);
 
-        String command = box64Path + " " + guestExecutable;
+        String emulator = container != null ? container.getEmulator() : "box64";
+        String command = getFinalCommand(winePath, emulator, envVars, box64Path, guestExecutable);
         Log.d("GlibcProgramLauncherComponent", "Final command: " + command);
 
         return ProcessHelper.exec(command, envVars.toStringArray(), workingDir != null ? workingDir : rootDir, (status) -> {
@@ -268,6 +282,57 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
             SteamService.setKeepAlive(false);
             if (terminationCallback != null) terminationCallback.call(status);
         });
+    }
+
+    private void extractEmulatorsDlls() {
+        Context context = environment.getContext();
+        File rootDir = environment.getImageFs().getRootDir();
+        File system32dir = new File(rootDir + "/home/xuser/.wine/drive_c/windows/system32");
+        boolean containerDataChanged = false;
+
+        ImageFs imageFs = ImageFs.find(context);
+
+        String wowbox64Version = container.getBox64Version();
+        String fexcoreVersion = container.getFEXCoreVersion();
+
+        Log.d("Extraction", "box64Version in use: " + wowbox64Version);
+        Log.d("Extraction", "fexcoreVersion in use: " + fexcoreVersion);
+
+        ContentProfile wowboxprofile = contentsManager.getProfileByEntryName("wowbox64-" + wowbox64Version);
+        if (wowboxprofile != null) {
+            contentsManager.applyContent(wowboxprofile);
+        } else {
+            Log.d("Extraction", "Extracting box64Version: " + wowbox64Version);
+            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, environment.getContext(), "wowbox64/wowbox64-" + wowbox64Version + ".tzst", system32dir);
+        }
+        container.putExtra("box64Version", wowbox64Version);
+        containerDataChanged = true;
+
+        ContentProfile fexprofile = contentsManager.getProfileByEntryName("fexcore-" + fexcoreVersion);
+        if (fexprofile != null) {
+            contentsManager.applyContent(fexprofile);
+        } else {
+            Log.d("Extraction", "Extracting fexcoreVersion: " + fexcoreVersion);
+            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, environment.getContext(), "fexcore/fexcore-" + fexcoreVersion + ".tzst", system32dir);
+        }
+        container.putExtra("fexcoreVersion", fexcoreVersion);
+
+        containerDataChanged = true;
+        if (containerDataChanged) container.saveData();
+    }
+
+    private String getFinalCommand(String winePath, String emulator, EnvVars envVars, String box64Path, String guestExecutable) {
+        String command;
+        if (wineInfo != null && wineInfo.isArm64EC()) {
+            command = winePath + "/" + guestExecutable;
+            if (emulator.toLowerCase().equals("fexcore"))
+                envVars.put("HODLL", "libwow64fex.dll");
+            else
+                envVars.put("HODLL", "wowbox64.dll");
+        }
+        else
+            command = box64Path + " " + guestExecutable;
+        return command;
     }
 
     private void extractBox64Files() {
