@@ -14,6 +14,7 @@ import com.winlator.xenvironment.ImageFs;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class ALSAClient {
     private static short framesPerBuffer = 256;
@@ -35,6 +36,7 @@ public class ALSAClient {
     private long mirrorStreamPtr = 0;
     private boolean reflectorMode = false;
     private boolean playing = false;
+    private final AtomicBoolean mirrorRebuildPending = new AtomicBoolean(false);
 
     static {
         System.loadLibrary("winlator");
@@ -222,7 +224,13 @@ public class ALSAClient {
                 ByteBuffer mirrorData = data.duplicate().order(data.order());
                 int numFrames = data.remaining() / frameBytes;
                 int framesWritten = simulatedWrite(streamPtr, data, numFrames);
-                if (mirrorStreamPtr > 0) write(mirrorStreamPtr, mirrorData, numFrames);
+                if (mirrorStreamPtr > 0) {
+                    int writeResult = write(mirrorStreamPtr, mirrorData, numFrames);
+                    if (writeResult < 0 && mirrorRebuildPending.compareAndSet(false, true)) {
+                        Log.w("ALSAClient", "AAudio mirror stream error (" + writeResult + "), triggering rebuild");
+                        new Thread(this::onAudioDeviceChanged).start();
+                    }
+                }
                 if (framesWritten > 0) this.position += (framesWritten * frameBytes);
                 data.rewind();
             }
@@ -246,29 +254,39 @@ public class ALSAClient {
     }
 
     public void onAudioDeviceChanged() {
-        if (!reflectorMode || mirrorStreamPtr == 0) return;
+        if (!reflectorMode) return;
 
         Log.i("ALSAClient", "Audio device change detected, rebuilding mirror stream...");
-        stop(mirrorStreamPtr);
-        close(mirrorStreamPtr);
-        mirrorStreamPtr = 0;
+        try {
+            long oldPtr = mirrorStreamPtr;
+            mirrorStreamPtr = 0;
+            if (oldPtr > 0) {
+                stop(oldPtr);
+                close(oldPtr);
+            }
 
-        final int MAX_RETRIES = 5;
-        for (int i = 0; i < MAX_RETRIES; i++) {
-            long newStreamPtr = create(dataType.ordinal(), channels, sampleRate, bufferSize);
-            if (newStreamPtr > 0) {
-                if (playing) {
-                    if (start(newStreamPtr) == 0) {
+            final int MAX_RETRIES = 5;
+            for (int i = 0; i < MAX_RETRIES; i++) {
+                long newStreamPtr = create(dataType.ordinal(), channels, sampleRate, bufferSize);
+                if (newStreamPtr > 0) {
+                    if (playing) {
+                        if (start(newStreamPtr) == 0) {
+                            mirrorStreamPtr = newStreamPtr;
+                            Log.i("ALSAClient", "Mirror stream rebuilt successfully.");
+                            return;
+                        }
+                        close(newStreamPtr);
+                    } else {
                         mirrorStreamPtr = newStreamPtr;
+                        Log.i("ALSAClient", "Mirror stream rebuilt (not playing).");
                         return;
                     }
-                    close(newStreamPtr);
-                } else {
-                    mirrorStreamPtr = newStreamPtr;
-                    return;
                 }
+                try { Thread.sleep(200); } catch (InterruptedException e) { break; }
             }
-            try { Thread.sleep(200); } catch (InterruptedException e) { break; }
+            Log.e("ALSAClient", "Failed to rebuild mirror stream after " + MAX_RETRIES + " retries.");
+        } finally {
+            mirrorRebuildPending.set(false);
         }
     }
 
