@@ -88,6 +88,8 @@ data class ContainerData(
     val sharpnessDenoise: Int = 100,
     val forceAdrenoClocks: Boolean = false,
     val rootPerformanceMode: Boolean = false,
+    val dxvkVersion: String? = null,
+    val vkd3dVersion: String? = null,
 ) {
     companion object {
         val Saver = mapSaver(
@@ -147,6 +149,8 @@ data class ContainerData(
                     "sharpnessDenoise" to state.sharpnessDenoise,
                     "forceAdrenoClocks" to state.forceAdrenoClocks,
                     "rootPerformanceMode" to state.rootPerformanceMode,
+                    "dxvkVersion" to state.dxvkVersion,
+                    "vkd3dVersion" to state.vkd3dVersion,
                 )
             },
             restore = { savedMap ->
@@ -205,6 +209,8 @@ data class ContainerData(
                     sharpnessDenoise = (savedMap["sharpnessDenoise"] as? Int) ?: 100,
                     forceAdrenoClocks = (savedMap["forceAdrenoClocks"] as? Boolean) ?: false,
                     rootPerformanceMode = (savedMap["rootPerformanceMode"] as? Boolean) ?: false,
+                    dxvkVersion = (savedMap["dxvkVersion"] as? String),
+                    vkd3dVersion = (savedMap["vkd3dVersion"] as? String),
                 )
             },
         )

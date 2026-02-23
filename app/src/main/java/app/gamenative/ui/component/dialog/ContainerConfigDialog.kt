@@ -719,18 +719,21 @@ fun ContainerConfigScreen(
         mutableIntStateOf(driverIndex)
     }
     var graphicsDriverVersionIndex by graphicsDriverVersionIndexRef
-    fun currentDxvkContext(): ManifestComponentHelper.DxvkContext =
-        ManifestComponentHelper.buildDxvkContext(
+    fun currentDxvkContext(): ManifestComponentHelper.DxvkContext {
+        // Force DXVK context to ensure version list is populated regardless of legacy dxWrapperIndex
+        val forcedDxvkIndex = dxWrappers.indexOfFirst { StringUtils.parseIdentifier(it) == "dxvk" }.let { if (it >= 0) it else 0 }
+        return ManifestComponentHelper.buildDxvkContext(
             containerVariant = config.containerVariant,
             graphicsDrivers = graphicsDrivers,
             graphicsDriverIndex = graphicsDriverIndex,
             dxWrappers = dxWrappers,
-            dxWrapperIndex = dxWrapperIndex,
+            dxWrapperIndex = forcedDxvkIndex,
             inspectionMode = inspectionMode,
             isBionicVariant = isBionicVariant,
             dxvkVersionsBase = dxvkVersionsBase,
             dxvkOptions = dxvkOptions,
         )
+    }
 // Keep dxwrapperConfig in sync when VKD3D selected
         LaunchedEffect(graphicsDriverIndex, dxWrapperIndex) {
             val isVKD3D = StringUtils.parseIdentifier(dxWrappers[dxWrapperIndex]) == "vkd3d"

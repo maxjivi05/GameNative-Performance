@@ -352,14 +352,19 @@ public class ContainerManager {
         File srcDir = new File(wineInfo.path + "/lib/wine/" + srcName);
 
         File[] srcfiles = srcDir.listFiles(file -> file.isFile());
+        if (srcfiles == null) {
+            Log.w("Extraction", "No files found in " + srcDir + ", skipping extractCommonDlls");
+            return;
+        }
 
         for (File file : srcfiles) {
             String dllName = file.getName();
             if (dllName.equals("iexplore.exe") && wineInfo.isArm64EC() && srcName.equals("aarch64-windows"))
                 file = new File(wineInfo.path + "/lib/wine/" + "i386-windows/iexplore.exe");
             File dstFile = new File(containerDir, ".wine/drive_c/windows/" + dstName + "/" + dllName);
-            if (dstFile.exists()) continue;
-            if (onExtractFileListener != null ) {
+            // Always overwrite — ensures correct-architecture DLLs replace any stale ones from
+            // a previous wine version (e.g., arm64ec → x86_64 or vice versa).
+            if (onExtractFileListener != null) {
                 Log.d("Extraction", "extracting " + dstFile);
                 dstFile = onExtractFileListener.onExtractFile(dstFile, 0);
                 if (dstFile == null) continue;
@@ -393,6 +398,15 @@ public class ContainerManager {
                 JSONObject commonDlls = new JSONObject(FileUtils.readString(context, "common_dlls.json"));
                 deleteCommonDlls("system32", commonDlls, containerDir);
                 deleteCommonDlls("syswow64", commonDlls, containerDir);
+
+                // When switching to non-arm64ec wine, clean up ARM64EC-specific emulator DLLs
+                // that may have been placed in system32 by extractEmulatorsDlls() on a prior
+                // arm64ec launch. These are not in common_dlls.json and are ARM64 PE binaries
+                // that would cause x86_64 Wine to malfunction if left behind.
+                if (wineInfo == null || !wineInfo.isArm64EC()) {
+                    new File(containerDir, ".wine/drive_c/windows/system32/wowbox64.dll").delete();
+                    new File(containerDir, ".wine/drive_c/windows/system32/libwow64fex.dll").delete();
+                }
             }
             catch (JSONException e) {
                 return false;
@@ -400,11 +414,17 @@ public class ContainerManager {
             String containerPattern = wineVersion + "_container_pattern.tzst";
             Log.d("Extraction", "exctracting " + containerPattern);
             boolean result = TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context, containerPattern, containerDir, onExtractFileListener);
-            if (!result) {
+            if (!result && wineInfo != null) {
                 result = extractPrefixPack(wineInfo.path, containerDir);
             }
 
-            if (result) {
+            // Always copy wine PE DLLs from lib/wine/ when wineInfo is available.
+            // This is unconditional because deleteCommonDlls() above already removed all listed DLLs.
+            // If prefixPack extraction fails (e.g., no prefixPack.tzst in a custom proton build),
+            // system32 would be left without essential DLLs and Wine cannot start at all.
+            // The wine lib/wine/ directory is always present in a valid wine install, so this
+            // serves as the authoritative source of correct-architecture PE DLLs.
+            if (wineInfo != null) {
                 try {
                     if (wineInfo.isArm64EC())
                         extractCommonDlls(wineInfo, "aarch64-windows", "system32", containerDir, onExtractFileListener); // arm64ec only
@@ -412,6 +432,8 @@ public class ContainerManager {
                         extractCommonDlls(wineInfo, "x86_64-windows", "system32", containerDir, onExtractFileListener);
 
                     extractCommonDlls(wineInfo, "i386-windows", "syswow64", containerDir, onExtractFileListener);
+                    // Wine DLLs extracted successfully — Wine can start even without a prefix pack
+                    result = true;
                 }
                 catch (JSONException e) {
                     return false;

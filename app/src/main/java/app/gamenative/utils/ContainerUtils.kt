@@ -14,6 +14,7 @@ import app.gamenative.utils.CustomGameScanner
 import com.winlator.container.Container
 import com.winlator.container.ContainerData
 import com.winlator.container.ContainerManager
+import com.winlator.contents.ContentsManager
 import com.winlator.core.DefaultVersion
 import com.winlator.core.FileUtils
 import com.winlator.core.GPUInformation
@@ -397,6 +398,25 @@ object ContainerUtils {
         }
         val previousForceDlc: Boolean = container.isForceDlc
         val previousUnpackFiles: Boolean = container.isUnpackFiles
+
+        // Check if Wine version changed and update prefix if needed
+        if (container.wineVersion != containerData.wineVersion) {
+            Timber.i("Wine version changed from '${container.wineVersion}' to '${containerData.wineVersion}'. Updating prefix...")
+            val containerManager = ContainerManager(context)
+            val contentsManager = ContentsManager(context)
+            val success = containerManager.extractContainerPatternFile(
+                containerData.wineVersion,
+                contentsManager,
+                container.rootDir,
+                null
+            )
+            if (!success) {
+                Timber.e("Failed to extract container pattern for new Wine version: ${containerData.wineVersion}")
+            } else {
+                Timber.i("Successfully updated container prefix for Wine version: ${containerData.wineVersion}")
+            }
+        }
+
         val userRegFile = File(container.rootDir, ".wine/user.reg")
         WineRegistryEditor(userRegFile).use { registryEditor ->
             registryEditor.setStringValue("Software\\Wine\\Direct3D", "renderer", containerData.renderer)

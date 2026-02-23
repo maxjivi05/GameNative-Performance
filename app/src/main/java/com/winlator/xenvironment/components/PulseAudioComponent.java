@@ -102,6 +102,11 @@ public class PulseAudioComponent extends EnvironmentComponent {
             FileUtils.chmod(workingDir, 0771);
         }
 
+        File socketFile = new File(socketConfig.path);
+        if (socketFile.exists()) {
+            socketFile.delete();
+        }
+
         File configFile = new File(workingDir, "default.pa");
         FileUtils.writeString(configFile, String.join("\n",
                 "load-module module-native-protocol-unix auth-anonymous=1 auth-cookie-enabled=0 socket=\""+socketConfig.path+"\"",
@@ -111,6 +116,10 @@ public class PulseAudioComponent extends EnvironmentComponent {
 
         String archName = AppUtils.getArchName();
         File modulesDir = new File(workingDir, "modules");
+        if (!modulesDir.exists()) {
+            modulesDir.mkdirs();
+            FileUtils.chmod(modulesDir, 0755);
+        }
 
         EnvVars envVars = new EnvVars();
         envVars.put("LD_LIBRARY_PATH", "/system/lib64:"+nativeLibraryDir+":"+modulesDir);

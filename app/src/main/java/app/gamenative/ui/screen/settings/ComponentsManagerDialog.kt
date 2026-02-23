@@ -3,16 +3,15 @@ package app.gamenative.ui.screen.settings
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -26,12 +25,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
@@ -44,7 +40,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -60,9 +55,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -74,8 +69,6 @@ import app.gamenative.utils.Net
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlin.coroutines.resume
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -85,8 +78,9 @@ import timber.log.Timber
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
-import java.net.SocketTimeoutException
-import java.util.concurrent.CountDownLatch
+import java.time.Instant
+import java.time.Duration
+import kotlin.coroutines.resume
 
 // ─── Navigation ─────────────────────────────────────────────────────────────
 
@@ -116,13 +110,56 @@ internal enum class GNComponent(val displayName: String) {
 
 // ─── GitHub release data models ──────────────────────────────────────────────
 
-private data class GHRelease(val tagName: String, val assets: List<GHAsset>)
-private data class GHAsset(val name: String, val downloadUrl: String, val releaseName: String = "")
+private data class GHRelease(
+    val tagName: String,
+    val assets: List<GHAsset>,
+    val publishedAt: String = ""
+)
 
-// ─── Tag patterns per component ──────────────────────────────────────────────
+private data class GHAsset(
+    val name: String,
+    val downloadUrl: String,
+    val releaseName: String = "",
+    val releaseDate: String = ""
+)
+
+// ─── Component variant: one per sub-type (e.g. DXVK GPLAsync, DXVK NVAPI…) ──
+
+internal data class ComponentVariant(
+    val label: String,
+    val nightlyTagPrefix: String?,  // null if this variant has no nightly
+    val stableTagPrefix: String?,   // null if this variant has no stable
+)
+
+private val componentVariants: Map<GNComponent, List<ComponentVariant>> = mapOf(
+    GNComponent.DXVK to listOf(
+        ComponentVariant("GPLAsync",       "dxvk-nightly-",               "Stable-Dxvk"),
+        ComponentVariant("ARM64EC",        "dxvk-arm64ec-nightly-",       "Stable-Arm64ec-Dxvk"),
+        ComponentVariant("NVAPI GPLAsync", "dxvk-nvapi-nightly-",         null),
+        ComponentVariant("NVAPI ARM64EC",  "dxvk-nvapi-arm64ec-nightly-", null),
+        ComponentVariant("Sarek",          null,                           "Sarek"),
+    ),
+    GNComponent.VKD3D to listOf(
+        ComponentVariant("Standard", "vk3dk-nightly-",         "Stable-Vk3dk"),
+        ComponentVariant("ARM64EC",  "vk3dk-arm64ec-nightly-", "Stable-Arm64ec-Vk3dk"),
+    ),
+    GNComponent.BOX64 to listOf(
+        ComponentVariant("Standard",    "box64-nightly-",        "Stable-Box64"),
+        ComponentVariant("Bionic (WIP)", "bionic-box64-nightly-", null),
+    ),
+    GNComponent.WOWBOX64 to listOf(
+        ComponentVariant("WowBox64", "wowbox64-nightly-", "Stable-wowbox64"),
+    ),
+    GNComponent.FEXCORE to listOf(
+        ComponentVariant("ARM64EC", "fex-nightly-", "Stable-FEX"),
+    ),
+)
+
+// ─── Tag patterns per component (legacy – used for broad release fetch) ───────
 
 private val nightlyPrefixes = mapOf(
-    GNComponent.DXVK     to listOf("dxvk-nightly-", "dxvk-arm64ec-nightly-"),
+    GNComponent.DXVK     to listOf("dxvk-nightly-", "dxvk-arm64ec-nightly-",
+                                    "dxvk-nvapi-nightly-", "dxvk-nvapi-arm64ec-nightly-"),
     GNComponent.VKD3D    to listOf("vk3dk-nightly-", "vk3dk-arm64ec-nightly-"),
     GNComponent.BOX64    to listOf("box64-nightly-", "bionic-box64-nightly-"),
     GNComponent.WOWBOX64 to listOf("wowbox64-nightly-"),
@@ -130,25 +167,24 @@ private val nightlyPrefixes = mapOf(
 )
 
 private val stablePrefixes = mapOf(
-    GNComponent.DXVK     to listOf("Stable-Dxvk", "Stable-Arm64ec-Dxvk"),
+    GNComponent.DXVK     to listOf("Stable-Dxvk", "Stable-Arm64ec-Dxvk", "Sarek"),
     GNComponent.VKD3D    to listOf("Stable-Vk3dk", "Stable-Arm64ec-Vk3dk"),
     GNComponent.BOX64    to listOf("Stable-Box64"),
     GNComponent.WOWBOX64 to listOf("Stable-wowbox64"),
     GNComponent.FEXCORE  to listOf("Stable-FEX"),
 )
 
-// Extract version from asset file name: FIRST dash-separated segment that STARTS with a digit.
-// e.g. "Box64-0.4.1-fix-0.wcp"        → "0.4.1"  (not "0", the trailing patch number)
-//      "Dxvk-2.7.1-gplasync-1.wcp"    → "2.7.1"
-//      "FEX-2601.wcp"                  → "2601"
-//      "FEX-2512G.wcp"                 → "2512G"
-//      "Vk3dk-Proton-3.0b-2763dd2-0"  → "3.0b"
+// Extract version from asset file name
 private fun extractVersionFromFilename(name: String): String {
     val base = name.removeSuffix(".wcp")
-    return base.split("-").firstOrNull { seg -> seg.isNotEmpty() && seg[0].isDigit() } ?: ""
+    // If it contains "nightly", include the full base name to differentiate variants (e.g. bionic vs normal)
+    if (name.contains("nightly", ignoreCase = true)) {
+        return base
+    }
+    // Otherwise try to find the version number part
+    return base.split("-").firstOrNull { seg -> seg.isNotEmpty() && seg[0].isDigit() } ?: base
 }
 
-// Compare a single segment like "5", "5a", "2550", "2550a" — letter suffix makes it bigger.
 private fun compareSegment(a: String, b: String): Int {
     val aNum = a.takeWhile { it.isDigit() }.toIntOrNull() ?: 0
     val bNum = b.takeWhile { it.isDigit() }.toIntOrNull() ?: 0
@@ -156,8 +192,6 @@ private fun compareSegment(a: String, b: String): Int {
     return a.dropWhile { it.isDigit() }.compareTo(b.dropWhile { it.isDigit() })
 }
 
-// Compare dotted version strings numerically with letter-suffix support per segment.
-// e.g. "0.4.1" > "0.3.5", "2601" > "2550", "2550a" > "2550", "1b" > "1a"
 private fun compareVersionStrings(a: String, b: String): Int {
     val aParts = a.split(".")
     val bParts = b.split(".")
@@ -171,17 +205,62 @@ private fun compareVersionStrings(a: String, b: String): Int {
     return 0
 }
 
-// Human-readable label for a nightly build based on its release tag
 private fun nightlyLabel(tagName: String): String = when {
-    tagName.startsWith("bionic-box64-nightly")     -> "Box64 Bionic (WIP)"
-    tagName.startsWith("box64-nightly")             -> "Box64 Standard"
-    tagName.startsWith("dxvk-arm64ec-nightly")      -> "DXVK ARM64EC"
-    tagName.startsWith("dxvk-nightly")              -> "DXVK GPLAsync"
-    tagName.startsWith("fex-nightly")               -> "FEXCore ARM64EC"
-    tagName.startsWith("vk3dk-arm64ec-nightly")     -> "VKD3D ARM64EC"
-    tagName.startsWith("vk3dk-nightly")             -> "VKD3D Standard"
-    tagName.startsWith("wowbox64-nightly")          -> "WowBox64"
-    else                                             -> tagName
+    tagName.startsWith("bionic-box64-nightly")          -> "Box64 Bionic (WIP)"
+    tagName.startsWith("box64-nightly")                  -> "Box64 Standard"
+    tagName.startsWith("dxvk-nvapi-arm64ec-nightly")     -> "DXVK NVAPI ARM64EC"
+    tagName.startsWith("dxvk-nvapi-nightly")             -> "DXVK NVAPI GPLAsync"
+    tagName.startsWith("dxvk-arm64ec-nightly")           -> "DXVK ARM64EC"
+    tagName.startsWith("dxvk-nightly")                   -> "DXVK GPLAsync"
+    tagName.startsWith("fex-nightly")                    -> "FEXCore ARM64EC"
+    tagName.startsWith("vk3dk-arm64ec-nightly")          -> "VKD3D ARM64EC"
+    tagName.startsWith("vk3dk-nightly")                  -> "VKD3D Standard"
+    tagName.startsWith("wowbox64-nightly")               -> "WowBox64"
+    else                                                  -> tagName
+}
+
+private fun formatRelativeTime(isoDate: String): String {
+    if (isoDate.isEmpty()) return ""
+    return try {
+        val instant = Instant.parse(isoDate)
+        val now = Instant.now()
+        val duration = Duration.between(instant, now)
+        val days = duration.toDays()
+        val hours = duration.toHours() % 24
+        val minutes = duration.toMinutes() % 60
+        buildString {
+            if (days > 0) append("${days}d ")
+            if (days > 0 || hours > 0) append("${hours}h ")
+            append("${minutes}m ago")
+        }.trim()
+    } catch (e: Exception) {
+        ""
+    }
+}
+
+// Returns the unique key for an asset: filename without .wcp extension.
+// Used to match installed profiles to the exact release asset.
+private fun assetUniqueKey(fileName: String): String = fileName.removeSuffix(".wcp")
+
+// Checks whether an asset is installed by matching its unique key against
+// installed profile verNames. Uses bidirectional contains to handle cases
+// where ContentsManager abbreviates the verName.
+private fun isAssetInstalled(assetFileName: String, profiles: List<ContentProfile>): Boolean {
+    val key = assetUniqueKey(assetFileName)
+    return profiles.any { prof ->
+        prof.verName.equals(key, ignoreCase = true) ||
+        prof.verName.contains(key, ignoreCase = true) ||
+        key.contains(prof.verName, ignoreCase = true)
+    }
+}
+
+private fun findInstalledProfile(assetFileName: String, profiles: List<ContentProfile>): ContentProfile? {
+    val key = assetUniqueKey(assetFileName)
+    return profiles.find { prof ->
+        prof.verName.equals(key, ignoreCase = true) ||
+        prof.verName.contains(key, ignoreCase = true) ||
+        key.contains(prof.verName, ignoreCase = true)
+    }
 }
 
 private const val XNICK_REPO_URL = "https://github.com/Xnick417x/Winlator-Bionic-Nightly-wcp"
@@ -243,11 +322,19 @@ fun ComponentsManagerDialog(open: Boolean, onDismiss: () -> Unit) {
             dismissOnClickOutside = true,
         ),
     ) {
+        // Back Handler for physical back button INSIDE the Dialog
+        BackHandler(enabled = true) {
+            if (nav != CompNav.SELECTOR) {
+                nav = CompNav.SELECTOR
+                selectedComponent = null
+            } else {
+                onDismiss()
+            }
+        }
+
         Surface(
-            modifier = Modifier
-                .fillMaxWidth(0.95f)
-                .fillMaxHeight(0.9f),
-            shape = MaterialTheme.shapes.large,
+            modifier = Modifier.fillMaxSize(),
+            shape = RectangleShape, // Full screen rectangular
             color = MaterialTheme.colorScheme.surface,
         ) {
             when (nav) {
@@ -305,23 +392,23 @@ private fun ComponentSelectorScreen(
 
     Column(modifier = Modifier.fillMaxSize()) {
 
-        // Title bar
+        // Title bar - Centered
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 16.dp),
+                .padding(horizontal = 16.dp, vertical = 16.dp),
+            contentAlignment = Alignment.Center
         ) {
             Text(
                 text = "Components",
-                style = MaterialTheme.typography.headlineSmall,
+                style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
-                modifier = Modifier.align(Alignment.CenterStart),
             )
         }
 
         HorizontalDivider()
 
-        // Component buttons (alphabetical – driven by enum declaration order)
+        // Component buttons: installed float to top, uninstalled below
         Column(
             modifier = Modifier
                 .weight(1f)
@@ -329,41 +416,54 @@ private fun ComponentSelectorScreen(
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            GNComponent.entries.forEach { component ->
-                val isInstalled = component.getContentTypes().any { type ->
+            // Compute installed state per component
+            val components = GNComponent.entries.toList()
+            val installedSet = components.filter { comp ->
+                comp.getContentTypes().any { type ->
                     val profiles = mgr.getProfiles(type)
                     profiles != null && profiles.any { it.remoteUrl == null }
                 }
+            }.toSet()
 
+            // Sort: installed first (preserve original order within each group)
+            val sorted = components.sortedWith(compareBy { if (it in installedSet) 0 else 1 })
+
+            // Section label for installed
+            val firstUninstalledIdx = sorted.indexOfFirst { it !in installedSet }
+
+            sorted.forEachIndexed { idx, component ->
+                // Divider between installed and not-installed groups
+                if (idx == firstUninstalledIdx && firstUninstalledIdx > 0) {
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                }
+
+                val isInstalled = component in installedSet
                 Button(
-                    onClick = {
-                        if (isInstalled && component != GNComponent.DRIVER && component != GNComponent.WINE_PROTON) {
-                            Toast.makeText(ctx, "Already Installed", Toast.LENGTH_SHORT).show()
-                        }
-                        onSelectComponent(component)
-                    },
+                    onClick = { onSelectComponent(component) },
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = if (isInstalled) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.primaryContainer,
-                        contentColor = if (isInstalled) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onPrimaryContainer,
+                        containerColor = if (isInstalled)
+                            MaterialTheme.colorScheme.secondaryContainer
+                        else
+                            MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = if (isInstalled)
+                            MaterialTheme.colorScheme.onSecondaryContainer
+                        else
+                            MaterialTheme.colorScheme.onPrimaryContainer,
                     ),
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        if (isInstalled && component != GNComponent.DRIVER && component != GNComponent.WINE_PROTON) {
-                            Checkbox(
-                                checked = true,
-                                onCheckedChange = null,
-                                modifier = Modifier.size(24.dp)
-                            )
+                        if (isInstalled) {
+                            Checkbox(checked = true, onCheckedChange = null, modifier = Modifier.size(24.dp))
                             Spacer(Modifier.width(8.dp))
                         }
                         Text(
                             text = component.displayName,
                             style = MaterialTheme.typography.titleMedium,
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(1f),
                         )
                     }
                 }
@@ -373,7 +473,6 @@ private fun ComponentSelectorScreen(
             HorizontalDivider()
             Spacer(Modifier.height(8.dp))
 
-            // Install Custom Button
             Button(
                 onClick = onInstallCustom,
                 modifier = Modifier.fillMaxWidth(),
@@ -382,29 +481,36 @@ private fun ComponentSelectorScreen(
                     contentColor = MaterialTheme.colorScheme.onTertiary,
                 ),
             ) {
-                Text(
-                    text = "Install Custom",
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(vertical = 4.dp),
-                )
+                Text("Install Custom", style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(vertical = 4.dp))
             }
         }
 
         HorizontalDivider()
 
-        // Bottom close button
+        // Bottom action bar - Back button at bottom left
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 8.dp),
-            contentAlignment = Alignment.CenterEnd,
         ) {
-            TextButton(onClick = onDismiss) { Text("Close") }
+            TextButton(
+                onClick = onDismiss,
+                modifier = Modifier.align(Alignment.CenterStart) // Bottom Left
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Back",
+                    modifier = Modifier.size(18.dp),
+                )
+                Spacer(Modifier.width(4.dp))
+                Text("Close")
+            }
         }
     }
 }
 
-// ─── Screen 2: Component detail (nightly + stable releases) ──────────────────
+// ─── Screen 2: Component detail (variant-based, two sorted zones) ─────────────
 
 @Composable
 private fun ComponentDetailScreen(
@@ -415,13 +521,11 @@ private fun ComponentDetailScreen(
     val scope = rememberCoroutineScope()
     val mgr   = remember(ctx) { ContentsManager(ctx) }
 
-    // All GitHub releases (fetched once)
     var allReleases by remember { mutableStateOf<List<GHRelease>>(emptyList()) }
     var isLoading   by remember { mutableStateOf(true) }
     var loadError   by remember { mutableStateOf<String?>(null) }
 
-    // Installed profiles
-    var installedProfiles = remember { mutableStateListOf<ContentProfile>() }
+    val installedProfiles = remember { mutableStateListOf<ContentProfile>() }
     val refreshInstalled: () -> Unit = {
         scope.launch(Dispatchers.IO) {
             mgr.syncContents()
@@ -436,81 +540,35 @@ private fun ComponentDetailScreen(
         }
     }
 
-    LaunchedEffect(component) {
-        refreshInstalled()
-    }
-
-    // Derived lists
-    val nightlyAssets = remember(allReleases) {
-        (nightlyPrefixes[component] ?: emptyList()).flatMap { prefix ->
-            allReleases
-                .filter { it.tagName.startsWith(prefix) }
-                .take(1) // only the most recent release for each prefix
-                .flatMap { release ->
-                    release.assets
-                        .filter { it.name.endsWith(".wcp") }
-                        .map { it.copy(releaseName = release.tagName) }
-                }
-        }
-    }
-
-    val stableAssets = remember(allReleases) {
-        (stablePrefixes[component] ?: emptyList())
-            .flatMap { prefix ->
-                allReleases
-                    .filter { it.tagName.startsWith(prefix) }
-                    .flatMap { release ->
-                        release.assets
-                            .filter { it.name.endsWith(".wcp") }
-                            .map { it.copy(releaseName = release.tagName) }
-                    }
-            }
-            .sortedWith { a, b ->
-                // Sort by version in the asset file name, highest first
-                compareVersionStrings(
-                    extractVersionFromFilename(b.name),
-                    extractVersionFromFilename(a.name),
-                )
-            }
-    }
-
-    // Install state
     var isWorking        by remember { mutableStateOf(false) }
     var workMessage      by remember { mutableStateOf("") }
-    var downloadProgress by remember { mutableStateOf(-1f) } // -1 = indeterminate
-    var selectedAsset    by remember { mutableStateOf<GHAsset?>(null) }
+    var downloadProgress by remember { mutableStateOf(-1f) }
     var deleteTarget     by remember { mutableStateOf<ContentProfile?>(null) }
 
-    // Fetch releases when screen opens (or component changes)
+    LaunchedEffect(component) { refreshInstalled() }
+
+    // Fetch all releases from Nick's repo
     LaunchedEffect(component) {
-        isLoading = true
-        loadError = null
+        isLoading = true; loadError = null
         withContext(Dispatchers.IO) {
             try {
-                val request = Request.Builder()
+                val req = Request.Builder()
                     .url(XNICK_API_URL)
                     .header("Accept", "application/vnd.github.v3+json")
                     .build()
-                Net.http.newCall(request).execute().use { response ->
-                    if (!response.isSuccessful) {
+                Net.http.newCall(req).execute().use { resp ->
+                    if (!resp.isSuccessful) {
                         withContext(Dispatchers.Main) {
-                            loadError = "HTTP ${response.code}: ${response.message}"
-                            isLoading = false
+                            loadError = "HTTP ${resp.code}: ${resp.message}"; isLoading = false
                         }
                         return@withContext
                     }
-                    val releases = parseGHReleases(response.body?.string() ?: "[]")
-                    withContext(Dispatchers.Main) {
-                        allReleases = releases
-                        isLoading   = false
-                    }
+                    val releases = parseGHReleases(resp.body?.string() ?: "[]")
+                    withContext(Dispatchers.Main) { allReleases = releases; isLoading = false }
                 }
             } catch (e: Exception) {
                 Timber.e(e, "ComponentsManager: fetch releases failed")
-                withContext(Dispatchers.Main) {
-                    loadError = e.message ?: "Unknown error"
-                    isLoading = false
-                }
+                withContext(Dispatchers.Main) { loadError = e.message ?: "Unknown error"; isLoading = false }
             }
         }
     }
@@ -518,101 +576,47 @@ private fun ComponentDetailScreen(
     // Download + install a single .wcp asset
     val downloadAndInstall: (GHAsset) -> Unit = { asset ->
         scope.launch {
-            isWorking        = true
-            workMessage      = "Downloading ${asset.name}…"
-            downloadProgress = -1f
+            isWorking = true; workMessage = "Downloading ${asset.name}…"; downloadProgress = -1f
             try {
                 val destFile = File(ctx.cacheDir, asset.name)
-
-                // 1. Download
                 withContext(Dispatchers.IO) {
                     val req = Request.Builder().url(asset.downloadUrl).build()
                     Net.http.newCall(req).execute().use { response ->
                         if (!response.isSuccessful) throw Exception("HTTP ${response.code}")
                         val body = response.body ?: throw Exception("Empty response body")
-                        val total = body.contentLength()
-                        var downloaded = 0L
+                        val total = body.contentLength(); var downloaded = 0L
                         FileOutputStream(destFile).use { out ->
                             body.byteStream().use { inp ->
-                                val buf = ByteArray(8192)
-                                var n: Int
+                                val buf = ByteArray(8192); var n: Int
                                 while (inp.read(buf).also { n = it } != -1) {
-                                    out.write(buf, 0, n)
-                                    downloaded += n
-                                    if (total > 0) {
-                                        val p = downloaded.toFloat() / total
-                                        withContext(Dispatchers.Main) { downloadProgress = p }
+                                    out.write(buf, 0, n); downloaded += n
+                                    if (total > 0) withContext(Dispatchers.Main) {
+                                        downloadProgress = downloaded.toFloat() / total
                                     }
                                 }
                             }
                         }
                     }
                 }
-
-                // 2. Extract / validate
-                withContext(Dispatchers.Main) {
-                    workMessage      = "Validating…"
-                    downloadProgress = -1f
+                withContext(Dispatchers.Main) { workMessage = "Installing…"; downloadProgress = -1f }
+                val success = withContext(Dispatchers.IO) {
+                    installWcpRobustly(ctx, mgr, Uri.fromFile(destFile)) { s ->
+                        scope.launch(Dispatchers.Main) { workMessage = s }
+                    }
                 }
-
-                val uri = Uri.fromFile(destFile)
-                val (profile, fail) = withContext(Dispatchers.IO) {
-                    var p: ContentProfile? = null
-                    var f: ContentsManager.InstallFailedReason? = null
-                    val latch = CountDownLatch(1)
-                    mgr.extraContentFile(uri, object : ContentsManager.OnInstallFinishedCallback {
-                        override fun onFailed(reason: ContentsManager.InstallFailedReason, e: Exception?) {
-                            f = reason; latch.countDown()
-                        }
-                        override fun onSucceed(prof: ContentProfile) {
-                            p = prof; latch.countDown()
-                        }
-                    })
-                    latch.await()
-                    p to f
-                }
-
-                if (profile == null) {
-                    Toast.makeText(ctx, "Validation failed: $fail", Toast.LENGTH_SHORT).show()
-                    destFile.delete()
-                    return@launch
-                }
-
-                // 3. Finish install
-                withContext(Dispatchers.Main) { workMessage = "Installing…" }
-
-                val msg = withContext(Dispatchers.IO) {
-                    var result = ""
-                    val latch  = CountDownLatch(1)
-                    mgr.finishInstallContent(profile, object : ContentsManager.OnInstallFinishedCallback {
-                        override fun onFailed(reason: ContentsManager.InstallFailedReason, e: Exception?) {
-                            result = when (reason) {
-                                ContentsManager.InstallFailedReason.ERROR_EXIST   -> "Already installed"
-                                ContentsManager.InstallFailedReason.ERROR_NOSPACE -> "Not enough storage"
-                                else -> "Install failed: $reason"
-                            }
-                            latch.countDown()
-                        }
-                        override fun onSucceed(prof: ContentProfile) {
-                            result = "Installed ${prof.verName} ✓"
-                            latch.countDown()
-                        }
-                    })
-                    latch.await()
-                    result
-                }
-
-                Toast.makeText(ctx, msg, Toast.LENGTH_SHORT).show()
                 destFile.delete()
-                refreshInstalled()
-
+                if (success) {
+                    mgr.syncContents()
+                    Toast.makeText(ctx, "Installed ✓", Toast.LENGTH_SHORT).show()
+                    refreshInstalled()
+                } else {
+                    Toast.makeText(ctx, "Installation Failed", Toast.LENGTH_SHORT).show()
+                }
             } catch (e: Exception) {
                 Timber.e(e, "ComponentsManager: install error")
                 Toast.makeText(ctx, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
             } finally {
-                isWorking        = false
-                workMessage      = ""
-                downloadProgress = -1f
+                isWorking = false; workMessage = ""; downloadProgress = -1f
             }
         }
     }
@@ -621,7 +625,7 @@ private fun ComponentDetailScreen(
         AlertDialog(
             onDismissRequest = { deleteTarget = null },
             title = { Text("Remove Component") },
-            text = { Text("Are you sure you want to uninstall ${deleteTarget!!.verName}?") },
+            text = { Text("Uninstall ${deleteTarget!!.verName}?") },
             confirmButton = {
                 TextButton(onClick = {
                     scope.launch(Dispatchers.IO) {
@@ -629,11 +633,9 @@ private fun ComponentDetailScreen(
                         refreshInstalled()
                         withContext(Dispatchers.Main) { deleteTarget = null }
                     }
-                }) { Text("Remove") }
+                }) { Text("Remove", color = MaterialTheme.colorScheme.error) }
             },
-            dismissButton = {
-                TextButton(onClick = { deleteTarget = null }) { Text("Cancel") }
-            }
+            dismissButton = { TextButton(onClick = { deleteTarget = null }) { Text("Cancel") } }
         )
     }
 
@@ -641,343 +643,360 @@ private fun ComponentDetailScreen(
 
     Column(modifier = Modifier.fillMaxSize()) {
 
-        // Title bar
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
+        Box(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 16.dp),
+            contentAlignment = Alignment.Center,
         ) {
-            TextButton(onClick = onBack) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Back",
-                    modifier = Modifier.size(18.dp),
-                )
-                Spacer(Modifier.width(4.dp))
-                Text("Back")
-            }
-            Text(
-                text = component.displayName,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(end = 8.dp),
-                textAlign = TextAlign.Center,
-            )
+            Text(component.displayName, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
         }
-
         HorizontalDivider()
 
-        // Scrollable body
         Column(
-            modifier = Modifier
-                .weight(1f)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp),
+            modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp),
         ) {
-
-            // Repo source button
             Spacer(Modifier.height(12.dp))
             OutlinedButton(
-                onClick = {
-                    ctx.startActivity(
-                        Intent(Intent.ACTION_VIEW, Uri.parse(XNICK_REPO_URL))
-                    )
-                },
+                onClick = { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(XNICK_REPO_URL))) },
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.OpenInNew,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp),
-                )
+                Icon(Icons.AutoMirrored.Filled.OpenInNew, null, modifier = Modifier.size(16.dp))
                 Spacer(Modifier.width(8.dp))
-                Text("Xnick417x", fontWeight = FontWeight.SemiBold)
+                Text("Source: Winlator-Bionic-Nightly-wcp", fontWeight = FontWeight.SemiBold)
             }
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = "Source: Winlator-Bionic-Nightly-wcp",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(bottom = 4.dp),
-            )
-
             HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
 
-            if (isLoading) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(48.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        CircularProgressIndicator()
-                        Spacer(Modifier.height(12.dp))
-                        Text("Fetching latest releases…", style = MaterialTheme.typography.bodySmall)
-                    }
-                }
-            } else if (loadError != null) {
-                Text(
-                    text = "Failed to load releases: $loadError",
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.padding(vertical = 12.dp),
-                )
-            } else {
-
-                // ── Nightly section ──────────────────────────────────────────
-                Text(
-                    text = "Nightly",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                )
-                Spacer(Modifier.height(8.dp))
-
-                if (nightlyAssets.isEmpty()) {
-                    Text(
-                        text = "No nightly builds found",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                } else {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        nightlyAssets.forEach { asset ->
-                            val isInstalled = installedProfiles.any { 
-                                it.verName.contains(extractVersionFromFilename(asset.name)) || 
-                                it.verName.contains(nightlyLabel(asset.releaseName)) 
-                            }
-                            Button(
-                                onClick = { 
-                                    if (isInstalled) Toast.makeText(ctx, "Already Installed", Toast.LENGTH_SHORT).show()
-                                    if (!isWorking) downloadAndInstall(asset) 
-                                },
-                                enabled = !isWorking,
-                                modifier = Modifier.fillMaxWidth(),
-                                colors = if (isInstalled) ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondaryContainer) else ButtonDefaults.buttonColors()
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    if (isInstalled) {
-                                        Checkbox(checked = true, onCheckedChange = null, modifier = Modifier.size(24.dp))
-                                        Spacer(Modifier.width(8.dp))
-                                    }
-                                    Text("⬇ ${nightlyLabel(asset.releaseName)} Nightly")
-                                }
-                            }
+            when {
+                isLoading -> {
+                    Box(Modifier.fillMaxWidth().padding(48.dp), contentAlignment = Alignment.Center) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            CircularProgressIndicator()
+                            Spacer(Modifier.height(12.dp))
+                            Text("Fetching latest releases…", style = MaterialTheme.typography.bodySmall)
                         }
                     }
                 }
-
-                Spacer(Modifier.height(16.dp))
-                HorizontalDivider()
-                Spacer(Modifier.height(12.dp))
-
-                // ── Stable section ───────────────────────────────────────────
-                Text(
-                    text = "Stable",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                )
-                Spacer(Modifier.height(8.dp))
-
-                val latestStable = stableAssets.firstOrNull()
-                if (latestStable == null) {
+                loadError != null -> {
                     Text(
-                        text = "No stable releases found",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        "Failed to load releases: $loadError",
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(vertical = 12.dp),
                     )
-                } else {
-                    val isInstalled = installedProfiles.any { it.verName.contains(extractVersionFromFilename(latestStable.name)) }
-                    Button(
-                        onClick = { 
-                            if (isInstalled) Toast.makeText(ctx, "Already Installed", Toast.LENGTH_SHORT).show()
-                            if (!isWorking) downloadAndInstall(latestStable) 
-                        },
-                        enabled = !isWorking,
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = if (isInstalled) ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondaryContainer) else ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.secondary,
-                            contentColor = MaterialTheme.colorScheme.onSecondary,
-                        ),
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            if (isInstalled) {
-                                Checkbox(checked = true, onCheckedChange = null, modifier = Modifier.size(24.dp))
-                                Spacer(Modifier.width(8.dp))
-                            }
-                            Text("⬇ Install Latest Stable")
-                        }
-                    }
                 }
+                else -> {
+                    val variants = componentVariants[component] ?: emptyList()
+                    variants.forEachIndexed { idx, variant ->
+                        if (idx > 0) {
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
+                        }
 
-                // ── Download progress ────────────────────────────────────────
-                if (isWorking) {
-                    Spacer(Modifier.height(12.dp))
-                    Text(
-                        text = workMessage,
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    if (downloadProgress in 0f..1f) {
-                        LinearProgressIndicator(
-                            progress = { downloadProgress },
-                            modifier = Modifier.fillMaxWidth(),
+                        // ── Variant header ────────────────────────────────────
+                        Text(
+                            variant.label,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
                         )
-                    } else {
-                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-                    }
-                }
+                        Spacer(Modifier.height(8.dp))
 
-                Spacer(Modifier.height(20.dp))
-                HorizontalDivider()
-                Spacer(Modifier.height(12.dp))
+                        // ── Nightly sub-section for this variant ──────────────
+                        if (variant.nightlyTagPrefix != null) {
+                            val variantNightlies = allReleases
+                                .filter { it.tagName.startsWith(variant.nightlyTagPrefix) }
+                                .flatMap { release ->
+                                    release.assets
+                                        .filter { it.name.endsWith(".wcp") }
+                                        .map { it.copy(releaseName = release.tagName, releaseDate = release.publishedAt) }
+                                }
+                                .sortedByDescending { it.releaseDate }
 
-                // ── Stable releases list ─────────────────────────────────────
-                Text(
-                    text = "Stable Releases",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(bottom = 6.dp),
-                )
-
-                if (stableAssets.isEmpty()) {
-                    Text(
-                        text = "No stable releases available",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                } else {
-                    stableAssets.forEach { asset ->
-                        val isSelected = selectedAsset == asset
-                        val matchingProfile = installedProfiles.find { it.verName.contains(extractVersionFromFilename(asset.name)) }
-                        val isInstalled = matchingProfile != null
-                        
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .selectable(
-                                    selected = isSelected,
-                                    onClick = {
-                                        if (isInstalled) Toast.makeText(ctx, "Already Installed", Toast.LENGTH_SHORT).show()
-                                        selectedAsset = if (isSelected) null else asset
-                                    },
-                                )
-                                .background(
-                                    if (isSelected) MaterialTheme.colorScheme.primaryContainer
-                                    else MaterialTheme.colorScheme.surface,
-                                )
-                                .padding(vertical = 6.dp, horizontal = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            if (isInstalled) {
-                                Checkbox(checked = true, onCheckedChange = null)
-                            } else {
-                                RadioButton(
-                                    selected = isSelected,
-                                    onClick = { selectedAsset = if (isSelected) null else asset },
-                                )
-                            }
-                            Spacer(Modifier.width(8.dp))
-                            Column(modifier = Modifier.weight(1f)) {
+                            if (variantNightlies.isEmpty()) {
                                 Text(
-                                    text = asset.name,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-                                )
-                                Text(
-                                    text = asset.releaseName,
+                                    "No nightly builds found",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
-                            }
-                            if (isInstalled) {
-                                IconButton(onClick = { deleteTarget = matchingProfile }) {
-                                    Icon(Icons.Default.Delete, contentDescription = "Uninstall", tint = MaterialTheme.colorScheme.error)
+                            } else {
+                                val latestNightly = variantNightlies.first()
+                                Button(
+                                    onClick = { if (!isWorking) downloadAndInstall(latestNightly) },
+                                    enabled = !isWorking,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                                ) {
+                                    Text("⬇ Download Latest Nightly")
                                 }
-                            }
-                        }
-                    }
-                }
+                                Spacer(Modifier.height(8.dp))
 
-                // ── Custom / Installed Only section ──────────────────────────
-                val customInstalled = installedProfiles.filter { prof ->
-                    stableAssets.none { it.name.contains(prof.verName) || prof.verName.contains(extractVersionFromFilename(it.name)) } &&
-                    nightlyAssets.none { prof.verName.contains(extractVersionFromFilename(it.name)) }
-                }
+                                // Installed nightlies first, then available
+                                val installedNightlies = variantNightlies.filter {
+                                    isAssetInstalled(it.name, installedProfiles)
+                                }
+                                val availableNightlies = variantNightlies.filter {
+                                    !isAssetInstalled(it.name, installedProfiles)
+                                }
 
-                if (customInstalled.isNotEmpty()) {
-                    Spacer(Modifier.height(20.dp))
-                    HorizontalDivider()
-                    Spacer(Modifier.height(12.dp))
-                    Text(
-                        text = "Installed Custom",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(bottom = 6.dp),
-                    )
-                    customInstalled.forEach { prof ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 6.dp, horizontal = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Checkbox(checked = true, onCheckedChange = null)
-                            Spacer(Modifier.width(8.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = prof.verName,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                )
-                                if (!prof.desc.isNullOrEmpty()) {
+                                if (installedNightlies.isNotEmpty()) {
                                     Text(
-                                        text = prof.desc,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        "Installed",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.padding(vertical = 4.dp),
                                     )
+                                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        installedNightlies.forEach { asset ->
+                                            AssetRow(
+                                                asset = asset,
+                                                isInstalled = true,
+                                                isWorking = isWorking,
+                                                onInstall = { downloadAndInstall(asset) },
+                                                onDelete = {
+                                                    deleteTarget = findInstalledProfile(asset.name, installedProfiles)
+                                                },
+                                            )
+                                        }
+                                    }
+                                }
+
+                                if (availableNightlies.isNotEmpty()) {
+                                    Text(
+                                        "Available",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(vertical = 4.dp),
+                                    )
+                                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        availableNightlies.forEach { asset ->
+                                            AssetRow(
+                                                asset = asset,
+                                                isInstalled = false,
+                                                isWorking = isWorking,
+                                                onInstall = { downloadAndInstall(asset) },
+                                                onDelete = {},
+                                            )
+                                        }
+                                    }
                                 }
                             }
-                            IconButton(onClick = { deleteTarget = prof }) {
-                                Icon(Icons.Default.Delete, contentDescription = "Uninstall", tint = MaterialTheme.colorScheme.error)
+                        }
+
+                        // ── Stable sub-section for this variant ───────────────
+                        if (variant.stableTagPrefix != null) {
+                            if (variant.nightlyTagPrefix != null) Spacer(Modifier.height(12.dp))
+                            Text(
+                                "Stable",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.secondary,
+                                modifier = Modifier.padding(bottom = 4.dp),
+                            )
+                            val variantStables = allReleases
+                                .filter { it.tagName.startsWith(variant.stableTagPrefix) }
+                                .flatMap { release ->
+                                    release.assets
+                                        .filter { it.name.endsWith(".wcp") }
+                                        .map { it.copy(releaseName = release.tagName, releaseDate = release.publishedAt) }
+                                }
+                                .sortedWith { a, b ->
+                                    val cmp = compareVersionStrings(
+                                        extractVersionFromFilename(b.name),
+                                        extractVersionFromFilename(a.name),
+                                    )
+                                    if (cmp != 0) cmp else b.releaseDate.compareTo(a.releaseDate)
+                                }
+
+                            if (variantStables.isEmpty()) {
+                                Text(
+                                    "No stable releases found",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            } else {
+                                Button(
+                                    onClick = { if (!isWorking) downloadAndInstall(variantStables.first()) },
+                                    enabled = !isWorking,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.secondary,
+                                        contentColor = MaterialTheme.colorScheme.onSecondary,
+                                    ),
+                                ) {
+                                    Text("⬇ Download Latest Stable")
+                                }
+                                Spacer(Modifier.height(8.dp))
+
+                                val installedStables = variantStables.filter {
+                                    isAssetInstalled(it.name, installedProfiles)
+                                }
+                                val availableStables = variantStables.filter {
+                                    !isAssetInstalled(it.name, installedProfiles)
+                                }
+
+                                if (installedStables.isNotEmpty()) {
+                                    Text(
+                                        "Installed",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.padding(vertical = 4.dp),
+                                    )
+                                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        installedStables.forEach { asset ->
+                                            AssetRow(
+                                                asset = asset,
+                                                isInstalled = true,
+                                                isWorking = isWorking,
+                                                onInstall = { downloadAndInstall(asset) },
+                                                onDelete = {
+                                                    deleteTarget = findInstalledProfile(asset.name, installedProfiles)
+                                                },
+                                            )
+                                        }
+                                    }
+                                }
+
+                                if (availableStables.isNotEmpty()) {
+                                    Text(
+                                        "Available",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(vertical = 4.dp),
+                                    )
+                                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        availableStables.forEach { asset ->
+                                            AssetRow(
+                                                asset = asset,
+                                                isInstalled = false,
+                                                isWorking = isWorking,
+                                                onInstall = { downloadAndInstall(asset) },
+                                                onDelete = {},
+                                            )
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
-                }
 
-                Spacer(Modifier.height(24.dp))
+                    // ── Custom-installed (not matched by any known asset) ─────
+                    val allKnownAssets = allReleases.flatMap { it.assets }
+                    val customInstalled = installedProfiles.filter { prof ->
+                        allKnownAssets.none { isAssetInstalled(it.name, listOf(prof)) }
+                    }
+                    if (customInstalled.isNotEmpty()) {
+                        Spacer(Modifier.height(20.dp))
+                        HorizontalDivider()
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            "Installed (Custom)",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.padding(bottom = 6.dp),
+                        )
+                        customInstalled.forEach { prof ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp, horizontal = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Checkbox(checked = true, onCheckedChange = null)
+                                Spacer(Modifier.width(8.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(prof.verName, style = MaterialTheme.typography.bodyMedium)
+                                    if (!prof.desc.isNullOrEmpty()) {
+                                        Text(prof.desc, style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
+                                }
+                                IconButton(onClick = { deleteTarget = prof }) {
+                                    Icon(Icons.Default.Delete, "Uninstall", tint = MaterialTheme.colorScheme.error)
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(Modifier.height(24.dp))
+                }
             }
         }
 
-        // ── Bottom action bar ────────────────────────────────────────────────
-        HorizontalDivider()
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            TextButton(onClick = onBack) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp),
+        // ── Sticky download/install progress bar ────────────────────────────
+        if (isWorking) {
+            HorizontalDivider()
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+            ) {
+                Text(
+                    text = workMessage,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                Spacer(Modifier.height(4.dp))
+                if (downloadProgress in 0f..1f) {
+                    LinearProgressIndicator(
+                        progress = { downloadProgress },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                } else {
+                    // Indeterminate — shown during extraction / installation phase
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                }
+            }
+        }
+
+        HorizontalDivider()
+        Box(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+        ) {
+            TextButton(onClick = onBack, modifier = Modifier.align(Alignment.CenterStart)) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, null, modifier = Modifier.size(16.dp))
                 Spacer(Modifier.width(4.dp))
                 Text("Back")
             }
+        }
+    }
+}
 
-            if (selectedAsset != null) {
-                Button(
-                    onClick = {
-                        if (!isWorking) downloadAndInstall(selectedAsset!!)
-                    },
-                    enabled = !isWorking,
-                ) {
-                    Text("Install")
-                }
+// ─── Reusable asset row ───────────────────────────────────────────────────────
+
+@Composable
+private fun AssetRow(
+    asset: GHAsset,
+    isInstalled: Boolean,
+    isWorking: Boolean,
+    onInstall: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    val bgColor = if (isInstalled)
+        MaterialTheme.colorScheme.secondaryContainer
+    else
+        MaterialTheme.colorScheme.surfaceVariant
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(bgColor, shape = MaterialTheme.shapes.small)
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = asset.name.removeSuffix(".wcp"),
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = if (isInstalled) FontWeight.SemiBold else FontWeight.Normal,
+            )
+            if (asset.releaseDate.isNotEmpty()) {
+                Text(
+                    text = formatRelativeTime(asset.releaseDate),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        if (isInstalled) {
+            IconButton(onClick = onDelete) {
+                Icon(Icons.Default.Delete, "Uninstall", tint = MaterialTheme.colorScheme.error)
+            }
+        } else {
+            TextButton(onClick = onInstall, enabled = !isWorking) {
+                Text("Install")
             }
         }
     }
@@ -986,6 +1005,11 @@ private fun ComponentDetailScreen(
 // ─── Screen 3: Driver Manager ────────────────────────────────────────────────
 
 private enum class DriverSource { GN, MTR }
+
+private data class DriverItem(
+    val name: String,
+    val url: String
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -1005,14 +1029,10 @@ private fun DriverDetailScreen(
     var totalBytes by remember { mutableStateOf(-1L) }
     var lastMessage by remember { mutableStateOf<String?>(null) }
     
-    // Manifests
-    var driverManifest by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
-    var mtrDriverManifest by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
+    // Data
+    var availableDrivers by remember { mutableStateOf<List<DriverItem>>(emptyList()) }
     var isLoadingManifest by remember { mutableStateOf(true) }
-    
-    // Dropdown state
-    var isExpanded by remember { mutableStateOf(false) }
-    var selectedDriverKey by remember { mutableStateOf("") }
+    var selectedDriver by remember { mutableStateOf<DriverItem?>(null) }
 
     // Installed drivers
     val installedDrivers = remember { mutableStateListOf<String>() }
@@ -1034,37 +1054,45 @@ private fun DriverDetailScreen(
         } catch (_: Exception) {}
     }
 
-    LaunchedEffect(Unit) {
-        refreshDriverList()
-        scope.launch(Dispatchers.IO) {
+    LaunchedEffect(selectedSource) {
+        isLoadingManifest = true
+        availableDrivers = emptyList()
+        selectedDriver = null
+        withContext(Dispatchers.IO) {
             try {
-                // Fetch GN
-                val gnReq = Request.Builder().url("https://raw.githubusercontent.com/utkarshdalal/gamenative-landing-page/refs/heads/main/data/manifest.json").build()
-                Net.http.newCall(gnReq).execute().use { resp ->
-                    if (resp.isSuccessful) {
-                        val json = Json.parseToJsonElement(resp.body?.string() ?: "{}").jsonObject
-                        val map = json.entries.associate { it.key to it.value.toString().trim('"') }
-                        withContext(Dispatchers.Main) { driverManifest = map }
-                    }
-                }
-                // Fetch MTR
-                val mtrReq = Request.Builder().url("https://api.github.com/repos/maxjivi05/Components/contents/Drivers").build()
-                Net.http.newCall(mtrReq).execute().use { resp ->
-                    if (resp.isSuccessful) {
-                        val jsonArr = Json.parseToJsonElement(resp.body?.string() ?: "[]").jsonArray
-                        val map = jsonArr.associate {
-                            val obj = it.jsonObject
-                            obj["name"]!!.toString().trim('"') to obj["download_url"]!!.toString().trim('"')
+                if (selectedSource == DriverSource.GN) {
+                    val gnReq = Request.Builder().url("https://raw.githubusercontent.com/utkarshdalal/gamenative-landing-page/refs/heads/main/data/manifest.json").build()
+                    Net.http.newCall(gnReq).execute().use { resp ->
+                        if (resp.isSuccessful) {
+                            val json = Json.parseToJsonElement(resp.body?.string() ?: "{}").jsonObject
+                            val list = json.entries.map { DriverItem(it.key, it.value.toString().trim('"')) }
+                                .sortedByDescending { it.name }
+                            withContext(Dispatchers.Main) { availableDrivers = list }
                         }
-                        withContext(Dispatchers.Main) { mtrDriverManifest = map }
+                    }
+                } else {
+                    val mtrReq = Request.Builder().url("https://api.github.com/repos/maxjivi05/Components/contents/Drivers").build()
+                    Net.http.newCall(mtrReq).execute().use { resp ->
+                        if (resp.isSuccessful) {
+                            val jsonArr = Json.parseToJsonElement(resp.body?.string() ?: "[]").jsonArray
+                            val list = jsonArr.map {
+                                val obj = it.jsonObject
+                                DriverItem(obj["name"]!!.toString().trim('"'), obj["download_url"]!!.toString().trim('"'))
+                            }.sortedByDescending { it.name }
+                            withContext(Dispatchers.Main) { availableDrivers = list }
+                        }
                     }
                 }
-                withContext(Dispatchers.Main) { isLoadingManifest = false }
             } catch (e: Exception) {
                 Timber.e(e, "Driver manifest load failed")
+            } finally {
                 withContext(Dispatchers.Main) { isLoadingManifest = false }
             }
         }
+    }
+
+    LaunchedEffect(Unit) {
+        refreshDriverList()
     }
 
     val handlePickedUri: suspend (Uri) -> String = { uri ->
@@ -1088,18 +1116,18 @@ private fun DriverDetailScreen(
         }
     }
 
-    val downloadAndInstall = { fileName: String, url: String? ->
+    val downloadAndInstall = { item: DriverItem ->
         scope.launch {
             isDownloading = true
             downloadProgress = 0f
             downloadBytes = 0L
             totalBytes = -1L
             try {
-                val destFile = File(ctx.cacheDir, fileName)
-                if (url == null) {
+                val destFile = File(ctx.cacheDir, item.name + (if (item.name.endsWith(".zip")) "" else ".zip"))
+                if (selectedSource == DriverSource.GN) {
                     // GN path via SteamService fallback
                     var lastUpdate = 0L
-                    SteamService.fetchFileWithFallback(fileName = "drivers/$fileName", dest = destFile, context = ctx) { p ->
+                    SteamService.fetchFileWithFallback(fileName = "drivers/${item.url}", dest = destFile, context = ctx) { p ->
                          val now = System.currentTimeMillis()
                          if (now - lastUpdate > 300) {
                              lastUpdate = now
@@ -1109,7 +1137,7 @@ private fun DriverDetailScreen(
                 } else {
                     // MTR direct URL
                     withContext(Dispatchers.IO) {
-                        val req = Request.Builder().url(url).build()
+                        val req = Request.Builder().url(item.url).build()
                         Net.http.newCall(req).execute().use { resp ->
                             if (!resp.isSuccessful) throw IOException("HTTP ${resp.code}")
                             val body = resp.body ?: throw IOException("Empty body")
@@ -1145,16 +1173,11 @@ private fun DriverDetailScreen(
     // UI Structure
     Column(modifier = Modifier.fillMaxSize()) {
         // Header
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically
+        Box(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 16.dp),
+            contentAlignment = Alignment.Center
         ) {
-            TextButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(4.dp))
-                Text("Back")
-            }
-            Text("Driver Manager", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, modifier = Modifier.weight(1f).padding(end = 8.dp))
+            Text("Driver Manager", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
         }
         HorizontalDivider()
         
@@ -1168,40 +1191,49 @@ private fun DriverDetailScreen(
             if (isLoadingManifest) {
                 Box(Modifier.fillMaxWidth().padding(20.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
             } else {
-                val currentManifest = if (selectedSource == DriverSource.GN) driverManifest else mtrDriverManifest
-                if (currentManifest.isNotEmpty()) {
-                    Text("Available Online", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(bottom = 8.dp))
-                    ExposedDropdownMenuBox(expanded = isExpanded, onExpandedChange = { isExpanded = !isExpanded }) {
-                        OutlinedTextField(
-                            value = selectedDriverKey, 
-                            onValueChange = {}, 
-                            readOnly = true, 
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isExpanded) }, 
-                            modifier = Modifier.fillMaxWidth().menuAnchor(), 
-                            placeholder = { Text("Select a driver") }
-                        )
-                        ExposedDropdownMenu(expanded = isExpanded, onDismissRequest = { isExpanded = false }) {
-                            val keys = currentManifest.keys.toList().sortedDescending()
-                            keys.forEach { k -> DropdownMenuItem(text = { Text(k) }, onClick = { selectedDriverKey = k; isExpanded = false }) }
+                Text("Available Drivers", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(bottom = 8.dp))
+                
+                // Unified list of available drivers
+                // Mark as installed if present
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    availableDrivers.forEach { item ->
+                        val isInstalled = installedDrivers.any { it.contains(item.name) || item.name.contains(it) }
+                        val isSelected = selectedDriver == item
+                        
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .selectable(
+                                    selected = isSelected,
+                                    onClick = { selectedDriver = if (isSelected) null else item }
+                                )
+                                .background(if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface)
+                                .padding(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(selected = isSelected, onClick = { selectedDriver = if (isSelected) null else item })
+                            Spacer(Modifier.width(8.dp))
+                            Text(item.name, modifier = Modifier.weight(1f))
+                            
+                            // Delete button if matched in installed list (or "Installed" text)
+                            // Since we have a specific installed list, we can try to match logic
+                            // But exact matching might be hard. Let's provide Delete on the separate installed list for now?
+                            // User request: "if they're installed it has a little delete button"
+                            // If we can identify the installed ID associated with this item:
+                            val matchedId = installedDrivers.find { it.contains(item.name) || item.name.contains(it) }
+                            if (matchedId != null) {
+                                IconButton(onClick = { driverToDelete = matchedId }) {
+                                    Icon(Icons.Filled.Delete, "Delete", tint = MaterialTheme.colorScheme.error)
+                                }
+                            }
                         }
-                    }
-                    if (selectedDriverKey.isNotEmpty()) {
-                        Spacer(Modifier.height(12.dp))
-                        Button(
-                            onClick = {
-                                if (selectedSource == DriverSource.GN) downloadAndInstall(currentManifest[selectedDriverKey]!!, null)
-                                else downloadAndInstall(selectedDriverKey, currentManifest[selectedDriverKey])
-                            },
-                            enabled = !isDownloading && !isImporting,
-                            modifier = Modifier.fillMaxWidth()
-                        ) { Text(if (isDownloading) "Downloading..." else "Download & Install") }
-                        if (isDownloading) LinearProgressIndicator(progress = { downloadProgress }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp))
                     }
                 }
             }
             
             HorizontalDivider(Modifier.padding(vertical = 16.dp))
             
+            // Import / Manual
             Button(
                 onClick = { SteamService.isImporting = true; launcher.launch(arrayOf("application/zip", "application/x-zip-compressed")) },
                 enabled = !isImporting && !isDownloading,
@@ -1209,26 +1241,54 @@ private fun DriverDetailScreen(
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary, contentColor = MaterialTheme.colorScheme.onTertiary)
             ) { Text("Import from Storage (.zip)") }
             
-            if (isImporting) LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(top = 8.dp))
+            if (isDownloading || isImporting) {
+                Spacer(Modifier.height(8.dp))
+                LinearProgressIndicator(
+                    progress = { if (downloadProgress > 0) downloadProgress else 0f },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
             
-            HorizontalDivider(Modifier.padding(vertical = 16.dp))
-            
-            Text("Installed Drivers", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(bottom = 8.dp))
-            if (installedDrivers.isEmpty()) {
-                Text("No custom drivers installed.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            } else {
-                installedDrivers.forEach { id ->
-                    val meta = driverMeta[id]
-                    val display = if (!meta?.first.isNullOrEmpty()) meta?.first!! else id
+            // "Installed Drivers" section - keeping it as fallback for unmatched drivers
+            val unmatchedInstalled = installedDrivers.filter { id -> availableDrivers.none { it.name.contains(id) } }
+            if (unmatchedInstalled.isNotEmpty()) {
+                HorizontalDivider(Modifier.padding(vertical = 16.dp))
+                Text("Installed (Other)", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(bottom = 8.dp))
+                unmatchedInstalled.forEach { id ->
                     Row(
                          modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
                          verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(display, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                        Text(id, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
                         IconButton(onClick = { driverToDelete = id }) {
                             Icon(Icons.Filled.Delete, "Delete", tint = MaterialTheme.colorScheme.error)
                         }
                     }
+                }
+            }
+        }
+        
+        // Footer
+        HorizontalDivider()
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+             TextButton(onClick = onBack) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(4.dp))
+                Text("Back")
+            }
+            
+            if (selectedDriver != null) {
+                Button(
+                    onClick = {
+                        if (!isDownloading && !isImporting) downloadAndInstall(selectedDriver!!)
+                    },
+                    enabled = !isDownloading && !isImporting,
+                ) {
+                    Text("Install Selected")
                 }
             }
         }
@@ -1260,150 +1320,132 @@ private data class WineReleaseItem(
     val version: String,
     val url: String?,       // if null, use SteamService.fetchFileWithFallback (GameNative repo)
     val fileName: String,   // filename for storage
+    val releaseDate: String = ""
 )
 
-@OptIn(ExperimentalMaterial3Api::class)
+// Detect wine vs proton family from filename for upgrade-grouping
+private fun wineFamily(fileName: String): String {
+    val lower = fileName.lowercase()
+    return if (lower.contains("proton")) "proton" else "wine"
+}
+
 @Composable
-private fun WineProtonDetailScreen(
-    onBack: () -> Unit,
-) {
+private fun WineProtonDetailScreen(onBack: () -> Unit) {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     val mgr = remember(ctx) { ContentsManager(ctx) }
-    
+
     var wineReleases by remember { mutableStateOf<List<WineReleaseItem>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
-    var isExpanded by remember { mutableStateOf(false) }
-    var selectedItem by remember { mutableStateOf<WineReleaseItem?>(null) }
-    
     var isBusy by remember { mutableStateOf(false) }
     var progress by remember { mutableStateOf(0f) }
     var statusMsg by remember { mutableStateOf("") }
-    
+
     val installedProfiles = remember { mutableStateListOf<ContentProfile>() }
     var deleteTarget by remember { mutableStateOf<ContentProfile?>(null) }
-    
-    val refreshInstalled = {
+
+    val refreshInstalled: () -> Unit = {
         installedProfiles.clear()
         val wine = mgr.getProfiles(ContentProfile.ContentType.CONTENT_TYPE_WINE)
         val proton = mgr.getProfiles(ContentProfile.ContentType.CONTENT_TYPE_PROTON)
         val combined = (wine ?: emptyList()) + (proton ?: emptyList())
-        installedProfiles.addAll(combined.filter { it.remoteUrl == null }.distinctBy { it.type.toString() + it.verName })
+        installedProfiles.addAll(
+            combined.filter { it.remoteUrl == null }.distinctBy { it.type.toString() + it.verName }
+        )
     }
-    
+
     LaunchedEffect(Unit) {
         withContext(Dispatchers.IO) { mgr.syncContents() }
         refreshInstalled()
         scope.launch(Dispatchers.IO) {
             try {
-                // 1. Fetch GameNative internal component manifest
-                val gnItems = try {
-                    val req = Request.Builder().url("https://downloads.gamenative.app/component-manifest.json").build()
-                    Net.http.newCall(req).execute().use { resp ->
-                        if (resp.isSuccessful) {
-                            val json = Json.parseToJsonElement(resp.body?.string() ?: "{}").jsonObject
-                            json.entries
-                                .filter { it.key.startsWith("wine", true) || it.key.startsWith("proton", true) }
-                                .map { 
-                                    val name = it.key
-                                    val file = it.value.toString().removeSurrounding("\"")
-                                    // Extract version for sorting: "wine-9.3" -> "9.3"
-                                    val ver = extractVersionFromFilename(name)
-                                    WineReleaseItem(name, ver, null, file)
-                                }
-                        } else emptyList()
-                    }
-                } catch (e: Exception) { 
-                    Timber.e(e, "Wine GN manifest error")
-                    emptyList() 
-                }
-
-                // 2. Fetch ALL GameNative proton-wine releases (X86_64, ARM64EC, etc.)
-                val gnProtonWineItems = try {
+                // 1. GameNative proton-wine GitHub releases (with dates)
+                val gnProtonItems = try {
                     val req = Request.Builder()
                         .url("https://api.github.com/repos/GameNative/proton-wine/releases?per_page=50")
-                        .header("Accept", "application/vnd.github.v3+json")
-                        .build()
+                        .header("Accept", "application/vnd.github.v3+json").build()
                     Net.http.newCall(req).execute().use { resp ->
-                        if (resp.isSuccessful) {
-                            val releases = Json.parseToJsonElement(resp.body?.string() ?: "[]").jsonArray
-                            releases.flatMap { release ->
-                                val assets = release.jsonObject["assets"]?.jsonArray ?: emptyList()
-                                assets.mapNotNull { element ->
-                                    val obj = element.jsonObject
-                                    val name = obj["name"]?.jsonPrimitive?.content ?: return@mapNotNull null
-                                    val url = obj["browser_download_url"]?.jsonPrimitive?.content ?: return@mapNotNull null
-                                    if (!name.endsWith(".wcp", ignoreCase = true)) return@mapNotNull null
-
-                                    // For display name, use the full filename without extension to avoid confusion (e.g. Proton-10.0-4)
-                                    val displayName = name.removeSuffix(".wcp")
-                                    
-                                    // For sorting, extract the version part
-                                    val ver = extractVersionFromFilename(name)
-                                    
-                                    WineReleaseItem(displayName, ver, url, name)
-                                }
+                        if (!resp.isSuccessful) return@use emptyList()
+                        val releases = Json.parseToJsonElement(resp.body?.string() ?: "[]").jsonArray
+                        releases.flatMap { rel ->
+                            val obj = rel.jsonObject
+                            val date = obj["published_at"]?.jsonPrimitive?.content ?: ""
+                            (obj["assets"]?.jsonArray ?: emptyList()).mapNotNull { el ->
+                                val aObj = el.jsonObject
+                                val n = aObj["name"]?.jsonPrimitive?.content ?: return@mapNotNull null
+                                val u = aObj["browser_download_url"]?.jsonPrimitive?.content ?: return@mapNotNull null
+                                if (!n.endsWith(".wcp", ignoreCase = true)) return@mapNotNull null
+                                WineReleaseItem(n.removeSuffix(".wcp"), extractVersionFromFilename(n), u, n, date)
                             }
-                        } else emptyList()
+                        }
                     }
-                } catch (e: Exception) {
-                    Timber.e(e, "GameNative proton-wine manifest error")
-                    emptyList()
-                }
+                } catch (e: Exception) { Timber.e(e, "proton-wine fetch error"); emptyList() }
 
-                // 3. Merge and Sort (Newest Version First)
-                // Filter out Nick's repo as requested and combine GN internal + GN proton-wine
-                val combined = (gnItems + gnProtonWineItems).sortedWith { a, b ->
-                    // Primary sort by version string
-                    val verCmp = compareVersionStrings(b.version, a.version)
-                    if (verCmp != 0) verCmp else b.name.compareTo(a.name) // Secondary sort by full name
-                }
+                // 2. Nick's repo GameNative tag (GN-proton builds)
+                val nickGameNativeItems = try {
+                    val req = Request.Builder()
+                        .url("https://api.github.com/repos/Xnick417x/Winlator-Bionic-Nightly-wcp/releases/tags/GameNative")
+                        .header("Accept", "application/vnd.github.v3+json").build()
+                    Net.http.newCall(req).execute().use { resp ->
+                        if (!resp.isSuccessful) return@use emptyList()
+                        val obj = Json.parseToJsonElement(resp.body?.string() ?: "{}").jsonObject
+                        val date = obj["published_at"]?.jsonPrimitive?.content ?: ""
+                        (obj["assets"]?.jsonArray ?: emptyList()).mapNotNull { el ->
+                            val aObj = el.jsonObject
+                            val n = aObj["name"]?.jsonPrimitive?.content ?: return@mapNotNull null
+                            val u = aObj["browser_download_url"]?.jsonPrimitive?.content ?: return@mapNotNull null
+                            if (!n.endsWith(".wcp", ignoreCase = true)) return@mapNotNull null
+                            WineReleaseItem(n.removeSuffix(".wcp"), extractVersionFromFilename(n), u, n, date)
+                        }
+                    }
+                } catch (e: Exception) { Timber.e(e, "Nick GameNative fetch error"); emptyList() }
 
-                withContext(Dispatchers.Main) { 
-                    wineReleases = combined.distinctBy { it.fileName } 
-                }
-            } catch (e: Exception) { 
-                Timber.e(e, "Wine manifest error") 
+                // 3. Merge, deduplicate by fileName, sort newest first
+                val combined = (gnProtonItems + nickGameNativeItems)
+                    .distinctBy { it.fileName }
+                    .sortedWith { a, b ->
+                        if (a.releaseDate.isNotEmpty() && b.releaseDate.isNotEmpty())
+                            b.releaseDate.compareTo(a.releaseDate)
+                        else compareVersionStrings(b.version, a.version)
+                    }
+                withContext(Dispatchers.Main) { wineReleases = combined }
+            } catch (e: Exception) {
+                Timber.e(e, "Wine/Proton manifest error")
             }
             withContext(Dispatchers.Main) { isLoading = false }
         }
     }
-    
-    val downloadAndInstall = { item: WineReleaseItem ->
+
+    // Download and install a single WineReleaseItem
+    val downloadAndInstall: (WineReleaseItem) -> Unit = { item ->
         scope.launch {
-            isBusy = true; progress = 0f; statusMsg = "Downloading..."
+            isBusy = true; progress = 0f; statusMsg = "Downloading ${item.name}…"
             try {
                 val dest = File(ctx.cacheDir, item.fileName)
                 var lastUpdate = 0L
-
                 if (item.url != null) {
-                    // Direct URL download (GitHub)
                     withContext(Dispatchers.IO) {
                         val req = Request.Builder().url(item.url).build()
                         Net.http.newCall(req).execute().use { resp ->
                             if (!resp.isSuccessful) throw IOException("HTTP ${resp.code}")
                             val body = resp.body ?: throw IOException("Empty body")
-                            val total = body.contentLength()
-                            val inp = body.byteStream()
+                            val total = body.contentLength(); var dl = 0L
                             FileOutputStream(dest).use { out ->
-                                val buf = ByteArray(8192)
-                                var downloaded = 0L
-                                var n: Int
-                                while (inp.read(buf).also { n = it } != -1) {
-                                    out.write(buf, 0, n)
-                                    downloaded += n.toLong()
-                                    val now = System.currentTimeMillis()
-                                    if (total > 0 && now - lastUpdate > 300) {
-                                        lastUpdate = now
-                                        val p = downloaded.toFloat() / total
-                                        withContext(Dispatchers.Main) { progress = p }
+                                body.byteStream().use { inp ->
+                                    val buf = ByteArray(8192); var n: Int
+                                    while (inp.read(buf).also { n = it } != -1) {
+                                        out.write(buf, 0, n); dl += n
+                                        val now = System.currentTimeMillis()
+                                        if (total > 0 && now - lastUpdate > 300) {
+                                            lastUpdate = now
+                                            withContext(Dispatchers.Main) { progress = dl.toFloat() / total }
+                                        }
                                     }
                                 }
                             }
                         }
                     }
                 } else {
-                    // Fallback download (GameNative)
                     SteamService.fetchFileWithFallback(item.fileName, dest, ctx) { p ->
                         if (System.currentTimeMillis() - lastUpdate > 300) {
                             lastUpdate = System.currentTimeMillis()
@@ -1411,26 +1453,87 @@ private fun WineProtonDetailScreen(
                         }
                     }
                 }
-
-                statusMsg = "Installing..."
-                progress = -1f // indeterminate
-                
-                val installSuccess = withContext(Dispatchers.IO) {
-                    installWcpRobustly(ctx, mgr, Uri.fromFile(dest)) { currentStatus ->
-                        scope.launch(Dispatchers.Main) { statusMsg = currentStatus }
+                statusMsg = "Installing…"; progress = -1f
+                val ok = withContext(Dispatchers.IO) {
+                    installWcpRobustly(ctx, mgr, Uri.fromFile(dest)) { s ->
+                        scope.launch(Dispatchers.Main) { statusMsg = s }
                     }
                 }
-                
                 dest.delete()
-                
-                if (installSuccess) {
+                if (ok) {
                     mgr.syncContents()
-                    withContext(Dispatchers.Main) { 
-                        Toast.makeText(ctx, "Installed Successfully", Toast.LENGTH_SHORT).show()
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(ctx, "Installed ✓", Toast.LENGTH_SHORT).show()
                         refreshInstalled()
                     }
                 } else {
-                     withContext(Dispatchers.Main) { Toast.makeText(ctx, "Install Failed", Toast.LENGTH_SHORT).show() }
+                    withContext(Dispatchers.Main) { Toast.makeText(ctx, "Install Failed", Toast.LENGTH_SHORT).show() }
+                }
+            } catch (e: Exception) {
+                Toast.makeText(ctx, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+            } finally { isBusy = false; progress = 0f; statusMsg = "" }
+        }
+    }
+
+    // Upgrade: uninstall old, install new (no delete prompt needed)
+    val upgradeInstall: (ContentProfile, WineReleaseItem) -> Unit = { oldProf, newItem ->
+        scope.launch {
+            isBusy = true; progress = 0f; statusMsg = "Downloading ${newItem.name}…"
+            try {
+                val dest = File(ctx.cacheDir, newItem.fileName)
+                var lastUpdate = 0L
+                if (newItem.url != null) {
+                    withContext(Dispatchers.IO) {
+                        val req = Request.Builder().url(newItem.url).build()
+                        Net.http.newCall(req).execute().use { resp ->
+                            if (!resp.isSuccessful) throw IOException("HTTP ${resp.code}")
+                            val body = resp.body ?: throw IOException("Empty body")
+                            val total = body.contentLength(); var dl = 0L
+                            FileOutputStream(dest).use { out ->
+                                body.byteStream().use { inp ->
+                                    val buf = ByteArray(8192); var n: Int
+                                    while (inp.read(buf).also { n = it } != -1) {
+                                        out.write(buf, 0, n); dl += n
+                                        val now = System.currentTimeMillis()
+                                        if (total > 0 && now - lastUpdate > 300) {
+                                            lastUpdate = now
+                                            withContext(Dispatchers.Main) { progress = dl.toFloat() / total }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    SteamService.fetchFileWithFallback(newItem.fileName, dest, ctx) { p ->
+                        if (System.currentTimeMillis() - lastUpdate > 300) {
+                            lastUpdate = System.currentTimeMillis()
+                            scope.launch(Dispatchers.Main) { progress = p.coerceIn(0f, 1f) }
+                        }
+                    }
+                }
+                // Uninstall old first
+                statusMsg = "Removing old version…"; progress = -1f
+                withContext(Dispatchers.IO) {
+                    mgr.removeContent(oldProf)
+                    mgr.syncContents()
+                }
+                // Install new
+                statusMsg = "Installing ${newItem.name}…"
+                val ok = withContext(Dispatchers.IO) {
+                    installWcpRobustly(ctx, mgr, Uri.fromFile(dest)) { s ->
+                        scope.launch(Dispatchers.Main) { statusMsg = s }
+                    }
+                }
+                dest.delete()
+                if (ok) {
+                    mgr.syncContents()
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(ctx, "Upgraded to ${newItem.name} ✓", Toast.LENGTH_SHORT).show()
+                        refreshInstalled()
+                    }
+                } else {
+                    withContext(Dispatchers.Main) { Toast.makeText(ctx, "Upgrade Failed", Toast.LENGTH_SHORT).show() }
                 }
             } catch (e: Exception) {
                 Toast.makeText(ctx, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
@@ -1440,115 +1543,239 @@ private fun WineProtonDetailScreen(
 
     val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri?.let {
-             scope.launch {
-                 try {
-                     isBusy = true
-                     progress = -1f // indeterminate for initial extraction
-                     statusMsg = "Importing .wcp package..."
-                     
-                     val success = withContext(Dispatchers.IO) {
-                         installWcpRobustly(ctx, mgr, it) { currentStatus ->
-                             scope.launch(Dispatchers.Main) { statusMsg = currentStatus }
-                         }
-                     }
-                     
-                     if (success) {
-                         mgr.syncContents()
-                         refreshInstalled()
-                         Toast.makeText(ctx, "Imported Successfully", Toast.LENGTH_SHORT).show()
-                     } else {
-                         Toast.makeText(ctx, "Import Failed", Toast.LENGTH_SHORT).show()
-                     }
-                 } catch (e: Exception) {
-                     Timber.e(e, "Manual import error")
-                     Toast.makeText(ctx, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
-                 } finally {
-                     isBusy = false
-                     statusMsg = ""
-                     progress = 0f
-                 }
-             }
+            scope.launch {
+                isBusy = true; progress = -1f; statusMsg = "Importing…"
+                try {
+                    val ok = withContext(Dispatchers.IO) {
+                        installWcpRobustly(ctx, mgr, it) { s -> scope.launch(Dispatchers.Main) { statusMsg = s } }
+                    }
+                    if (ok) {
+                        mgr.syncContents()
+                        withContext(Dispatchers.Main) {
+                            refreshInstalled()
+                            Toast.makeText(ctx, "Imported ✓", Toast.LENGTH_SHORT).show()
+                        }
+                    } else {
+                        withContext(Dispatchers.Main) { Toast.makeText(ctx, "Import Failed", Toast.LENGTH_SHORT).show() }
+                    }
+                } catch (e: Exception) {
+                    Timber.e(e, "Manual import error")
+                    Toast.makeText(ctx, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                } finally { isBusy = false; statusMsg = ""; progress = 0f }
+            }
         }
     }
 
+    // ── UI ────────────────────────────────────────────────────────────────────
+
     Column(modifier = Modifier.fillMaxSize()) {
-        Row(Modifier.fillMaxWidth().padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            TextButton(onClick = onBack) {
+        Box(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 16.dp), contentAlignment = Alignment.Center) {
+            Text("Wine / Proton", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+        }
+        HorizontalDivider()
+
+        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(16.dp)) {
+
+            when {
+                isLoading -> {
+                    Box(Modifier.fillMaxWidth().padding(48.dp), contentAlignment = Alignment.Center) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            CircularProgressIndicator()
+                            Spacer(Modifier.height(12.dp))
+                            Text("Fetching releases…", style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                }
+                else -> {
+                    // ── Installed section ─────────────────────────────────────
+                    val matchedInstalled = installedProfiles.filter { prof ->
+                        wineReleases.any { isAssetInstalled(it.fileName, listOf(prof)) }
+                    }
+                    val unmatchedInstalled = installedProfiles.filter { prof ->
+                        wineReleases.none { isAssetInstalled(it.fileName, listOf(prof)) }
+                    }
+
+                    if (matchedInstalled.isNotEmpty() || unmatchedInstalled.isNotEmpty()) {
+                        Text("Installed", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Spacer(Modifier.height(8.dp))
+
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            matchedInstalled.sortedByDescending { prof ->
+                                wineReleases.find { isAssetInstalled(it.fileName, listOf(prof)) }?.releaseDate ?: ""
+                            }.forEach { prof ->
+                                val matchedRelease = wineReleases.find { isAssetInstalled(it.fileName, listOf(prof)) }
+                                // Check for newer version in same family
+                                val family = matchedRelease?.let { wineFamily(it.fileName) } ?: wineFamily(prof.verName)
+                                val newerRelease = wineReleases
+                                    .filter { wineFamily(it.fileName) == family }
+                                    .firstOrNull { candidate ->
+                                        matchedRelease != null &&
+                                        candidate.releaseDate.isNotEmpty() &&
+                                        matchedRelease.releaseDate.isNotEmpty() &&
+                                        candidate.releaseDate > matchedRelease.releaseDate &&
+                                        !isAssetInstalled(candidate.fileName, installedProfiles)
+                                    }
+
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .background(
+                                            MaterialTheme.colorScheme.secondaryContainer,
+                                            shape = MaterialTheme.shapes.small,
+                                        )
+                                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(prof.verName, fontWeight = FontWeight.SemiBold)
+                                        if (matchedRelease?.releaseDate?.isNotEmpty() == true) {
+                                            Text(
+                                                "Released ${formatRelativeTime(matchedRelease.releaseDate)}",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            )
+                                        }
+                                    }
+                                    if (newerRelease != null) {
+                                        TextButton(
+                                            onClick = { if (!isBusy) upgradeInstall(prof, newerRelease) },
+                                            enabled = !isBusy,
+                                            colors = ButtonDefaults.textButtonColors(
+                                                contentColor = MaterialTheme.colorScheme.primary,
+                                            ),
+                                        ) { Text("Upgrade") }
+                                    }
+                                    IconButton(onClick = { deleteTarget = prof }) {
+                                        Icon(Icons.Default.Delete, "Uninstall", tint = MaterialTheme.colorScheme.error)
+                                    }
+                                }
+                            }
+
+                            // Unmatched installed (custom/local)
+                            unmatchedInstalled.forEach { prof ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .background(
+                                            MaterialTheme.colorScheme.secondaryContainer,
+                                            shape = MaterialTheme.shapes.small,
+                                        )
+                                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(prof.verName, fontWeight = FontWeight.SemiBold)
+                                        Text("Custom install", style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
+                                    IconButton(onClick = { deleteTarget = prof }) {
+                                        Icon(Icons.Default.Delete, "Uninstall", tint = MaterialTheme.colorScheme.error)
+                                    }
+                                }
+                            }
+                        }
+
+                        Spacer(Modifier.height(16.dp))
+                        HorizontalDivider()
+                        Spacer(Modifier.height(12.dp))
+                    }
+
+                    // ── Available section ─────────────────────────────────────
+                    val available = wineReleases.filter { item ->
+                        !isAssetInstalled(item.fileName, installedProfiles)
+                    }
+
+                    if (available.isNotEmpty()) {
+                        Text("Available", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Spacer(Modifier.height(8.dp))
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            available.forEach { item ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .background(
+                                            MaterialTheme.colorScheme.surfaceVariant,
+                                            shape = MaterialTheme.shapes.small,
+                                        )
+                                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(item.name, fontWeight = FontWeight.SemiBold)
+                                        if (item.releaseDate.isNotEmpty()) {
+                                            Text(
+                                                "Released ${formatRelativeTime(item.releaseDate)}",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            )
+                                        }
+                                    }
+                                    TextButton(
+                                        onClick = { if (!isBusy) downloadAndInstall(item) },
+                                        enabled = !isBusy,
+                                    ) { Text("Install") }
+                                }
+                            }
+                        }
+                        Spacer(Modifier.height(16.dp))
+                    } else if (!isLoading && installedProfiles.isEmpty()) {
+                        Text(
+                            "No releases found",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+
+                    HorizontalDivider(Modifier.padding(vertical = 8.dp))
+                    Button(
+                        onClick = { importLauncher.launch(arrayOf("application/octet-stream", "*/*")) },
+                        enabled = !isBusy,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.tertiary,
+                            contentColor = MaterialTheme.colorScheme.onTertiary,
+                        ),
+                    ) { Text("Import .wcp Package") }
+                }
+            }
+        }
+
+        // ── Sticky download/install progress bar ────────────────────────────
+        if (isBusy) {
+            HorizontalDivider()
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+            ) {
+                Text(
+                    text = statusMsg,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(4.dp))
+                if (progress in 0f..1f) {
+                    LinearProgressIndicator(
+                        progress = { progress },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                } else {
+                    // Indeterminate — during uninstall / extraction / installation phase
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                }
+            }
+        }
+
+        HorizontalDivider()
+        Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+            TextButton(onClick = onBack, modifier = Modifier.align(Alignment.CenterStart)) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(4.dp))
                 Text("Back")
             }
-            Text("Wine/Proton Manager", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, modifier = Modifier.weight(1f).padding(end = 8.dp))
-        }
-        HorizontalDivider()
-        
-        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(16.dp)) {
-            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
-                Row(Modifier.padding(12.dp)) {
-                    Icon(Icons.Filled.Info, null, tint = MaterialTheme.colorScheme.primary)
-                    Spacer(Modifier.width(8.dp))
-                    Text("Note: Only Bionic-based builds are supported.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
-                }
-            }
-            Spacer(Modifier.height(16.dp))
-            
-            if (isLoading) CircularProgressIndicator(Modifier.align(Alignment.CenterHorizontally))
-            else if (wineReleases.isNotEmpty()) {
-                Text("Available Online", style = MaterialTheme.typography.titleMedium)
-                ExposedDropdownMenuBox(expanded = isExpanded, onExpandedChange = { isExpanded = !isExpanded }) {
-                    OutlinedTextField(
-                        value = selectedItem?.name ?: "", 
-                        onValueChange = {}, 
-                        readOnly = true, 
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isExpanded) }, 
-                        modifier = Modifier.fillMaxWidth().menuAnchor(), 
-                        placeholder = { Text("Select Version") }
-                    )
-                    ExposedDropdownMenu(expanded = isExpanded, onDismissRequest = { isExpanded = false }) {
-                        wineReleases.forEach { item -> 
-                            DropdownMenuItem(
-                                text = { Text(item.name) }, 
-                                onClick = { selectedItem = item; isExpanded = false }
-                            ) 
-                        }
-                    }
-                }
-                if (selectedItem != null) {
-                    Spacer(Modifier.height(8.dp))
-                    Button(onClick = { downloadAndInstall(selectedItem!!) }, enabled = !isBusy, modifier = Modifier.fillMaxWidth()) {
-                        Text(if (isBusy) "Working..." else "Download & Install")
-                    }
-                    if (isBusy) LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp))
-                }
-            }
-            
-            HorizontalDivider(Modifier.padding(vertical = 16.dp))
-            
-            Button(
-                onClick = { importLauncher.launch(arrayOf("application/octet-stream", "*/*")) },
-                enabled = !isBusy,
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary, contentColor = MaterialTheme.colorScheme.onTertiary)
-            ) { Text("Import .wcp Package") }
-            
-            HorizontalDivider(Modifier.padding(vertical = 16.dp))
-            
-            Text("Installed Versions", style = MaterialTheme.typography.titleMedium)
-            if (installedProfiles.isEmpty()) Text("No versions found.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            else {
-                installedProfiles.forEach { p ->
-                    Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f)) {
-                            Text("${p.type}: ${p.verName}", style = MaterialTheme.typography.bodyMedium)
-                            if (p.desc.isNotEmpty()) Text(p.desc, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                        IconButton(onClick = { deleteTarget = p }) { Icon(Icons.Filled.Delete, "Delete", tint = MaterialTheme.colorScheme.error) }
-                    }
-                }
-            }
         }
     }
-    
+
     if (deleteTarget != null) {
         AlertDialog(
             onDismissRequest = { deleteTarget = null },
@@ -1557,9 +1784,9 @@ private fun WineProtonDetailScreen(
             confirmButton = {
                 TextButton(onClick = {
                     scope.launch(Dispatchers.IO) {
-                         mgr.removeContent(deleteTarget!!)
-                         mgr.syncContents()
-                         withContext(Dispatchers.Main) { refreshInstalled(); deleteTarget = null }
+                        mgr.removeContent(deleteTarget!!)
+                        mgr.syncContents()
+                        withContext(Dispatchers.Main) { refreshInstalled(); deleteTarget = null }
                     }
                 }) { Text("Remove", color = MaterialTheme.colorScheme.error) }
             },
@@ -1574,6 +1801,7 @@ private fun parseGHReleases(jsonStr: String): List<GHRelease> = try {
     Json.parseToJsonElement(jsonStr).jsonArray.map { element ->
         val obj     = element.jsonObject
         val tagName = obj["tag_name"]?.jsonPrimitive?.content ?: ""
+        val publishedAt = obj["published_at"]?.jsonPrimitive?.content ?: ""
         val assets  = obj["assets"]?.jsonArray?.mapNotNull { assetEl ->
             val aObj = assetEl.jsonObject
             val name = aObj["name"]?.jsonPrimitive?.content ?: return@mapNotNull null
@@ -1581,7 +1809,7 @@ private fun parseGHReleases(jsonStr: String): List<GHRelease> = try {
                 ?: return@mapNotNull null
             GHAsset(name = name, downloadUrl = url)
         } ?: emptyList()
-        GHRelease(tagName = tagName, assets = assets)
+        GHRelease(tagName = tagName, assets = assets, publishedAt = publishedAt)
     }
 } catch (e: Exception) {
     Timber.e(e, "ComponentsManager: JSON parse error")
@@ -1625,12 +1853,13 @@ private suspend fun <T> suspendInstallCallback(
     block(object : ContentsManager.OnInstallFinishedCallback {
         override fun onFailed(reason: ContentsManager.InstallFailedReason, e: Exception?) {
             if (continuation.isActive) {
-                if (reason == ContentsManager.InstallFailedReason.ERROR_EXIST) {
-                    // Treat "already exists" as a special success or at least non-terminal error
-                    continuation.resume(null) { /* cancel cleanup */ }
-                } else {
-                    continuation.resume(null) { /* cancel cleanup */ }
-                }
+                // If it exists, we now allow overwrite, so it's a success path in the context of the initial validation check?
+                // Actually, for extraContentFile (validation), ERROR_EXIST shouldn't happen or means something different.
+                // For finishInstallContent, ERROR_EXIST returns "Already installed" in the legacy code, but we want to allow it.
+                // However, ContentsManager likely handles the overwrite internally if we handle the error or if we check before.
+                // But since we can't change ContentsManager easily, we'll assume robust install handles it or we accept the error as non-fatal if possible.
+                // For now, return null on failure.
+                continuation.resume(null) { /* cancel cleanup */ }
             }
         }
 

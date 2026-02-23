@@ -2356,27 +2356,53 @@ private fun getWineStartCommand(
         }
         return amazonLaunchCommand
     } else if (isCustomGame) {
-        // For Custom Games, we can launch even without appLaunchInfo
-        // Use the executable path from container config. If missing, try to auto-detect
-        // a unique .exe in the game folder (ignoring installers like "unins*").
+        // For Custom Games, dynamically find the drive letter
         var executablePath = container.executablePath
-
-        // Find the A: drive (which should map to the game folder)
+        val gameAndroidPath = CustomGameScanner.getFolderPathFromAppId(appId)
+        
+        var driveLetter = "D" // Default
         var gameFolderPath: String? = null
-        for (drive in Container.drivesIterator(container.drives)) {
-            if (drive[0] == "A") {
-                gameFolderPath = drive[1]
-                break
+
+        // 1. Try to find the drive mapped to the game folder
+        if (gameAndroidPath != null) {
+            for (drive in Container.drivesIterator(container.drives)) {
+                if (drive[1] == gameAndroidPath) {
+                    driveLetter = drive[0]
+                    gameFolderPath = drive[1]
+                    break
+                }
+            }
+        }
+
+        // 2. If not found, try A: (Steam/Default) or keep looking
+        if (gameFolderPath == null) {
+            for (drive in Container.drivesIterator(container.drives)) {
+                if (drive[0] == "A") {
+                    driveLetter = "A"
+                    gameFolderPath = drive[1]
+                    break
+                }
+            }
+        }
+        
+        // 3. Last resort: D:
+        if (gameFolderPath == null) {
+             for (drive in Container.drivesIterator(container.drives)) {
+                if (drive[0] == "D") {
+                    driveLetter = "D"
+                    gameFolderPath = drive[1]
+                    break
+                }
             }
         }
 
         if (executablePath.isEmpty()) {
-            // Attempt auto-detection only when we have the physical folder path
+            // Attempt auto-detection
             if (gameFolderPath == null) {
-                Timber.tag("XServerScreen").e("Could not find A: drive for Custom Game: $appId")
+                Timber.tag("XServerScreen").e("Could not find mapped drive for Custom Game: $appId")
                 return "winhandler.exe \"wfm.exe\""
             }
-            val auto = CustomGameScanner.findUniqueExeRelativeToFolder(gameFolderPath!!)
+            val auto = CustomGameScanner.findUniqueExeRelativeToFolder(gameFolderPath)
             if (auto != null) {
                 Timber.tag("XServerScreen").i("Auto-selected Custom Game exe: $auto")
                 executablePath = auto
@@ -2389,7 +2415,7 @@ private fun getWineStartCommand(
         }
 
         if (gameFolderPath == null) {
-            Timber.tag("XServerScreen").e("Could not find A: drive for Custom Game: $appId")
+            Timber.tag("XServerScreen").e("Could not find mapped drive for Custom Game: $appId")
             return "winhandler.exe \"wfm.exe\""
         }
 
@@ -2397,10 +2423,10 @@ private fun getWineStartCommand(
         val executableDir = gameFolderPath + "/" + executablePath.substringBeforeLast("/", "")
         guestProgramLauncherComponent.workingDir = File(executableDir)
 
-        // Normalize path separators (ensure Windows-style backslashes)
+        // Normalize path separators
         val normalizedPath = executablePath.replace('/', '\\')
-        envVars.put("WINEPATH", "A:\\")
-        "\"A:\\${normalizedPath}\""
+        envVars.put("WINEPATH", "$driveLetter:\\")
+        "\"$driveLetter:\\${normalizedPath}\""
     } else if (appLaunchInfo == null) {
         // For Steam games, we need appLaunchInfo
         Timber.tag("XServerScreen").w("appLaunchInfo is null for Steam game: $appId")
@@ -2497,6 +2523,23 @@ private fun getSteamlessTarget(
     return "$drive:\\${executablePath}"
 }
 
+private fun cleanupProcesses() {
+    try {
+        val cmds = arrayOf(
+            "pkill -9 wineserver",
+            "pkill -9 box64",
+            "pkill -9 box86",
+            "pkill -9 libpulseaudio.so",
+            "pkill -9 -f winhandler.exe"
+        )
+        for (cmd in cmds) {
+            Runtime.getRuntime().exec(cmd).waitFor()
+        }
+    } catch (e: Exception) {
+        Timber.e(e, "Failed to kill processes")
+    }
+}
+
 private fun exit(winHandler: WinHandler?, environment: XEnvironment?, frameRating: FrameRating?, appInfo: SteamApp?, container: Container, onExit: () -> Unit, navigateBack: () -> Unit) {
     Timber.i("Exit called")
 
@@ -2522,6 +2565,7 @@ private fun exit(winHandler: WinHandler?, environment: XEnvironment?, frameRatin
 
     winHandler?.stop()
     environment?.stopEnvironmentComponents()
+    cleanupProcesses()
     SteamService.keepAlive = false
     // AppUtils.restartApplication(this)
     // PluviaApp.xServerState = null
@@ -3037,7 +3081,16 @@ private fun setupWineSystemFiles(
         )
     }
 
-    val needReextract = ALWAYS_REEXTRACT || xServerState.value.dxwrapper != container.getExtra("dxwrapper") || container.wineVersion != wineVersion
+    val desiredDxvk = container.dxvkVersion
+    val installedDxvk = container.getExtra("dxvkVersion")
+    val desiredVkd3d = container.vkd3dVersion
+    val installedVkd3d = container.getExtra("vkd3dVersion")
+
+    val needReextract = ALWAYS_REEXTRACT || 
+        xServerState.value.dxwrapper != container.getExtra("dxwrapper") || 
+        container.wineVersion != wineVersion ||
+        desiredDxvk != installedDxvk ||
+        desiredVkd3d != installedVkd3d
 
     Timber.i("needReextract is " + needReextract)
     Timber.i("xServerState.value.dxwrapper is " + xServerState.value.dxwrapper)
@@ -3055,6 +3108,8 @@ private fun setupWineSystemFiles(
             onExtractFileListener,
         )
         container.putExtra("dxwrapper", xServerState.value.dxwrapper)
+        if (desiredDxvk != null) container.putExtra("dxvkVersion", desiredDxvk)
+        if (desiredVkd3d != null) container.putExtra("vkd3dVersion", desiredVkd3d)
         containerDataChanged = true
     }
 
@@ -3135,12 +3190,20 @@ private fun applyGeneralPatches(
     WineUtils.applySystemTweaks(context, wineInfo)
     container.putExtra("graphicsDriver", null)
     container.putExtra("desktopTheme", null)
+    container.putExtra("wincomponents", null)
+    // Clear stale arch-specific DLL cache so restoreOriginalDllFiles rebuilds it
+    // from the correct wine version on the next DXWrapper/wincomponent extraction.
+    val originalDllsCache = File(imageFs.rootDir, ImageFs.CACHE_PATH + "/original_dlls")
+    FileUtils.delete(originalDllsCache)
     WinlatorPrefManager.init(context)
     WinlatorPrefManager.putString("current_box64_version", "")
 }
 
 private fun refreshComponentsFiles(context: Context) {
-    TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context.assets, "pulseaudio-gamenative.tzst", File(context.filesDir, "pulseaudio"))
+    val pulseDir = File(context.filesDir, "pulseaudio")
+    FileUtils.delete(pulseDir)
+    pulseDir.mkdirs()
+    TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context.assets, "pulseaudio-gamenative.tzst", pulseDir)
 }
 private fun extractDXWrapperFiles(
     context: Context,
@@ -3164,10 +3227,73 @@ private fun extractDXWrapperFiles(
         "dxgi.dll",
         "ddraw.dll",
     )
-    val splitDxWrapper = dxwrapper.split("-")[0]
-    if (firstTimeBoot && splitDxWrapper != "vkd3d") cloneOriginalDllFiles(imageFs, *dlls)
+    // Backup original DLLs on first boot
+    if (firstTimeBoot) cloneOriginalDllFiles(imageFs, *dlls)
+
     val rootDir = imageFs.getRootDir()
     val windowsDir = File(rootDir, ImageFs.WINEPREFIX + "/drive_c/windows")
+
+    val dxvkVersion = container.dxvkVersion
+    val vkd3dVersion = container.vkd3dVersion
+
+    // If using new separated fields
+    if (dxvkVersion != null || vkd3dVersion != null) {
+        // Handle DXVK (D3D9/10/11/DXGI)
+        if (dxvkVersion != null && dxvkVersion != "wined3d" && dxvkVersion != "Disabled") {
+            val cleanDxvkVersion = if (dxvkVersion.startsWith("dxvk-")) dxvkVersion.substring(5) else dxvkVersion
+            Timber.i("Extracting DXVK version: $cleanDxvkVersion (raw: $dxvkVersion)")
+            
+            val profile = contentsManager.getProfileByEntryName(dxvkVersion) 
+                ?: contentsManager.getProfileByEntryName("dxvk-$cleanDxvkVersion")
+                
+            if (profile != null) {
+                contentsManager.applyContent(profile)
+            } else {
+                TarCompressorUtils.extract(
+                    TarCompressorUtils.Type.ZSTD, context.assets,
+                    "dxwrapper/dxvk-$cleanDxvkVersion.tzst", windowsDir, onExtractFileListener,
+                )
+            }
+            // Extract D8VK if standard DXVK doesn't include it (or always for d3d8 support)
+            TarCompressorUtils.extract(
+                TarCompressorUtils.Type.ZSTD,
+                context.assets,
+                "dxwrapper/d8vk-${DefaultVersion.D8VK}.tzst",
+                windowsDir,
+                onExtractFileListener,
+            )
+        } else {
+            // Restore Wine DXVK-related DLLs
+            restoreOriginalDllFiles(context, container, containerManager, imageFs, 
+                "d3d9.dll", "d3d10.dll", "d3d10_1.dll", "d3d10core.dll", "d3d11.dll", "dxgi.dll", "d3d8.dll")
+        }
+
+        // Handle VKD3D (D3D12)
+        if (vkd3dVersion != null && vkd3dVersion != "wined3d" && vkd3dVersion != "Disabled") {
+            val cleanVkd3dVersion = if (vkd3dVersion.startsWith("vkd3d-")) vkd3dVersion.substring(6) else vkd3dVersion
+            Timber.i("Extracting VKD3D version: $cleanVkd3dVersion (raw: $vkd3dVersion)")
+            
+            val profile = contentsManager.getProfileByEntryName(vkd3dVersion)
+                ?: contentsManager.getProfileByEntryName("vkd3d-$cleanVkd3dVersion")
+                
+            if (profile != null) {
+                contentsManager.applyContent(profile)
+            } else {
+                TarCompressorUtils.extract(
+                    TarCompressorUtils.Type.ZSTD, context.assets,
+                    "dxwrapper/vkd3d-$cleanVkd3dVersion.tzst", windowsDir, onExtractFileListener,
+                )
+            }
+        } else {
+            // Restore Wine VKD3D-related DLLs
+            restoreOriginalDllFiles(context, container, containerManager, imageFs, "d3d12.dll", "d3d12core.dll")
+        }
+        return
+    }
+
+    // Legacy logic fallback
+    val splitDxWrapper = dxwrapper.split("-")[0]
+    // if (firstTimeBoot && splitDxWrapper != "vkd3d") cloneOriginalDllFiles(imageFs, *dlls) // Handled at top
 
     when (splitDxWrapper) {
         "wined3d" -> {
@@ -3360,7 +3486,18 @@ private fun extractWinComponentFiles(
             val identifier = wincomponent[0]
             val useNative = wincomponent[1].equals("1")
 
-            if (!container.wineVersion.contains("arm64ec") && identifier.contains("opengl") && useNative) continue
+            if (!container.wineVersion.contains("arm64ec") && identifier.contains("opengl") && useNative) {
+                // Native opengl (libgallium_wgl) is ARM64-only; fall back to builtin for x86_64.
+                // Also update DLL overrides so Wine uses builtin directly without a failed native load.
+                val dlnames = wincomponentsJSONObject.getJSONArray(identifier)
+                for (i in 0 until dlnames.length()) {
+                    val dlname = dlnames.getString(i)
+                    dlls.add(if (!dlname.endsWith(".exe")) "$dlname.dll" else dlname)
+                }
+                WineUtils.overrideWinComponentDlls(context, container, identifier, false)
+                WineUtils.setWinComponentRegistryKeys(systemRegFile, identifier, false)
+                continue
+            }
 
             if (useNative) {
                 TarCompressorUtils.extract(

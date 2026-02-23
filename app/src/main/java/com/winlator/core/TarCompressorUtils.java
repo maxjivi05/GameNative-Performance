@@ -193,6 +193,9 @@ public abstract class TarCompressorUtils {
                         FileUtils.symlink(entry.getLinkName(), file.getAbsolutePath());
                     }
                     else {
+                        if (file.exists() && !file.delete()) {
+                            Log.w("TarCompressorUtils", "Failed to delete existing file: " + file.getAbsolutePath());
+                        }
                         try (BufferedOutputStream outStream = new BufferedOutputStream(new FileOutputStream(file), StreamUtils.BUFFER_SIZE)) {
                             if (!StreamUtils.copy(tar, outStream)) return false;
                         }
