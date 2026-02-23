@@ -2,6 +2,7 @@ package app.gamenative.ui.component.dialog
 
 import android.content.Context
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -10,6 +11,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -25,6 +27,7 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -193,50 +196,54 @@ fun GameEditDialog(
         },
         properties = DialogProperties(
             usePlatformDefaultWidth = false,
-            dismissOnClickOutside = true
+            dismissOnClickOutside = true,
+            dismissOnBackPress = true
         )
     ) {
+        // Handle physical back button
+        BackHandler {
+            if (currentView == EditView.SETTINGS) {
+                currentView = EditView.MENU
+            } else {
+                onDismiss()
+            }
+        }
+
         Surface(
-            modifier = Modifier
-                .width(400.dp) // Fixed width for the window
-                .height(600.dp) // Fixed height
-                .padding(16.dp),
-            shape = RoundedCornerShape(16.dp),
+            modifier = Modifier.fillMaxSize(),
+            shape = androidx.compose.ui.graphics.RectangleShape,
             color = MaterialTheme.colorScheme.surface,
             tonalElevation = 8.dp
         ) {
             when (currentView) {
                 EditView.MENU -> {
                     Column(
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxSize()
                     ) {
                         // Header
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(16.dp)
+                                .padding(16.dp),
+                            contentAlignment = Alignment.Center
                         ) {
                             Text(
                                 text = libraryItem.name,
                                 style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.Bold,
                                 maxLines = 1,
-                                modifier = Modifier.align(Alignment.Center)
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
                             )
-                            IconButton(
-                                onClick = onDismiss,
-                                modifier = Modifier.align(Alignment.CenterEnd)
-                            ) {
-                                Icon(Icons.Default.Close, contentDescription = "Close")
-                            }
                         }
+                        
+                        HorizontalDivider()
                         
                         // Menu Items List
                         Column(
                             modifier = Modifier
                                 .weight(1f)
                                 .verticalScroll(rememberScrollState())
-                                .padding(horizontal = 16.dp),
+                                .padding(horizontal = 16.dp, vertical = 16.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             // Filter options based on requirement
@@ -282,28 +289,33 @@ fun GameEditDialog(
                                 )
                             }
                         }
+                        
+                        // Footer with Back Button at Bottom Left
+                        HorizontalDivider()
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp)
+                        ) {
+                            androidx.compose.material3.TextButton(
+                                onClick = onDismiss,
+                                modifier = Modifier.align(Alignment.CenterStart)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.ArrowBack,
+                                    contentDescription = "Back",
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(Modifier.width(4.dp))
+                                Text("Back")
+                            }
+                        }
                     }
                 }
                 EditView.SETTINGS -> {
                     // Inline Container Config
                     // We reuse ContainerConfigScreen but wrapped in a Column to provide a Back button
-                    Column(modifier = Modifier.fillMaxWidth()) {
-                        /*
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            IconButton(onClick = { currentView = EditView.MENU }) {
-                                Icon(Icons.Default.ArrowBack, contentDescription = "Back")
-                            }
-                            Text(
-                                text = "Settings",
-                                style = MaterialTheme.typography.titleMedium,
-                                modifier = Modifier.padding(start = 8.dp)
-                            )
-                        }
-                        */
-                        
+                    Column(modifier = Modifier.fillMaxSize()) {
                         // ContainerConfigScreen handles its own TopBar and Dismiss
                         // We override onDismissRequest to go back to MENU
                         ContainerConfigScreen(

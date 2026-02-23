@@ -2,27 +2,39 @@ package app.gamenative.ui.component.dialog
 
 import android.content.Context
 import android.content.res.Configuration
+import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -35,6 +47,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -45,19 +58,11 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.FolderOpen
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import app.gamenative.BuildConfig
 import app.gamenative.R
 import app.gamenative.data.DepotInfo
 import app.gamenative.service.SteamService
 import app.gamenative.service.SteamService.Companion.INVALID_APP_ID
 import app.gamenative.ui.component.LoadingScreen
-import app.gamenative.ui.component.topbar.BackButton
 import app.gamenative.ui.components.getPathFromTreeUri
 import app.gamenative.ui.data.GameDisplayInfo
 import app.gamenative.ui.internal.fakeAppInfo
@@ -100,6 +105,11 @@ fun GameManagerDialog(
     
     val installedApp = remember(gameId) {
         SteamService.getInstalledApp(gameId)
+    }
+
+    // Handle physical back button
+    BackHandler(enabled = visible) {
+        onDismissRequest()
     }
 
     val launcher = rememberLauncherForActivityResult(
@@ -311,213 +321,236 @@ fun GameManagerDialog(
                     dismissOnClickOutside = false,
                 ),
                 content = {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(Color.Black)
-                            .verticalScroll(scrollState),
-                        horizontalAlignment = Alignment.Start,
+                    Surface(
+                        modifier = Modifier.fillMaxSize(),
+                        shape = RectangleShape,
+                        color = MaterialTheme.colorScheme.background // Ensure background color
                     ) {
-                        // Hero Section with Game Image Background
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(250.dp)
+                        Column(
+                            modifier = Modifier.fillMaxSize()
                         ) {
-                            // Hero background image
-                            if (displayInfo.heroImageUrl != null) {
-                                CoilImage(
-                                    modifier = Modifier.fillMaxSize(),
-                                    imageModel = { displayInfo.heroImageUrl },
-                                    imageOptions = ImageOptions(contentScale = ContentScale.Crop),
-                                    loading = { LoadingScreen() },
-                                    failure = {
-                                        Box(
-                                            modifier = Modifier.fillMaxSize(),
-                                            contentAlignment = Alignment.Center,
-                                        ) {
-                                            // Gradient background as fallback
-                                            Surface(
-                                                modifier = Modifier.fillMaxSize(),
-                                                color = MaterialTheme.colorScheme.primary
-                                            ) { }
-                                        }
-                                    },
-                                    previewPlaceholder = painterResource(R.drawable.testhero),
-                                )
-                            } else {
-                                // Fallback gradient background when no hero image
-                                Surface(
-                                    modifier = Modifier.fillMaxSize(),
-                                    color = MaterialTheme.colorScheme.primary
-                                ) { }
-                            }
-
-                            // Gradient overlay
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .background(
-                                        brush = Brush.verticalGradient(
-                                            colors = listOf(
-                                                Color.Transparent,
-                                                Color.Black.copy(alpha = 0.8f)
-                                            )
-                                        )
-                                    )
-                            )
-
-                            // Back button (top left)
-                            Box(
-                                modifier = Modifier
-                                    .padding(20.dp)
-                                    .background(
-                                        color = Color.Black.copy(alpha = 0.5f),
-                                        shape = RoundedCornerShape(12.dp)
-                                    )
-                            ) {
-                                BackButton(onClick = onDismissRequest)
-                            }
-
-                            // Game title and subtitle
+                            // Scrollable Content
                             Column(
                                 modifier = Modifier
-                                    .align(Alignment.BottomStart)
-                                    .padding(20.dp)
+                                    .weight(1f)
+                                    .verticalScroll(scrollState),
+                                horizontalAlignment = Alignment.Start,
                             ) {
-                                Text(
-                                    text = displayInfo.name,
-                                    style = MaterialTheme.typography.headlineLarge.copy(
-                                        fontWeight = FontWeight.Bold,
-                                        shadow = Shadow(
-                                            color = Color.Black.copy(alpha = 0.5f),
-                                            offset = Offset(0f, 2f),
-                                            blurRadius = 10f
-                                        )
-                                    ),
-                                    color = Color.White
-                                )
-
-                                Text(
-                                    text = "${displayInfo.developer} • ${
-                                        remember(displayInfo.releaseDate) {
-                                            if (displayInfo.releaseDate > 0) {
-                                                SimpleDateFormat("yyyy", Locale.getDefault()).format(Date(displayInfo.releaseDate * 1000))
-                                            } else {
-                                                ""
-                                            }
-                                        }
-                                    }",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = Color.White.copy(alpha = 0.9f)
-                                )
-                            }
-                        }
-
-                        Column(
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            // Select All toggle
-                            if (selectableAppIds.isNotEmpty()) {
-                                Row(
+                                // Hero Section with Game Image Background
+                                Box(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                                    horizontalArrangement = Arrangement.End
+                                        .height(250.dp)
                                 ) {
-                                    Button(
-                                        onClick = {
-                                            val newState = !allSelectableSelected
-                                            selectableAppIds.forEach { appId ->
-                                                selectedAppIds[appId] = newState
-                                            }
-                                        }
+                                    // Hero background image
+                                    if (displayInfo.heroImageUrl != null) {
+                                        CoilImage(
+                                            modifier = Modifier.fillMaxSize(),
+                                            imageModel = { displayInfo.heroImageUrl },
+                                            imageOptions = ImageOptions(contentScale = ContentScale.Crop),
+                                            loading = { LoadingScreen() },
+                                            failure = {
+                                                Box(
+                                                    modifier = Modifier.fillMaxSize(),
+                                                    contentAlignment = Alignment.Center,
+                                                ) {
+                                                    // Gradient background as fallback
+                                                    Surface(
+                                                        modifier = Modifier.fillMaxSize(),
+                                                        color = MaterialTheme.colorScheme.primary
+                                                    ) { }
+                                                }
+                                            },
+                                            previewPlaceholder = painterResource(R.drawable.testhero),
+                                        )
+                                    } else {
+                                        // Fallback gradient background when no hero image
+                                        Surface(
+                                            modifier = Modifier.fillMaxSize(),
+                                            color = MaterialTheme.colorScheme.primary
+                                        ) { }
+                                    }
+
+                                    // Gradient overlay
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .background(
+                                                brush = Brush.verticalGradient(
+                                                    colors = listOf(
+                                                        Color.Transparent,
+                                                        Color.Black.copy(alpha = 0.8f)
+                                                    )
+                                                )
+                                            )
+                                    )
+
+                                    // Game title and subtitle
+                                    Column(
+                                        modifier = Modifier
+                                            .align(Alignment.BottomStart)
+                                            .padding(20.dp)
                                     ) {
                                         Text(
-                                            text = if (allSelectableSelected) "Deselect all" else "Select all"
+                                            text = displayInfo.name,
+                                            style = MaterialTheme.typography.headlineLarge.copy(
+                                                fontWeight = FontWeight.Bold,
+                                                shadow = Shadow(
+                                                    color = Color.Black.copy(alpha = 0.5f),
+                                                    offset = Offset(0f, 2f),
+                                                    blurRadius = 10f
+                                                )
+                                            ),
+                                            color = Color.White
+                                        )
+
+                                        Text(
+                                            text = "${displayInfo.developer} • ${
+                                                remember(displayInfo.releaseDate) {
+                                                    if (displayInfo.releaseDate > 0) {
+                                                        SimpleDateFormat("yyyy", Locale.getDefault()).format(Date(displayInfo.releaseDate * 1000))
+                                                    } else {
+                                                        ""
+                                                    }
+                                                }
+                                            }",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = Color.White.copy(alpha = 0.9f)
                                         )
                                     }
                                 }
-                            }
 
-                            allDownloadableApps.forEach { (dlcAppId, depotInfo) ->
-                                val checked = selectedAppIds[dlcAppId] ?: false
-                                val enabled = enabledAppIds[dlcAppId] ?: false
-
-                                ListItem(
-                                    headlineContent = {
-                                        Column {
-                                            Text(
-                                                text = getDepotAppName(depotInfo)
-                                            )
-                                            // Add size display
-                                            val (downloadSize, installSize) = getSizeInfo(dlcAppId)
-                                            Text(
-                                                text = "$downloadSize download • $installSize install",
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                                            )
+                                Column(
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    // Select All toggle
+                                    if (selectableAppIds.isNotEmpty()) {
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                                            horizontalArrangement = Arrangement.End
+                                        ) {
+                                            Button(
+                                                onClick = {
+                                                    val newState = !allSelectableSelected
+                                                    selectableAppIds.forEach { appId ->
+                                                        selectedAppIds[appId] = newState
+                                                    }
+                                                }
+                                            ) {
+                                                Text(
+                                                    text = if (allSelectableSelected) "Deselect all" else "Select all"
+                                                )
+                                            }
                                         }
-                                    },
-                                    trailingContent = {
-                                        Checkbox(
-                                            checked = checked,
-                                            enabled = enabled,
-                                            onCheckedChange = { isChecked ->
-                                                // Update the local (unsaved) state only
-                                                selectedAppIds[dlcAppId] = isChecked
+                                    }
+
+                                    allDownloadableApps.forEach { (dlcAppId, depotInfo) ->
+                                        val checked = selectedAppIds[dlcAppId] ?: false
+                                        val enabled = enabledAppIds[dlcAppId] ?: false
+
+                                        ListItem(
+                                            headlineContent = {
+                                                Column {
+                                                    Text(
+                                                        text = getDepotAppName(depotInfo)
+                                                    )
+                                                    // Add size display
+                                                    val (downloadSize, installSize) = getSizeInfo(dlcAppId)
+                                                    Text(
+                                                        text = "$downloadSize download • $installSize install",
+                                                        style = MaterialTheme.typography.bodySmall,
+                                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                                                    )
+                                                }
+                                            },
+                                            trailingContent = {
+                                                Checkbox(
+                                                    checked = checked,
+                                                    enabled = enabled,
+                                                    onCheckedChange = { isChecked ->
+                                                        // Update the local (unsaved) state only
+                                                        selectedAppIds[dlcAppId] = isChecked
+                                                    }
+                                                )
+                                            },
+                                            modifier = Modifier.clickable(enabled = enabled) {
+                                                // Toggle checkbox when ListItem is clicked
+                                                selectedAppIds[dlcAppId] = !checked
                                             }
                                         )
-                                    },
-                                    modifier = Modifier.clickable(enabled = enabled) {
-                                        // Toggle checkbox when ListItem is clicked
-                                        selectedAppIds[dlcAppId] = !checked
-                                    }
-                                )
 
-                                HorizontalDivider(
-                                    modifier = Modifier.padding(horizontal = 16.dp),
-                                    thickness = 0.5.dp,
-                                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
-                                )
-                            }
-                        }
-
-                        Column(
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(top = 8.dp, start = 8.dp, bottom = 8.dp, end = 8.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    modifier = Modifier.weight(0.5f),
-                                    text = installSizeDisplay()
-                                )
-
-                                if (onInstallCustom != null) {
-                                    IconButton(
-                                        onClick = { launcher.launch(null) }
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.FolderOpen,
-                                            contentDescription = "Install to specific folder"
+                                        HorizontalDivider(
+                                            modifier = Modifier.padding(horizontal = 16.dp),
+                                            thickness = 0.5.dp,
+                                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
                                         )
                                     }
                                 }
+                            }
 
-                                Button(
-                                    enabled = installButtonEnabled(),
-                                    onClick = {
-                                        onInstall(selectedAppIds
-                                            .filter { selectedId -> selectedId.key in enabledAppIds.filter { enabledId -> enabledId.value } }
-                                            .filter { selectedId -> selectedId.value }.keys.toList())
+                            // Footer Action Bar
+                            Surface(
+                                modifier = Modifier.fillMaxWidth(),
+                                tonalElevation = 3.dp,
+                                shadowElevation = 8.dp
+                            ) {
+                                Column {
+                                    HorizontalDivider()
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(16.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        // Left: Back/Cancel Button
+                                        TextButton(onClick = onDismissRequest) {
+                                            Icon(
+                                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                                contentDescription = "Cancel",
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                            Spacer(Modifier.width(4.dp))
+                                            Text("Cancel")
+                                        }
+
+                                        // Center: Size Info (optional, or push to right)
+                                        Text(
+                                            text = installSizeDisplay(),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            modifier = Modifier
+                                                .padding(horizontal = 8.dp)
+                                                .weight(1f), // Let it take available space
+                                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                        )
+
+                                        // Right: Install Actions
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            if (onInstallCustom != null) {
+                                                IconButton(
+                                                    onClick = { launcher.launch(null) }
+                                                ) {
+                                                    Icon(
+                                                        imageVector = Icons.Default.FolderOpen,
+                                                        contentDescription = "Install to specific folder"
+                                                    )
+                                                }
+                                            }
+
+                                            Button(
+                                                enabled = installButtonEnabled(),
+                                                onClick = {
+                                                    onInstall(selectedAppIds
+                                                        .filter { selectedId -> selectedId.key in enabledAppIds.filter { enabledId -> enabledId.value } }
+                                                        .filter { selectedId -> selectedId.value }.keys.toList())
+                                                }
+                                            ) {
+                                                Text(stringResource(R.string.install))
+                                            }
+                                        }
                                     }
-                                ) {
-                                    Text(stringResource(R.string.install))
                                 }
                             }
                         }

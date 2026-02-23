@@ -36,7 +36,7 @@ public class Container {
     public static final String DEFAULT_ENV_VARS = "WRAPPER_MAX_IMAGE_COUNT=0 ZINK_DESCRIPTORS=lazy ZINK_DEBUG=compact MESA_SHADER_CACHE_DISABLE=false MESA_SHADER_CACHE_MAX_SIZE=512MB mesa_glthread=true WINEESYNC=1 MESA_VK_WSI_PRESENT_MODE=mailbox TU_DEBUG=noconform,sysmem PULSE_LATENCY_MSEC=144";
     public static final String DEFAULT_SCREEN_SIZE = "1280x720";
     public static final String DEFAULT_GRAPHICS_DRIVER = DefaultVersion.DEFAULT_GRAPHICS_DRIVER;
-    public static final String DEFAULT_AUDIO_DRIVER = "pulseaudio";
+    public static final String DEFAULT_AUDIO_DRIVER = "alsa";
     public static final String DEFAULT_EMULATOR = "FEXCore";
     public static final String DEFAULT_DXWRAPPER = "dxvk";
     public static final String DEFAULT_DDRAWRAPPER = "none";
@@ -140,6 +140,24 @@ public class Container {
 
     private boolean forceAdrenoClocks = false;
     private boolean rootPerformanceMode = false;
+    private String dxvkVersion = null;
+    private String vkd3dVersion = null;
+
+    public String getDxvkVersion() {
+        return dxvkVersion;
+    }
+
+    public void setDxvkVersion(String dxvkVersion) {
+        this.dxvkVersion = dxvkVersion;
+    }
+
+    public String getVkd3dVersion() {
+        return vkd3dVersion;
+    }
+
+    public void setVkd3dVersion(String vkd3dVersion) {
+        this.vkd3dVersion = vkd3dVersion;
+    }
 
     public boolean isForceAdrenoClocks() {
         return forceAdrenoClocks;
@@ -699,6 +717,8 @@ public class Container {
 
             data.put("forceAdrenoClocks", forceAdrenoClocks);
             data.put("rootPerformanceMode", rootPerformanceMode);
+            if (dxvkVersion != null) data.put("dxvkVersion", dxvkVersion);
+            if (vkd3dVersion != null) data.put("vkd3dVersion", vkd3dVersion);
 
             if (!WineInfo.isMainWineVersion(wineVersion)) data.put("wineVersion", wineVersion);
             FileUtils.writeString(getConfigFile(), data.toString());
@@ -885,6 +905,12 @@ public class Container {
                     break;
                 case "rootPerformanceMode":
                     this.rootPerformanceMode = data.getBoolean(key);
+                    break;
+                case "dxvkVersion":
+                    this.dxvkVersion = data.getString(key);
+                    break;
+                case "vkd3dVersion":
+                    this.vkd3dVersion = data.getString(key);
                     break;
             }
         }

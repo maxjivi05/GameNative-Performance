@@ -1050,57 +1050,7 @@ fun preLaunchApp(
         // Clear session metadata on every launch to ensure fresh values
         container.clearSessionMetadata()
 
-        // Fix for Wine version swap (Error 255/53):
-        // 1. Forcefully kill any lingering wineserver to prevent version mismatch
-        // 2. Resolve the actual directory name in /opt/ (handles naming variations)
-        // 3. Ensure /opt/wine symlink points to the correct version folder (using relative path)
-        val imageFs = ImageFs.find(context)
-        val rootDir = imageFs.rootDir
-        val optDir = File(rootDir, "opt")
-        val wineSymlink = File(optDir, "wine")
-        val wineVersionRaw = container.wineVersion
 
-        // Kill all potential lingering wine processes from Android side
-        try {
-            Runtime.getRuntime().exec("pkill -9 wineserver").waitFor()
-            Runtime.getRuntime().exec("pkill -9 box64").waitFor()
-            Runtime.getRuntime().exec("pkill -9 box86").waitFor()
-            delay(300)
-        } catch (e: Exception) {}
-
-        if (wineVersionRaw.isNotBlank()) {
-            // Find the actual directory in /opt that matches this version
-            val optFiles = optDir.listFiles()
-            var targetDirName: String? = null
-
-            if (optFiles != null) {
-                // Try 1: Exact match
-                if (File(optDir, wineVersionRaw).isDirectory) {
-                    targetDirName = wineVersionRaw
-                } else {
-                    // Try 2: Partial matches (e.g., ignore trailing version codes or type prefixes)
-                    val possibleMatches = optFiles.filter { it.isDirectory && !it.name.equals("wine") }
-                        .map { it.name }
-                        .filter { dirName ->
-                            wineVersionRaw.contains(dirName) || dirName.contains(wineVersionRaw) ||
-                            (wineVersionRaw.startsWith("proton-") && dirName.startsWith("proton-") && 
-                             wineVersionRaw.split("-").getOrNull(1) == dirName.split("-").getOrNull(1))
-                        }
-                        .sortedByDescending { it.length }
-                    
-                    targetDirName = possibleMatches.firstOrNull()
-                }
-            }
-
-            if (targetDirName != null) {
-                // Use a RELATIVE symlink (e.g., wine -> proton-10-x86_64)
-                // This ensures the link is valid both inside and outside the container
-                FileUtils.symlink(targetDirName, wineSymlink.absolutePath)
-                Timber.i("Resolved Wine swap: /opt/wine -> $targetDirName (from $wineVersionRaw)")
-            } else {
-                Timber.w("Could not resolve Wine directory for version: $wineVersionRaw")
-            }
-        }
 
         // set up Ubuntu file system
         SplitCompat.install(context)
@@ -1221,6 +1171,59 @@ fun preLaunchApp(
             }.get()
         setLoadingMessage(context.getString(R.string.main_loading))
         setLoadingProgress(-1f)
+
+        // Fix for Wine version swap (Error 255/53):
+        // 1. Forcefully kill any lingering wineserver to prevent version mismatch
+        // 2. Resolve the actual directory name in /opt/ (handles naming variations)
+        // 3. Ensure /opt/wine symlink points to the correct version folder (using relative path)
+        val imageFs = ImageFs.find(context)
+        val rootDir = imageFs.rootDir
+        val optDir = File(rootDir, "opt")
+        val wineSymlink = File(optDir, "wine")
+        val wineVersionRaw = container.wineVersion
+
+        // Kill all potential lingering wine processes from Android side
+        try {
+            Runtime.getRuntime().exec("pkill -9 wineserver").waitFor()
+            Runtime.getRuntime().exec("pkill -9 box64").waitFor()
+            Runtime.getRuntime().exec("pkill -9 box86").waitFor()
+            Runtime.getRuntime().exec("pkill -9 libpulseaudio.so").waitFor()
+            delay(300)
+        } catch (e: Exception) {}
+
+        if (wineVersionRaw.isNotBlank()) {
+            // Find the actual directory in /opt that matches this version
+            val optFiles = optDir.listFiles()
+            var targetDirName: String? = null
+
+            if (optFiles != null) {
+                // Try 1: Exact match
+                if (File(optDir, wineVersionRaw).isDirectory) {
+                    targetDirName = wineVersionRaw
+                } else {
+                    // Try 2: Partial matches (e.g., ignore trailing version codes or type prefixes)
+                    val possibleMatches = optFiles.filter { it.isDirectory && !it.name.equals("wine") }
+                        .map { it.name }
+                        .filter { dirName ->
+                            wineVersionRaw.contains(dirName) || dirName.contains(wineVersionRaw) ||
+                            (wineVersionRaw.startsWith("proton-") && dirName.startsWith("proton-") && 
+                             wineVersionRaw.split("-").getOrNull(1) == dirName.split("-").getOrNull(1))
+                        }
+                        .sortedByDescending { it.length }
+                    
+                    targetDirName = possibleMatches.firstOrNull()
+                }
+            }
+
+            if (targetDirName != null) {
+                // Use a RELATIVE symlink (e.g., wine -> proton-10-x86_64)
+                // This ensures the link is valid both inside and outside the container
+                FileUtils.symlink(targetDirName, wineSymlink.absolutePath)
+                Timber.i("Resolved Wine swap: /opt/wine -> $targetDirName (from $wineVersionRaw)")
+            } else {
+                Timber.w("Could not resolve Wine directory for version: $wineVersionRaw")
+            }
+        }
 
         // must activate container before downloading save files
         containerManager.activateContainer(container)

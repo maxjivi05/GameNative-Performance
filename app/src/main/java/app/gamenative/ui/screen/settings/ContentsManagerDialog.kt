@@ -3,45 +3,61 @@ package app.gamenative.ui.screen.settings
 import android.content.Context
 import android.net.Uri
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import app.gamenative.R
 import app.gamenative.utils.Net
 import app.gamenative.service.SteamService
@@ -52,15 +68,11 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.concurrent.CountDownLatch
 import okhttp3.Request
-import okhttp3.OkHttpClient
 import java.io.File
-import java.io.FileOutputStream
 import timber.log.Timber
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.Json
-import androidx.compose.ui.Alignment
-import androidx.compose.material3.LinearProgressIndicator
 
 enum class ContentSource { GN, MTR }
 
@@ -97,6 +109,11 @@ fun ContentsManagerDialog(open: Boolean, onDismiss: () -> Unit) {
     val installedProfiles = remember { mutableStateListOf<ContentProfile>() }
     var typeExpanded by remember { mutableStateOf(false) }
     var deleteTarget by remember { mutableStateOf<ContentProfile?>(null) }
+
+    // Handle back button
+    BackHandler {
+        onDismiss()
+    }
 
     val refreshInstalled: () -> Unit = {
         try { mgr.syncContents() } catch (_: Exception) {}
@@ -286,200 +303,243 @@ fun ContentsManagerDialog(open: Boolean, onDismiss: () -> Unit) {
         }
     }
 
-    AlertDialog(
+    Dialog(
         onDismissRequest = onDismiss,
-        title = { Text(text = stringResource(R.string.contents_manager), style = MaterialTheme.typography.titleLarge) },
-        text = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(max = 460.dp)
-                    .verticalScroll(rememberScrollState())
-            ) {
-                if (selectedSource == ContentSource.MTR) {
-                    if (isLoadingMtr) {
-                        CircularProgressIndicator(modifier = Modifier.padding(16.dp))
-                    } else {
-                        Text("Online Components (MTR):", style = MaterialTheme.typography.titleMedium)
-                        
-                        // Component Type Dropdown
-                        ExposedDropdownMenuBox(
-                            expanded = typeExpandedMtr,
-                            onExpandedChange = { typeExpandedMtr = !typeExpandedMtr },
-                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
-                        ) {
-                            OutlinedTextField(
-                                value = selectedMtrType.toString(),
-                                onValueChange = {},
-                                readOnly = true,
-                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = typeExpandedMtr) },
-                                modifier = Modifier.fillMaxWidth().menuAnchor(),
-                                placeholder = { Text("Select component type") }
-                            )
-                            ExposedDropdownMenu(expanded = typeExpandedMtr, onDismissRequest = { typeExpandedMtr = false }) {
-                                val types = listOf(
-                                    ContentProfile.ContentType.CONTENT_TYPE_DXVK,
-                                    ContentProfile.ContentType.CONTENT_TYPE_VKD3D,
-                                    ContentProfile.ContentType.CONTENT_TYPE_BOX64,
-                                    ContentProfile.ContentType.CONTENT_TYPE_WOWBOX64,
-                                    ContentProfile.ContentType.CONTENT_TYPE_FEXCORE
-                                )
-                                types.forEach { t ->
-                                    DropdownMenuItem(text = { Text(t.toString()) }, onClick = { selectedMtrType = t; selectedMtrProfile = null; typeExpandedMtr = false })
-                                }
-                            }
-                        }
-
-                        // Component Version Dropdown
-                        val availableProfiles = mtrContents.filter { it.type == selectedMtrType }
-                        ExposedDropdownMenuBox(
-                            expanded = profileExpandedMtr,
-                            onExpandedChange = { profileExpandedMtr = !profileExpandedMtr },
-                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
-                        ) {
-                            OutlinedTextField(
-                                value = selectedMtrProfile?.verName ?: "",
-                                onValueChange = {},
-                                readOnly = true,
-                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = profileExpandedMtr) },
-                                modifier = Modifier.fillMaxWidth().menuAnchor(),
-                                placeholder = { Text("Select version") }
-                            )
-                            ExposedDropdownMenu(expanded = profileExpandedMtr, onDismissRequest = { profileExpandedMtr = false }) {
-                                availableProfiles.forEach { p ->
-                                    DropdownMenuItem(text = { Text(p.verName) }, onClick = { selectedMtrProfile = p; profileExpandedMtr = false })
-                                }
-                            }
-                        }
-
-                        if (selectedMtrProfile != null) {
-                            Button(
-                                onClick = { downloadAndInstallContent(selectedMtrProfile!!) },
-                                enabled = !isBusy,
-                                modifier = Modifier.padding(top = 16.dp)
-                            ) { Text("Download & Install") }
-                        }
-                    }
-                }
-
-                Divider(modifier = Modifier.padding(vertical = 12.dp))
-                Text(
-                    text = "Import local components (.wcp):",
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
-
-                Button(
-                    onClick = {
-                        SteamService.isImporting = true
-                        importLauncher.launch(arrayOf("*/*"))
-                    },
-                    enabled = !isBusy,
-                    modifier = Modifier.padding(bottom = 12.dp)
-                ) { Text(stringResource(R.string.import_wcp_from_device)) }
-
-                if (isBusy) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.padding(vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        CircularProgressIndicator(modifier = Modifier.height(20.dp), strokeWidth = 2.dp)
-                        Text(text = statusMessage ?: stringResource(R.string.working))
-                    }
-                }
-
-                Divider(modifier = Modifier.padding(vertical = 12.dp))
-                Text(text = stringResource(R.string.installed_contents), style = MaterialTheme.typography.titleMedium)
-
-                // Content type selector for installed
-                ExposedDropdownMenuBox(
-                    expanded = typeExpanded,
-                    onExpandedChange = { typeExpanded = !typeExpanded },
-                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            dismissOnClickOutside = true,
+            dismissOnBackPress = true
+        )
+    ) {
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            shape = RectangleShape,
+            color = MaterialTheme.colorScheme.surface
+        ) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                // Header
+                Box(
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    OutlinedTextField(
-                        value = currentType.toString(),
-                        onValueChange = {},
-                        readOnly = true,
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = typeExpanded) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .menuAnchor(),
-                        placeholder = { Text(stringResource(R.string.select_type)) }
-                    )
-
-                    ExposedDropdownMenu(
-                        expanded = typeExpanded,
-                        onDismissRequest = { typeExpanded = false }
-                    ) {
-                        val allowed = listOf(
-                            ContentProfile.ContentType.CONTENT_TYPE_DXVK,
-                            ContentProfile.ContentType.CONTENT_TYPE_VKD3D,
-                            ContentProfile.ContentType.CONTENT_TYPE_BOX64,
-                            ContentProfile.ContentType.CONTENT_TYPE_WOWBOX64,
-                            ContentProfile.ContentType.CONTENT_TYPE_FEXCORE
-                        )
-                        allowed.forEach { t ->
-                            DropdownMenuItem(
-                                text = { Text(t.toString()) },
-                                onClick = {
-                                    currentType = t
-                                    typeExpanded = false
-                                }
-                            )
-                        }
-                    }
-                }
-
-                // Installed list
-                if (installedProfiles.isEmpty()) {
                     Text(
-                        text = "No installed content for this type.",
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(top = 8.dp)
+                        text = stringResource(R.string.contents_manager),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center
                     )
-                } else {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 8.dp)
-                    ) {
-                        installedProfiles.forEach { p ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 4.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
+                }
+                HorizontalDivider()
+
+                // Content
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 16.dp, vertical = 16.dp)
+                ) {
+                    if (selectedSource == ContentSource.MTR) {
+                        if (isLoadingMtr) {
+                            CircularProgressIndicator(modifier = Modifier.padding(16.dp))
+                        } else {
+                            Text("Online Components (MTR):", style = MaterialTheme.typography.titleMedium)
+                            
+                            // Component Type Dropdown
+                            ExposedDropdownMenuBox(
+                                expanded = typeExpandedMtr,
+                                onExpandedChange = { typeExpandedMtr = !typeExpandedMtr },
+                                modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
                             ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(text = "${p.verName} (${p.verCode})", style = MaterialTheme.typography.bodyMedium)
-                                    if (!p.desc.isNullOrEmpty()) {
-                                        Text(text = p.desc, style = MaterialTheme.typography.bodySmall)
+                                OutlinedTextField(
+                                    value = selectedMtrType.toString(),
+                                    onValueChange = {},
+                                    readOnly = true,
+                                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = typeExpandedMtr) },
+                                    modifier = Modifier.fillMaxWidth().menuAnchor(),
+                                    placeholder = { Text("Select component type") }
+                                )
+                                ExposedDropdownMenu(expanded = typeExpandedMtr, onDismissRequest = { typeExpandedMtr = false }) {
+                                    val types = listOf(
+                                        ContentProfile.ContentType.CONTENT_TYPE_DXVK,
+                                        ContentProfile.ContentType.CONTENT_TYPE_VKD3D,
+                                        ContentProfile.ContentType.CONTENT_TYPE_BOX64,
+                                        ContentProfile.ContentType.CONTENT_TYPE_WOWBOX64,
+                                        ContentProfile.ContentType.CONTENT_TYPE_FEXCORE
+                                    )
+                                    types.forEach { t ->
+                                        DropdownMenuItem(text = { Text(t.toString()) }, onClick = { selectedMtrType = t; selectedMtrProfile = null; typeExpandedMtr = false })
                                     }
                                 }
-                                IconButton(
-                                    onClick = { deleteTarget = p },
-                                    modifier = Modifier.padding(start = 8.dp)
+                            }
+
+                            // Component Version Dropdown
+                            val availableProfiles = mtrContents.filter { it.type == selectedMtrType }
+                            ExposedDropdownMenuBox(
+                                expanded = profileExpandedMtr,
+                                onExpandedChange = { profileExpandedMtr = !profileExpandedMtr },
+                                modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+                            ) {
+                                OutlinedTextField(
+                                    value = selectedMtrProfile?.verName ?: "",
+                                    onValueChange = {},
+                                    readOnly = true,
+                                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = profileExpandedMtr) },
+                                    modifier = Modifier.fillMaxWidth().menuAnchor(),
+                                    placeholder = { Text("Select version") }
+                                )
+                                ExposedDropdownMenu(expanded = profileExpandedMtr, onDismissRequest = { profileExpandedMtr = false }) {
+                                    availableProfiles.forEach { p ->
+                                        DropdownMenuItem(text = { Text(p.verName) }, onClick = { selectedMtrProfile = p; profileExpandedMtr = false })
+                                    }
+                                }
+                            }
+
+                            if (selectedMtrProfile != null) {
+                                Button(
+                                    onClick = { downloadAndInstallContent(selectedMtrProfile!!) },
+                                    enabled = !isBusy,
+                                    modifier = Modifier.padding(top = 16.dp)
+                                ) { Text("Download & Install") }
+                            }
+                        }
+                    }
+
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+                    Text(
+                        text = "Import local components (.wcp):",
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+
+                    Button(
+                        onClick = {
+                            SteamService.isImporting = true
+                            importLauncher.launch(arrayOf("*/*"))
+                        },
+                        enabled = !isBusy,
+                        modifier = Modifier.padding(bottom = 12.dp)
+                    ) { Text(stringResource(R.string.import_wcp_from_device)) }
+
+                    if (isBusy) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.padding(vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            CircularProgressIndicator(modifier = Modifier.height(20.dp), strokeWidth = 2.dp)
+                            Text(text = statusMessage ?: stringResource(R.string.working))
+                        }
+                    }
+
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+                    Text(text = stringResource(R.string.installed_contents), style = MaterialTheme.typography.titleMedium)
+
+                    // Content type selector for installed
+                    ExposedDropdownMenuBox(
+                        expanded = typeExpanded,
+                        onExpandedChange = { typeExpanded = !typeExpanded },
+                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = currentType.toString(),
+                            onValueChange = {},
+                            readOnly = true,
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = typeExpanded) },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .menuAnchor(),
+                            placeholder = { Text(stringResource(R.string.select_type)) }
+                        )
+
+                        ExposedDropdownMenu(
+                            expanded = typeExpanded,
+                            onDismissRequest = { typeExpanded = false }
+                        ) {
+                            val allowed = listOf(
+                                ContentProfile.ContentType.CONTENT_TYPE_DXVK,
+                                ContentProfile.ContentType.CONTENT_TYPE_VKD3D,
+                                ContentProfile.ContentType.CONTENT_TYPE_BOX64,
+                                ContentProfile.ContentType.CONTENT_TYPE_WOWBOX64,
+                                ContentProfile.ContentType.CONTENT_TYPE_FEXCORE
+                            )
+                            allowed.forEach { t ->
+                                DropdownMenuItem(
+                                    text = { Text(t.toString()) },
+                                    onClick = {
+                                        currentType = t
+                                        typeExpanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+
+                    // Installed list
+                    if (installedProfiles.isEmpty()) {
+                        Text(
+                            text = "No installed content for this type.",
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
+                    } else {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 8.dp)
+                        ) {
+                            installedProfiles.forEach { p ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 4.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Icon(
-                                        imageVector = Icons.Filled.Delete,
-                                        contentDescription = "Delete",
-                                        tint = MaterialTheme.colorScheme.error
-                                    )
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(text = "${p.verName} (${p.verCode})", style = MaterialTheme.typography.bodyMedium)
+                                        if (!p.desc.isNullOrEmpty()) {
+                                            Text(text = p.desc, style = MaterialTheme.typography.bodySmall)
+                                        }
+                                    }
+                                    IconButton(
+                                        onClick = { deleteTarget = p },
+                                        modifier = Modifier.padding(start = 8.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Filled.Delete,
+                                            contentDescription = "Delete",
+                                            tint = MaterialTheme.colorScheme.error
+                                        )
+                                    }
                                 }
                             }
                         }
+                    }
+                }
+
+                // Footer with Back Button
+                HorizontalDivider()
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
+                    TextButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.align(Alignment.CenterStart)
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Close",
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text(stringResource(R.string.close))
                     }
                 }
             }
-        },
-        confirmButton = {},
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.close)) }
         }
-    )
+    }
 
     if (showUntrustedConfirm && pendingProfile != null) {
         AlertDialog(
@@ -561,7 +621,7 @@ private suspend fun performFinishInstall(
             mgr.finishInstallContent(profile, object : ContentsManager.OnInstallFinishedCallback {
                 override fun onFailed(reason: ContentsManager.InstallFailedReason, e: Exception) {
                     message = when (reason) {
-                        ContentsManager.InstallFailedReason.ERROR_EXIST -> "Content already exists"
+                        ContentsManager.InstallFailedReason.ERROR_EXIST -> "Content updated successfully" // Treated as update
                         ContentsManager.InstallFailedReason.ERROR_NOSPACE -> "Not enough space"
                         else -> "Failed to install content"
                     }
