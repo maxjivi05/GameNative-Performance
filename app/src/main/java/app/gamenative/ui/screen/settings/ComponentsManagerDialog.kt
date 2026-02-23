@@ -89,12 +89,12 @@ private enum class CompNav { SELECTOR, DETAIL, DRIVER_DETAIL, WINE_PROTON_DETAIL
 // ─── Component enum (alphabetical order) ────────────────────────────────────
 
 internal enum class GNComponent(val displayName: String) {
-    BOX64("Box64"),
+    WINE_PROTON("Wine/Proton"),
     DRIVER("Driver"),
+    BOX64("Box64"),
     DXVK("DXVK"),
     FEXCORE("FEXCore"),
     VKD3D("VKD3D"),
-    WINE_PROTON("Wine/Proton"),
     WOWBOX64("WowBox64");
 
     fun getContentTypes(): List<com.winlator.contents.ContentProfile.ContentType> = when (this) {
@@ -408,7 +408,7 @@ private fun ComponentSelectorScreen(
 
         HorizontalDivider()
 
-        // Component buttons: installed float to top, uninstalled below
+        // Component buttons: fixed order (Wine/Proton, Driver, ABC...)
         Column(
             modifier = Modifier
                 .weight(1f)
@@ -419,53 +419,30 @@ private fun ComponentSelectorScreen(
             // Compute installed state per component
             val components = GNComponent.entries.toList()
             val installedSet = components.filter { comp ->
-                comp.getContentTypes().any { type ->
-                    val profiles = mgr.getProfiles(type)
-                    profiles != null && profiles.any { it.remoteUrl == null }
+                if (comp == GNComponent.DRIVER) {
+                    AdrenotoolsManager(ctx).enumarateInstalledDrivers().isNotEmpty()
+                } else {
+                    comp.getContentTypes().any { type ->
+                        val profiles = mgr.getProfiles(type)
+                        profiles != null && profiles.any { it.remoteUrl == null }
+                    }
                 }
             }.toSet()
 
-            // Sort: installed first (preserve original order within each group)
-            val sorted = components.sortedWith(compareBy { if (it in installedSet) 0 else 1 })
-
-            // Section label for installed
-            val firstUninstalledIdx = sorted.indexOfFirst { it !in installedSet }
-
-            sorted.forEachIndexed { idx, component ->
-                // Divider between installed and not-installed groups
-                if (idx == firstUninstalledIdx && firstUninstalledIdx > 0) {
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-                }
-
-                val isInstalled = component in installedSet
+            components.forEach { component ->
                 Button(
                     onClick = { onSelectComponent(component) },
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = if (isInstalled)
-                            MaterialTheme.colorScheme.secondaryContainer
-                        else
-                            MaterialTheme.colorScheme.primaryContainer,
-                        contentColor = if (isInstalled)
-                            MaterialTheme.colorScheme.onSecondaryContainer
-                        else
-                            MaterialTheme.colorScheme.onPrimaryContainer,
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                     ),
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        if (isInstalled) {
-                            Checkbox(checked = true, onCheckedChange = null, modifier = Modifier.size(24.dp))
-                            Spacer(Modifier.width(8.dp))
-                        }
-                        Text(
-                            text = component.displayName,
-                            style = MaterialTheme.typography.titleMedium,
-                            modifier = Modifier.weight(1f),
-                        )
-                    }
+                    Text(
+                        text = component.displayName,
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.padding(vertical = 4.dp),
+                    )
                 }
             }
 
@@ -891,13 +868,14 @@ private fun ComponentDetailScreen(
                         )
                         customInstalled.forEach { prof ->
                             Row(
-                                modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp, horizontal = 4.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(MaterialTheme.colorScheme.secondaryContainer, shape = MaterialTheme.shapes.small)
+                                    .padding(horizontal = 10.dp, vertical = 8.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                Checkbox(checked = true, onCheckedChange = null)
-                                Spacer(Modifier.width(8.dp))
                                 Column(modifier = Modifier.weight(1f)) {
-                                    Text(prof.verName, style = MaterialTheme.typography.bodyMedium)
+                                    Text(prof.verName, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                                     if (!prof.desc.isNullOrEmpty()) {
                                         Text(prof.desc, style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -1027,12 +1005,10 @@ private fun DriverDetailScreen(
     var downloadProgress by remember { mutableStateOf(0f) }
     var downloadBytes by remember { mutableStateOf(0L) }
     var totalBytes by remember { mutableStateOf(-1L) }
-    var lastMessage by remember { mutableStateOf<String?>(null) }
     
     // Data
     var availableDrivers by remember { mutableStateOf<List<DriverItem>>(emptyList()) }
     var isLoadingManifest by remember { mutableStateOf(true) }
-    var selectedDriver by remember { mutableStateOf<DriverItem?>(null) }
 
     // Installed drivers
     val installedDrivers = remember { mutableStateListOf<String>() }
@@ -1043,9 +1019,9 @@ private fun DriverDetailScreen(
         installedDrivers.clear()
         driverMeta.clear()
         try {
-            val list = AdrenotoolsManager(ctx).enumarateInstalledDrivers()
-            installedDrivers.addAll(list)
             val mgr = AdrenotoolsManager(ctx)
+            val list = mgr.enumarateInstalledDrivers()
+            installedDrivers.addAll(list)
             list.forEach { id ->
                 val name = mgr.getDriverName(id)
                 val version = mgr.getDriverVersion(id)
@@ -1057,7 +1033,6 @@ private fun DriverDetailScreen(
     LaunchedEffect(selectedSource) {
         isLoadingManifest = true
         availableDrivers = emptyList()
-        selectedDriver = null
         withContext(Dispatchers.IO) {
             try {
                 if (selectedSource == DriverSource.GN) {
@@ -1107,7 +1082,6 @@ private fun DriverDetailScreen(
             scope.launch {
                 isImporting = true
                 val res = withContext(Dispatchers.IO) { handlePickedUri(it) }
-                lastMessage = res
                 if (res.startsWith("Installed")) refreshDriverList()
                 Toast.makeText(ctx, res, Toast.LENGTH_SHORT).show()
                 SteamService.isImporting = false
@@ -1125,7 +1099,6 @@ private fun DriverDetailScreen(
             try {
                 val destFile = File(ctx.cacheDir, item.name + (if (item.name.endsWith(".zip")) "" else ".zip"))
                 if (selectedSource == DriverSource.GN) {
-                    // GN path via SteamService fallback
                     var lastUpdate = 0L
                     SteamService.fetchFileWithFallback(fileName = "drivers/${item.url}", dest = destFile, context = ctx) { p ->
                          val now = System.currentTimeMillis()
@@ -1135,7 +1108,6 @@ private fun DriverDetailScreen(
                          }
                     }
                 } else {
-                    // MTR direct URL
                     withContext(Dispatchers.IO) {
                         val req = Request.Builder().url(item.url).build()
                         Net.http.newCall(req).execute().use { resp ->
@@ -1172,7 +1144,6 @@ private fun DriverDetailScreen(
     
     // UI Structure
     Column(modifier = Modifier.fillMaxSize()) {
-        // Header
         Box(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 16.dp),
             contentAlignment = Alignment.Center
@@ -1191,105 +1162,104 @@ private fun DriverDetailScreen(
             if (isLoadingManifest) {
                 Box(Modifier.fillMaxWidth().padding(20.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
             } else {
-                Text("Available Drivers", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(bottom = 8.dp))
-                
-                // Unified list of available drivers
-                // Mark as installed if present
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    availableDrivers.forEach { item ->
-                        val isInstalled = installedDrivers.any { it.contains(item.name) || item.name.contains(it) }
-                        val isSelected = selectedDriver == item
-                        
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .selectable(
-                                    selected = isSelected,
-                                    onClick = { selectedDriver = if (isSelected) null else item }
-                                )
-                                .background(if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface)
-                                .padding(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            RadioButton(selected = isSelected, onClick = { selectedDriver = if (isSelected) null else item })
-                            Spacer(Modifier.width(8.dp))
-                            Text(item.name, modifier = Modifier.weight(1f))
-                            
-                            // Delete button if matched in installed list (or "Installed" text)
-                            // Since we have a specific installed list, we can try to match logic
-                            // But exact matching might be hard. Let's provide Delete on the separate installed list for now?
-                            // User request: "if they're installed it has a little delete button"
-                            // If we can identify the installed ID associated with this item:
-                            val matchedId = installedDrivers.find { it.contains(item.name) || item.name.contains(it) }
-                            if (matchedId != null) {
-                                IconButton(onClick = { driverToDelete = matchedId }) {
-                                    Icon(Icons.Filled.Delete, "Delete", tint = MaterialTheme.colorScheme.error)
-                                }
-                            }
-                        }
+                // Split availableDrivers into matched (installed) and unmatched (available)
+                val availableItems = availableDrivers.filter { item ->
+                    installedDrivers.none { id ->
+                        val name = driverMeta[id]?.first ?: id
+                        name.contains(item.name.removeSuffix(".zip"), ignoreCase = true) || 
+                        item.name.contains(name, ignoreCase = true) ||
+                        id.contains(item.name.removeSuffix(".zip"), ignoreCase = true)
                     }
                 }
+
+                // ── Installed section ─────────────────────────────────────
+                if (installedDrivers.isNotEmpty()) {
+                    Text("Installed", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(8.dp))
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        installedDrivers.forEach { id ->
+                            val meta = driverMeta[id]
+                            val displayName = meta?.first ?: id
+                            val version = meta?.second ?: ""
+                            DriverRow(
+                                name = if (version.isNotEmpty()) "$displayName ($version)" else displayName,
+                                isInstalled = true,
+                                isWorking = isDownloading || isInstalling || isImporting,
+                                onInstall = {},
+                                onDelete = { driverToDelete = id }
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(16.dp))
+                    HorizontalDivider()
+                    Spacer(Modifier.height(12.dp))
+                }
+
+                // ── Available section ─────────────────────────────────────
+                if (availableItems.isNotEmpty()) {
+                    Text("Available", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(8.dp))
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        availableItems.forEach { item ->
+                            DriverRow(
+                                name = item.name,
+                                isInstalled = false,
+                                isWorking = isDownloading || isInstalling || isImporting,
+                                onInstall = { downloadAndInstall(item) },
+                                onDelete = {}
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(16.dp))
+                }
+
+                // "Installed Drivers" section - fallback for unmatched drivers (custom installs)
+                // (Already handled by installedDrivers at top now, but keeping local filter for safety)
+                val unmatchedInstalled = installedDrivers.filter { id -> 
+                    availableDrivers.none { item ->
+                        val name = driverMeta[id]?.first ?: id
+                        name.contains(item.name.removeSuffix(".zip"), ignoreCase = true) || 
+                        item.name.contains(name, ignoreCase = true) ||
+                        id.contains(item.name.removeSuffix(".zip"), ignoreCase = true)
+                    }
+                }
+                // No longer need unmatchedInstalled as it's redundant with the new unified installed section
             }
             
             HorizontalDivider(Modifier.padding(vertical = 16.dp))
-            
-            // Import / Manual
             Button(
                 onClick = { SteamService.isImporting = true; launcher.launch(arrayOf("application/zip", "application/x-zip-compressed")) },
                 enabled = !isImporting && !isDownloading,
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary, contentColor = MaterialTheme.colorScheme.onTertiary)
             ) { Text("Import from Storage (.zip)") }
-            
-            if (isDownloading || isImporting) {
-                Spacer(Modifier.height(8.dp))
-                LinearProgressIndicator(
-                    progress = { if (downloadProgress > 0) downloadProgress else 0f },
-                    modifier = Modifier.fillMaxWidth(),
+        }
+        
+        // Sticky Progress Bar
+        if (isDownloading || isInstalling || isImporting) {
+            HorizontalDivider()
+            Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+                Text(
+                    text = if (isDownloading) "Downloading..." else if (isInstalling) "Installing..." else "Importing...",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-            }
-            
-            // "Installed Drivers" section - keeping it as fallback for unmatched drivers
-            val unmatchedInstalled = installedDrivers.filter { id -> availableDrivers.none { it.name.contains(id) } }
-            if (unmatchedInstalled.isNotEmpty()) {
-                HorizontalDivider(Modifier.padding(vertical = 16.dp))
-                Text("Installed (Other)", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(bottom = 8.dp))
-                unmatchedInstalled.forEach { id ->
-                    Row(
-                         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                         verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(id, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-                        IconButton(onClick = { driverToDelete = id }) {
-                            Icon(Icons.Filled.Delete, "Delete", tint = MaterialTheme.colorScheme.error)
-                        }
-                    }
+                Spacer(Modifier.height(4.dp))
+                if (isDownloading && downloadProgress > 0f) {
+                    LinearProgressIndicator(progress = { downloadProgress }, modifier = Modifier.fillMaxWidth())
+                } else {
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                 }
             }
         }
-        
+
         // Footer
         HorizontalDivider()
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-             TextButton(onClick = onBack) {
+        Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+             TextButton(onClick = onBack, modifier = Modifier.align(Alignment.CenterStart)) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(4.dp))
                 Text("Back")
-            }
-            
-            if (selectedDriver != null) {
-                Button(
-                    onClick = {
-                        if (!isDownloading && !isImporting) downloadAndInstall(selectedDriver!!)
-                    },
-                    enabled = !isDownloading && !isImporting,
-                ) {
-                    Text("Install Selected")
-                }
             }
         }
     }
@@ -1301,15 +1271,57 @@ private fun DriverDetailScreen(
             text = { Text("Remove $driverToDelete?") },
             confirmButton = {
                 TextButton(onClick = {
-                    try {
-                        AdrenotoolsManager(ctx).removeDriver(driverToDelete!!)
-                        refreshDriverList()
-                    } catch(e: Exception) { Toast.makeText(ctx, "Error: ${e.message}", Toast.LENGTH_SHORT).show() }
-                    driverToDelete = null
+                    scope.launch(Dispatchers.IO) {
+                        try {
+                            AdrenotoolsManager(ctx).removeDriver(driverToDelete!!)
+                            withContext(Dispatchers.Main) { refreshDriverList() }
+                        } catch(e: Exception) { 
+                            withContext(Dispatchers.Main) { Toast.makeText(ctx, "Error: ${e.message}", Toast.LENGTH_SHORT).show() }
+                        }
+                        withContext(Dispatchers.Main) { driverToDelete = null }
+                    }
                 }) { Text("Delete", color = MaterialTheme.colorScheme.error) }
             },
             dismissButton = { TextButton(onClick = { driverToDelete = null }) { Text("Cancel") } }
         )
+    }
+}
+
+@Composable
+private fun DriverRow(
+    name: String,
+    isInstalled: Boolean,
+    isWorking: Boolean,
+    onInstall: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    val bgColor = if (isInstalled)
+        MaterialTheme.colorScheme.secondaryContainer
+    else
+        MaterialTheme.colorScheme.surfaceVariant
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(bgColor, shape = MaterialTheme.shapes.small)
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = name,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = if (isInstalled) FontWeight.SemiBold else FontWeight.Normal,
+            modifier = Modifier.weight(1f)
+        )
+        if (isInstalled) {
+            IconButton(onClick = onDelete) {
+                Icon(Icons.Default.Delete, "Uninstall", tint = MaterialTheme.colorScheme.error)
+            }
+        } else {
+            TextButton(onClick = onInstall, enabled = !isWorking) {
+                Text("Install")
+            }
+        }
     }
 }
 
@@ -1623,7 +1635,7 @@ private fun WineProtonDetailScreen(onBack: () -> Unit) {
                                             MaterialTheme.colorScheme.secondaryContainer,
                                             shape = MaterialTheme.shapes.small,
                                         )
-                                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                                        .padding(horizontal = 10.dp, vertical = 8.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
                                     Column(modifier = Modifier.weight(1f)) {
@@ -1660,7 +1672,7 @@ private fun WineProtonDetailScreen(onBack: () -> Unit) {
                                             MaterialTheme.colorScheme.secondaryContainer,
                                             shape = MaterialTheme.shapes.small,
                                         )
-                                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                                        .padding(horizontal = 10.dp, vertical = 8.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
                                     Column(modifier = Modifier.weight(1f)) {
@@ -1697,7 +1709,7 @@ private fun WineProtonDetailScreen(onBack: () -> Unit) {
                                             MaterialTheme.colorScheme.surfaceVariant,
                                             shape = MaterialTheme.shapes.small,
                                         )
-                                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                                        .padding(horizontal = 10.dp, vertical = 8.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
                                     Column(modifier = Modifier.weight(1f)) {

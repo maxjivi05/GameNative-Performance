@@ -67,6 +67,7 @@
         <item>2-842.6</item>
     </string-array>
     <string-array name="audio_driver_entries">
+        <item>ALSA-Reflector</item>
         <item>ALSA</item>
         <item>PulseAudio</item>
     </string-array>

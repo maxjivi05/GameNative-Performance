@@ -101,11 +101,13 @@ public class AdrenotoolsManager {
 
     public ArrayList<String> enumarateInstalledDrivers() {
         ArrayList<String> driversList = new ArrayList<>();
-
-        for (File f : adrenotoolsContentDir.listFiles()) {
-            boolean fromResources = isFromResources("graphics_driver/adrenotools-" + f.getName() + ".tzst");
-            if (!fromResources && new File(f, "meta.json").exists())
-                driversList.add(f.getName());
+        File[] files = adrenotoolsContentDir.listFiles();
+        if (files != null) {
+            for (File f : files) {
+                if (f.isDirectory() && new File(f, "meta.json").exists()) {
+                    driversList.add(f.getName());
+                }
+            }
         }
         return driversList;
     }
@@ -146,43 +148,53 @@ public class AdrenotoolsManager {
 
     public String installDriver(Uri driverUri) {
         File tmpDir = new File(adrenotoolsContentDir, "tmp");
-        if (tmpDir.exists()) tmpDir.delete();
+        FileUtils.delete(tmpDir);
         tmpDir.mkdirs();
-        ZipInputStream zis;
-        InputStream is;
-        String name = "";
 
-        try {
-            is = mContext.getContentResolver().openInputStream(driverUri);
-            zis = new ZipInputStream(is);
-            ZipEntry entry = zis.getNextEntry();
-            while (entry != null) {
+        try (InputStream is = mContext.getContentResolver().openInputStream(driverUri);
+             ZipInputStream zis = new ZipInputStream(is)) {
+
+            ZipEntry entry;
+            while ((entry = zis.getNextEntry()) != null) {
                 File dstFile = new File(tmpDir, entry.getName());
-                Files.copy(zis, dstFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-                entry = zis.getNextEntry();
+                if (entry.isDirectory()) {
+                    dstFile.mkdirs();
+                } else {
+                    File parent = dstFile.getParentFile();
+                    if (parent != null) parent.mkdirs();
+                    Files.copy(zis, dstFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                }
+                zis.closeEntry();
             }
-            zis.close();
-            if (new File(tmpDir, "meta.json").exists()) {
-                name = getDriverName(tmpDir.getName());
-                File dst = new File(adrenotoolsContentDir, name);
-                if (!dst.exists() && !name.equals(""))
-                    tmpDir.renameTo(dst);
-                else {
-                    name = "";
-                    FileUtils.delete(tmpDir);
+
+            File metaFile = new File(tmpDir, "meta.json");
+            File searchDir = tmpDir;
+            if (!metaFile.exists()) {
+                File[] files = tmpDir.listFiles();
+                if (files != null && files.length == 1 && files[0].isDirectory()) {
+                    searchDir = files[0];
+                    metaFile = new File(searchDir, "meta.json");
                 }
             }
-            else {
-                Log.d("AdrenotoolsManager", "Failed to install driver, a valid driver has not been selected");
-                tmpDir.delete();
-            }
-        }
-        catch (IOException e) {
-            Log.d("AdrenotoolsManager", "Failed to install driver, a valid driver has not been selected");
-            tmpDir.delete();
-        }
 
-        return name;
+            if (metaFile.exists()) {
+                JSONObject jsonObject = new JSONObject(FileUtils.readString(metaFile));
+                String driverName = jsonObject.getString("name");
+
+                File dst = new File(adrenotoolsContentDir, driverName);
+                if (dst.exists()) FileUtils.delete(dst);
+
+                if (searchDir.renameTo(dst)) {
+                    return driverName;
+                }
+            }
+            Log.d("AdrenotoolsManager", "Failed to install driver: valid meta.json not found");
+        } catch (Exception e) {
+            Log.e("AdrenotoolsManager", "Error installing driver", e);
+        } finally {
+            FileUtils.delete(tmpDir);
+        }
+        return "";
     }
 
     public void setDriverById(EnvVars envVars, ImageFs imagefs, String adrenotoolsDriverId) {

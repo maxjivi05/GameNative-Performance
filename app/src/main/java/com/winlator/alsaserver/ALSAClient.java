@@ -31,6 +31,15 @@ public class ALSAClient {
     private short previousUnderrunCount = 0;
     private String containerVariant = null;
 
+    private long streamPtr = 0;
+    private long mirrorStreamPtr = 0;
+    private boolean reflectorMode = false;
+    private boolean playing = false;
+
+    static {
+        System.loadLibrary("winlator");
+    }
+
     public enum DataType {
         U8(1),
         S16LE(2),
@@ -49,23 +58,17 @@ public class ALSAClient {
         public short latencyMillis = 40;
         public byte performanceMode = 0;
         public float volume = 1.0f;
+        public boolean reflectorMode = false;
 
         public static Options fromKeyValueSet(KeyValueSet config) {
-            Options options;
+            Options options = new Options();
             if (config == null || config.isEmpty()) {
-                return new Options();
+                return options;
             }
-            options = new Options();
-            switch (config.get("performanceMode")) {
-                case "0":
-                    options.performanceMode = (byte) 0;
-                    break;
-                case "1":
-                    options.performanceMode = (byte) 1;
-                    break;
-                case "2":
-                    options.performanceMode = (byte) 2;
-                    break;
+            switch (config.get("performanceMode", "0")) {
+                case "0": options.performanceMode = (byte) 0; break;
+                case "1": options.performanceMode = (byte) 1; break;
+                case "2": options.performanceMode = (byte) 2; break;
             }
             options.volume = config.getFloat("volume", 1.0f);
             options.latencyMillis = (short) config.getInt("latencyMillis", 40);
@@ -76,45 +79,51 @@ public class ALSAClient {
     public ALSAClient(Options options, String containerVariant) {
         this.options = options;
         this.containerVariant = containerVariant;
+        this.reflectorMode = options.reflectorMode;
     }
 
     public void release() {
-        ByteBuffer byteBuffer = this.sharedBuffer;
-        if (byteBuffer != null) {
-            SysVSharedMemory.unmapSHMSegment(byteBuffer, byteBuffer.capacity());
+        if (this.sharedBuffer != null) {
+            SysVSharedMemory.unmapSHMSegment(this.sharedBuffer, this.sharedBuffer.capacity());
             this.sharedBuffer = null;
         }
-        AudioTrack audioTrack = this.audioTrack;
-        if (audioTrack != null) {
-            audioTrack.pause();
-            this.audioTrack.flush();
-            this.audioTrack.release();
-            this.audioTrack = null;
+
+        if (reflectorMode) {
+            if (streamPtr > 0) {
+                simulatedStop(streamPtr);
+                simulatedClose(streamPtr);
+            }
+            if (mirrorStreamPtr > 0) {
+                stop(mirrorStreamPtr);
+                close(mirrorStreamPtr);
+            }
+        } else {
+            AudioTrack audioTrack = this.audioTrack;
+            if (audioTrack != null) {
+                audioTrack.pause();
+                this.audioTrack.flush();
+                this.audioTrack.release();
+                this.audioTrack = null;
+            }
         }
+        playing = false;
+        streamPtr = 0;
+        mirrorStreamPtr = 0;
     }
 
     public static int getPCMEncoding(DataType dataType) {
         switch (dataType) {
-            case U8:
-                return 3;  // AudioFormat.ENCODING_PCM_8BIT
+            case U8: return AudioFormat.ENCODING_PCM_8BIT;
             case S16LE:
-            case S16BE:
-                return 2;  // AudioFormat.ENCODING_PCM_16BIT
+            case S16BE: return AudioFormat.ENCODING_PCM_16BIT;
             case FLOATLE:
-            case FLOATBE:
-                return 4;  // AudioFormat.ENCODING_PCM_FLOAT
-            default:
-                return 1;  // AudioFormat.ENCODING_DEFAULT
+            case FLOATBE: return AudioFormat.ENCODING_PCM_FLOAT;
+            default: return AudioFormat.ENCODING_DEFAULT;
         }
     }
 
-    /**
-     * Map channel count → channel mask.
-     * 1 channel → MONO, 2 + channels → STEREO (or wider).
-     */
     public static int getChannelConfig(int channels) {
-        return (channels <= 1) ? 4   // AudioFormat.CHANNEL_OUT_MONO
-                : 12; // AudioFormat.CHANNEL_OUT_STEREO | FRONT_LEFT/RIGHT
+        return (channels <= 1) ? AudioFormat.CHANNEL_OUT_MONO : AudioFormat.CHANNEL_OUT_STEREO;
     }
 
     public void prepare() {
@@ -122,70 +131,144 @@ public class ALSAClient {
         this.previousUnderrunCount = (short) 0;
         this.frameBytes = (byte) (this.channels * this.dataType.byteCount);
         release();
+
         if (isValidBufferSize()) {
-            AudioFormat format = new AudioFormat.Builder().setEncoding(getPCMEncoding(this.dataType)).setSampleRate(this.sampleRate).setChannelMask(getChannelConfig(this.channels)).build();
-            AudioTrack build = new AudioTrack.Builder().setPerformanceMode(this.options.performanceMode).setAudioFormat(format).setBufferSizeInBytes(getBufferSizeInBytes()).build();
-            this.audioTrack = build;
-            this.bufferCapacity = build.getBufferCapacityInFrames();
-            float f = this.options.volume;
-            if (f != 1.0f) {
-                this.audioTrack.setVolume(f);
+            if (reflectorMode) {
+                streamPtr = simulatedCreate(this.dataType.ordinal(), this.channels, this.sampleRate, this.bufferSize);
+                mirrorStreamPtr = create(this.dataType.ordinal(), this.channels, this.sampleRate, this.bufferSize);
+            } else {
+                AudioFormat format = new AudioFormat.Builder().setEncoding(getPCMEncoding(this.dataType)).setSampleRate(this.sampleRate).setChannelMask(getChannelConfig(this.channels)).build();
+                AudioTrack build = new AudioTrack.Builder().setPerformanceMode(this.options.performanceMode).setAudioFormat(format).setBufferSizeInBytes(getBufferSizeInBytes()).build();
+                this.audioTrack = build;
+                this.bufferCapacity = build.getBufferCapacityInFrames();
+                float f = this.options.volume;
+                if (f != 1.0f) {
+                    this.audioTrack.setVolume(f);
+                }
             }
-            this.audioTrack.play();
+            start();
         }
     }
 
     public void start() {
-        AudioTrack audioTrack = this.audioTrack;
-        if (audioTrack != null && audioTrack.getPlayState() != 3) {
-            this.audioTrack.play();
+        if (reflectorMode) {
+            if (streamPtr > 0 && !playing) {
+                simulatedStart(streamPtr);
+                if (mirrorStreamPtr > 0) start(mirrorStreamPtr);
+                playing = true;
+            }
+        } else {
+            AudioTrack audioTrack = this.audioTrack;
+            if (audioTrack != null && audioTrack.getPlayState() != AudioTrack.PLAYSTATE_PLAYING) {
+                this.audioTrack.play();
+            }
         }
     }
 
     public void stop() {
-        AudioTrack audioTrack = this.audioTrack;
-        if (audioTrack != null) {
-            audioTrack.stop();
-            this.audioTrack.flush();
+        if (reflectorMode) {
+            if (streamPtr > 0 && playing) {
+                simulatedStop(streamPtr);
+                if (mirrorStreamPtr > 0) stop(mirrorStreamPtr);
+                playing = false;
+            }
+        } else {
+            AudioTrack audioTrack = this.audioTrack;
+            if (audioTrack != null) {
+                audioTrack.stop();
+                this.audioTrack.flush();
+            }
         }
     }
 
     public void pause() {
-        AudioTrack audioTrack = this.audioTrack;
-        if (audioTrack != null) {
-            audioTrack.pause();
+        if (reflectorMode) {
+            if (streamPtr > 0) {
+                simulatedPause(streamPtr);
+                if (mirrorStreamPtr > 0) pause(mirrorStreamPtr);
+                playing = false;
+            }
+        } else {
+            AudioTrack audioTrack = this.audioTrack;
+            if (audioTrack != null) {
+                audioTrack.pause();
+            }
         }
     }
 
     public void drain() {
-        AudioTrack audioTrack = this.audioTrack;
-        if (audioTrack != null) {
-            audioTrack.flush();
+        if (reflectorMode) {
+            if (streamPtr > 0) {
+                simulatedFlush(streamPtr);
+                if (mirrorStreamPtr > 0) flush(mirrorStreamPtr);
+            }
+        } else {
+            AudioTrack audioTrack = this.audioTrack;
+            if (audioTrack != null) {
+                audioTrack.flush();
+            }
         }
     }
 
     public void writeDataToTrack(ByteBuffer data) {
-        DataType dataType = this.dataType;
         if (dataType == DataType.S16LE || dataType == DataType.FLOATLE) {
             data.order(ByteOrder.LITTLE_ENDIAN);
         } else if (dataType == DataType.S16BE || dataType == DataType.FLOATBE) {
             data.order(ByteOrder.BIG_ENDIAN);
         }
-        if (this.audioTrack != null) {
-            data.position(0);
-            do {
-                try {
-                    int bytesWritten = this.audioTrack.write(data, data.remaining(), 0);
-                    if (bytesWritten < 0) {
-                        break;
-                    } else {
-                        increaseBufferSizeIfUnderrunOccurs();
+
+        if (reflectorMode) {
+            if (streamPtr > 0 && playing) {
+                ByteBuffer mirrorData = data.duplicate().order(data.order());
+                int numFrames = data.remaining() / frameBytes;
+                int framesWritten = simulatedWrite(streamPtr, data, numFrames);
+                if (mirrorStreamPtr > 0) write(mirrorStreamPtr, mirrorData, numFrames);
+                if (framesWritten > 0) this.position += (framesWritten * frameBytes);
+                data.rewind();
+            }
+        } else {
+            if (this.audioTrack != null) {
+                data.position(0);
+                do {
+                    try {
+                        int bytesWritten = this.audioTrack.write(data, data.remaining(), AudioTrack.WRITE_BLOCKING);
+                        if (bytesWritten < 0) {
+                            break;
+                        } else {
+                            increaseBufferSizeIfUnderrunOccurs();
+                        }
+                    } catch (Exception e) {}
+                } while (data.position() != data.limit());
+                this.position += data.position();
+                data.rewind();
+            }
+        }
+    }
+
+    public void onAudioDeviceChanged() {
+        if (!reflectorMode || mirrorStreamPtr == 0) return;
+
+        Log.i("ALSAClient", "Audio device change detected, rebuilding mirror stream...");
+        stop(mirrorStreamPtr);
+        close(mirrorStreamPtr);
+        mirrorStreamPtr = 0;
+
+        final int MAX_RETRIES = 5;
+        for (int i = 0; i < MAX_RETRIES; i++) {
+            long newStreamPtr = create(dataType.ordinal(), channels, sampleRate, bufferSize);
+            if (newStreamPtr > 0) {
+                if (playing) {
+                    if (start(newStreamPtr) == 0) {
+                        mirrorStreamPtr = newStreamPtr;
+                        return;
                     }
-                } catch (Exception e) {
+                    close(newStreamPtr);
+                } else {
+                    mirrorStreamPtr = newStreamPtr;
+                    return;
                 }
-            } while (data.position() != data.limit());
-            this.position += data.position();
-            data.rewind();
+            }
+            try { Thread.sleep(200); } catch (InterruptedException e) { break; }
         }
     }
 
@@ -201,43 +284,17 @@ public class ALSAClient {
     }
 
     public int pointer() {
-        if (this.audioTrack != null) {
-            return this.position / this.frameBytes;
-        }
-        return 0;
+        return this.position / this.frameBytes;
     }
 
-    public void setDataType(DataType dataType) {
-        this.dataType = dataType;
-    }
-
-    public void setContainerVariant(String containerVariant) {
-        this.containerVariant = containerVariant;
-    }
-
-    public String getContainerVariant() {
-        return containerVariant;
-    }
-
-    public boolean isGlibc() {
-        return containerVariant.equals(Container.GLIBC);
-    }
-
-    public void setChannels(int channels) {
-        this.channels = (byte) channels;
-    }
-
-    public void setSampleRate(int sampleRate) {
-        this.sampleRate = sampleRate;
-    }
-
-    public void setBufferSize(int bufferSize) {
-        this.bufferSize = bufferSize;
-    }
-
-    public ByteBuffer getSharedBuffer() {
-        return this.sharedBuffer;
-    }
+    public void setDataType(DataType dataType) { this.dataType = dataType; }
+    public void setContainerVariant(String containerVariant) { this.containerVariant = containerVariant; }
+    public String getContainerVariant() { return containerVariant; }
+    public boolean isGlibc() { return containerVariant != null && containerVariant.equals(Container.GLIBC); }
+    public void setChannels(int channels) { this.channels = (byte) channels; }
+    public void setSampleRate(int sampleRate) { this.sampleRate = sampleRate; }
+    public void setBufferSize(int bufferSize) { this.bufferSize = bufferSize; }
+    public ByteBuffer getSharedBuffer() { return this.sharedBuffer; }
 
     public void setSharedBuffer(ByteBuffer sharedBuffer) {
         if (sharedBuffer != null) {
@@ -251,13 +308,8 @@ public class ALSAClient {
         this.sharedBuffer = null;
     }
 
-    public ByteBuffer getAuxBuffer() {
-        return this.auxBuffer;
-    }
-
-    public int getBufferSizeInBytes() {
-        return this.bufferSize * this.frameBytes;
-    }
+    public ByteBuffer getAuxBuffer() { return this.auxBuffer; }
+    public int getBufferSizeInBytes() { return this.bufferSize * this.frameBytes; }
 
     public static int latencyMillisToBufferSize(int latencyMillis, int channels, DataType dataType, int sampleRate) {
         byte frameBytes = (byte) (dataType.byteCount * channels);
@@ -267,20 +319,33 @@ public class ALSAClient {
 
     private boolean isValidBufferSize() {
         int i = this.bufferSize;
-        return i % this.frameBytes == 0 && i > 0;
+        return i > 0 && (i * frameBytes) > 0;
     }
 
     public static void assignFramesPerBuffer(Context context) {
         try {
-            AudioManager am = (AudioManager) context.getSystemService("audio");
-            String framesPerBufferStr = am.getProperty("android.media.property.OUTPUT_FRAMES_PER_BUFFER");
+            AudioManager am = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
+            String framesPerBufferStr = am.getProperty(AudioManager.PROPERTY_OUTPUT_FRAMES_PER_BUFFER);
             short parseShort = Short.parseShort(framesPerBufferStr);
             framesPerBuffer = parseShort;
-            if (parseShort == 0) {
-                framesPerBuffer = (short) 256;
-            }
+            if (parseShort == 0) framesPerBuffer = (short) 256;
         } catch (Exception e) {
             framesPerBuffer = (short) 256;
         }
     }
+
+    private native long simulatedCreate(int format, byte channelCount, int sampleRate, int bufferSize);
+    private native long create(int format, byte channelCount, int sampleRate, int bufferSize);
+    private native int simulatedWrite(long streamPtr, ByteBuffer buffer, int numFrames);
+    private native int write(long streamPtr, ByteBuffer buffer, int numFrames);
+    private native void simulatedStart(long streamPtr);
+    private native int start(long streamPtr);
+    private native void simulatedStop(long streamPtr);
+    private native void stop(long streamPtr);
+    private native void simulatedPause(long streamPtr);
+    private native void pause(long streamPtr);
+    private native void simulatedFlush(long streamPtr);
+    private native void flush(long streamPtr);
+    private native void simulatedClose(long streamPtr);
+    private native void close(long streamPtr);
 }
