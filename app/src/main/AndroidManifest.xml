@@ -109,6 +109,17 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity-alias>
+        <provider
+            android:name=".core.GNPStorageProvider"
+            android:authorities="${applicationId}.storageprovider"
+            android:exported="true"
+            android:grantUriPermissions="true"
+            android:permission="android.permission.MANAGE_DOCUMENTS">
+            <intent-filter>
+                <action android:name="android.content.action.DOCUMENTS_PROVIDER" />
+            </intent-filter>
+        </provider>
+
         <service
             android:name=".service.SteamService"
             android:enabled="true"

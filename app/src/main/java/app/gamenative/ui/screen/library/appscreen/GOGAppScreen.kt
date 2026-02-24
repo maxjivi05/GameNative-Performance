@@ -283,13 +283,8 @@ class GOGAppScreen : BaseAppScreen() {
                 var installPath = GOGService.getInstallPath(gameId) ?: GOGConstants.getGameInstallPath(libraryItem.name)
                 
                 if (customInstallPath != null) {
-                    // Create a subfolder using the sanitized game name
-                    var folderName = libraryItem.name.replace(Regex("[^a-zA-Z0-9.-]"), "_")
-                    // Safety fallback: if folderName ended up empty, use appId
-                    if (folderName.isBlank()) {
-                        folderName = libraryItem.appId.replace(Regex("[^a-zA-Z0-9.-]"), "_")
-                    }
-                    installPath = File(customInstallPath, folderName).absolutePath
+                    // Persist custom path to DB (for resume after failure) and compute final path
+                    installPath = GOGService.setCustomInstallPath(context, gameId, customInstallPath)
                 }
                 
                 Timber.d("Downloading GOG game to: $installPath")
@@ -639,7 +634,7 @@ class GOGAppScreen : BaseAppScreen() {
                 app.gamenative.ui.enums.DialogType.INSTALL_APP -> {
                     {
                         BaseAppScreen.hideInstallDialog(appId)
-                        performDownload(context, libraryItem, {}, null)
+                        downloadPicker.launchPicker()
                     }
                 }
                 else -> null

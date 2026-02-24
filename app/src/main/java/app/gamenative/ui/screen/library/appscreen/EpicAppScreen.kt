@@ -390,15 +390,8 @@ class EpicAppScreen : BaseAppScreen() {
                 var installPath = EpicService.getInstallPath(libraryItem.gameId) ?: EpicConstants.getGameInstallPath(context, game.appName)
                 
                 if (customInstallPath != null) {
-                    // Create a subfolder using the game's appName (which is usually safe) or title
-                    var folderName = game.appName.ifEmpty { 
-                        game.title.replace(Regex("[^a-zA-Z0-9.-]"), "_") 
-                    }
-                    // Safety fallback: if folderName ended up empty (e.g. regex removed everything), use appId
-                    if (folderName.isBlank()) {
-                        folderName = libraryItem.appId.replace(Regex("[^a-zA-Z0-9.-]"), "_")
-                    }
-                    installPath = File(customInstallPath, folderName).absolutePath
+                    // Persist custom path to DB (for resume after failure) and compute final path
+                    installPath = EpicService.setCustomInstallPath(context, libraryItem.gameId, customInstallPath)
                 }
                 
                 Timber.tag(TAG).d("Downloading Epic game to: $installPath")

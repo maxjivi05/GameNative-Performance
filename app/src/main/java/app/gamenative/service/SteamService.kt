@@ -968,9 +968,14 @@ class SteamService : Service(), IChallengeUrlChanged {
         }
 
         fun deleteApp(appId: Int): Boolean {
+            // Cancel active download if any
+            downloadJobs[appId]?.cancel("Deleting app")
+
             val appDirPath = getAppDirPath(appId)
             // Remove any download-complete marker
             MarkerUtils.removeMarker(appDirPath, Marker.DOWNLOAD_COMPLETE_MARKER)
+            MarkerUtils.removeMarker(appDirPath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
+            
             // Remove from DB
             with(instance!!) {
                 runBlocking {

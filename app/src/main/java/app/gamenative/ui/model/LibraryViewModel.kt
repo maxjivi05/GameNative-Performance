@@ -181,6 +181,11 @@ class LibraryViewModel @Inject constructor(
         }
     }
 
+    fun onViewChanged(value: app.gamenative.ui.enums.PaneType) {
+        PrefManager.libraryLayout = value
+        _state.update { it.copy(libraryLayout = value) }
+    }
+
     fun onSourceToggle(source: GameSource) {
         val current = _state.value
         when (source) {
@@ -546,7 +551,7 @@ class LibraryViewModel @Inject constructor(
             val includeAmazon = _state.value.showAmazonInLibrary
 
             // Combine all lists and sort: installed games first, then alphabetically
-            val combined = buildList<LibraryEntry> {
+            val sortedEntries = buildList<LibraryEntry> {
                 if (includeSteam) addAll(steamEntries)
                 if (includeOpen) addAll(customEntries)
                 if (includeGOG) addAll(gogEntries)
@@ -558,12 +563,14 @@ class LibraryViewModel @Inject constructor(
                 compareBy<LibraryEntry> { entry ->
                     if (entry.isInstalled) 0 else 1
                 }.thenBy { it.item.name.lowercase() }
-            ).also { sortedList ->
-                if (sortedList.isNotEmpty()) {
-                    val installedCount = sortedList.count { it.isInstalled }
-                    val first10 = sortedList.take(10)
-                }
-            }.mapIndexed { idx, entry -> entry.item.copy(index = idx) }
+            )
+
+            // Compute live installed count from the full combined list before pagination
+            val totalInstalledCount = sortedEntries.count { it.isInstalled }
+
+            val combined = sortedEntries.mapIndexed { idx, entry ->
+                entry.item.copy(index = idx, isInstalled = entry.isInstalled)
+            }
 
             // Total count for the current filter
             val totalFound = combined.size
@@ -592,6 +599,7 @@ class LibraryViewModel @Inject constructor(
                     currentPaginationPage = paginationPage + 1, // visual display is not 0 indexed
                     lastPaginationPage = lastPageInCurrentFilter + 1,
                     totalAppsInFilter = totalFound,
+                    totalInstalledCount = totalInstalledCount,
                     isLoading = false, // Loading complete
                 )
             }

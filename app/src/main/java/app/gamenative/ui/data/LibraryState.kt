@@ -37,4 +37,10 @@ data class LibraryState(
 
     // Compatibility status map: game name -> compatibility status
     val compatibilityMap: Map<String, GameCompatibilityStatus> = emptyMap(),
+
+    // Live installed count computed from the full combined list (before pagination)
+    val totalInstalledCount: Int = 0,
+
+    // Current library layout
+    val libraryLayout: app.gamenative.ui.enums.PaneType = app.gamenative.PrefManager.libraryLayout,
 )

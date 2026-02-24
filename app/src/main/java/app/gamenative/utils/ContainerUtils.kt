@@ -307,6 +307,8 @@ object ContainerUtils {
             sharpnessDenoise = container.getExtra("sharpnessDenoise", "100").toIntOrNull() ?: 100,
             forceAdrenoClocks = container.isForceAdrenoClocks,
             rootPerformanceMode = container.isRootPerformanceMode,
+            dxvkVersion = container.dxvkVersion,
+            vkd3dVersion = container.vkd3dVersion,
         )
     }
 
@@ -472,6 +474,8 @@ object ContainerUtils {
         container.emulator = containerData.emulator
         container.fexCoreVersion = containerData.fexcoreVersion
         container.setFEXCorePreset(containerData.fexcorePreset)
+        container.dxvkVersion = containerData.dxvkVersion
+        container.vkd3dVersion = containerData.vkd3dVersion
         container.setDisableMouseInput(containerData.disableMouseInput)
         container.setTouchscreenMode(containerData.touchscreenMode)
         container.setExternalDisplayMode(containerData.externalDisplayMode)
