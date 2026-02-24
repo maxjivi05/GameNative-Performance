@@ -75,8 +75,10 @@ import android.widget.Toast
 import app.gamenative.ui.component.settings.SettingsListDropdown
 import app.gamenative.ui.data.XServerState
 import app.gamenative.ui.theme.settingsTileColors
+import app.gamenative.enums.Marker
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.CustomGameScanner
+import app.gamenative.utils.MarkerUtils
 import app.gamenative.utils.SteamTokenLogin
 import app.gamenative.utils.SteamUtils
 import com.posthog.PostHog
@@ -858,7 +860,8 @@ fun XServerScreen(
                             taskAffinityMask = ProcessHelper.getAffinityMask(container.getCPUList(true)).toShort().toInt()
                             taskAffinityMaskWoW64 = ProcessHelper.getAffinityMask(container.getCPUListWoW64(true)).toShort().toInt()
                             containerVariantChanged = container.containerVariant != imageFs.variant
-                            firstTimeBoot = container.getExtra("appVersion").isEmpty() || containerVariantChanged
+                            val wineVersionChanged = container.getExtra("wineVersion").isNotEmpty() && container.wineVersion != container.getExtra("wineVersion")
+                            firstTimeBoot = container.getExtra("appVersion").isEmpty() || containerVariantChanged || wineVersionChanged
                             needsUnpacking = container.isNeedsUnpacking
                             Timber.i("First time boot: $firstTimeBoot")
 
@@ -3088,6 +3091,7 @@ private fun setupWineSystemFiles(
         applyGeneralPatches(context, container, imageFs, xServerState.value.wineInfo, containerManager, onExtractFileListener)
         container.putExtra("appVersion", appVersion)
         container.putExtra("imgVersion", imgVersion)
+        container.putExtra("wineVersion", container.wineVersion)
         containerDataChanged = true
     }
 
@@ -3207,8 +3211,20 @@ private fun applyGeneralPatches(
         }
     } else {
         Timber.i("Extracting container_pattern_common.tzst")
-        TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context.assets, "container_pattern_common.tzst", rootDir);
+        TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context.assets, "container_pattern_common.tzst", rootDir)
         Timber.i("Attempting to extract _container_pattern.tzst with wine version " + container.wineVersion)
+        // user.reg was just reset by container_pattern_common.tzst; clear Steam DLL markers
+        // so replaceSteamApi() re-runs and restores Steam login config in the new registry
+        try {
+            val steamAppId = ContainerUtils.extractGameIdFromContainerId(container.id)
+            val appDirPath = SteamService.getAppDirPath(steamAppId)
+            MarkerUtils.removeMarker(appDirPath, Marker.STEAM_DLL_REPLACED)
+            MarkerUtils.removeMarker(appDirPath, Marker.STEAM_DLL_RESTORED)
+            MarkerUtils.removeMarker(appDirPath, Marker.STEAM_COLDCLIENT_USED)
+            Timber.i("Cleared Steam DLL markers for container ${container.id} after registry reset")
+        } catch (e: Exception) {
+            Timber.w("Could not clear Steam DLL markers after registry reset: ${e.message}")
+        }
     }
     containerManager.extractContainerPatternFile(container.getWineVersion(), contentsManager, container.rootDir, null)
     WineUtils.applySystemTweaks(context, wineInfo)
