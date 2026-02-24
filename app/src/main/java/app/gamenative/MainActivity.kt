@@ -142,11 +142,20 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Allow the app to open in the device's current orientation
+        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+
         enableEdgeToEdge(
             statusBarStyle = SystemBarStyle.dark(android.graphics.Color.rgb(30, 30, 30)),
             navigationBarStyle = SystemBarStyle.light(TRANSPARENT, TRANSPARENT),
         )
         super.onCreate(savedInstanceState)
+
+        // Force exclusive fullscreen (draw under notch/cutout)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            window.attributes.layoutInDisplayCutoutMode = android.view.WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+        }
+        AppUtils.hideSystemUI(this, true)
 
         // Initialize the controller management system
         ControllerManager.getInstance().init(getApplicationContext());
@@ -284,6 +293,9 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        // Ensure immersive fullscreen
+        AppUtils.hideSystemUI(this, true)
+
         // disable auto-stop when returning to foreground
         SteamService.autoStopWhenIdle = false
 

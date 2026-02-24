@@ -390,6 +390,9 @@ class AmazonService : Service() {
 
             return withContext(Dispatchers.IO) {
                 try {
+                    // Cancel active download if any
+                    cancelDownload(productId)
+
                     val game = instance.amazonManager.getGameById(productId)
                         ?: return@withContext Result.failure(Exception("Game not found: $productId"))
 

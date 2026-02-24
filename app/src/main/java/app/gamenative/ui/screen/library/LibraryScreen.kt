@@ -48,6 +48,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -99,13 +100,14 @@ fun HomeLibraryScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-
+    var editedLibraryItem by remember { mutableStateOf<LibraryItem?>(null) }
 
     LibraryScreenContent(
         state = state,
         listState = viewModel.listState,
         sheetState = sheetState,
         onFilterChanged = viewModel::onFilterChanged,
+        onViewChanged = viewModel::onViewChanged,
         onPageChange = viewModel::onPageChange,
         onModalBottomSheet = viewModel::onModalBottomSheet,
         onIsSearching = viewModel::onIsSearching,
@@ -113,6 +115,7 @@ fun HomeLibraryScreen(
         onRefresh = viewModel::onRefresh,
         onClickPlay = onClickPlay,
         onTestGraphics = onTestGraphics,
+        onEdit = { editedLibraryItem = it },
         onNavigateRoute = onNavigateRoute,
         onLogout = onLogout,
         onGoOnline = onGoOnline,
@@ -120,6 +123,23 @@ fun HomeLibraryScreen(
         onAddCustomGameFolder = viewModel::addCustomGameFolder,
         isOffline = isOffline,
     )
+
+    if (editedLibraryItem != null) {
+        GameEditDialog(
+            libraryItem = editedLibraryItem!!,
+            onDismiss = { editedLibraryItem = null },
+            onClickPlay = { bootToContainer ->
+                editedLibraryItem?.let {
+                    onClickPlay(it.appId, bootToContainer)
+                }
+            },
+            onTestGraphics = {
+                editedLibraryItem?.let {
+                    onTestGraphics(it.appId)
+                }
+            }
+        )
+    }
 }
 
 @OptIn(ExperimentalMaterial3AdaptiveApi::class, ExperimentalMaterial3Api::class)
@@ -129,12 +149,14 @@ private fun LibraryScreenContent(
     listState: LazyGridState,
     sheetState: SheetState,
     onFilterChanged: (AppFilter) -> Unit,
+    onViewChanged: (app.gamenative.ui.enums.PaneType) -> Unit,
     onPageChange: (Int) -> Unit,
     onModalBottomSheet: (Boolean) -> Unit,
     onIsSearching: (Boolean) -> Unit,
     onSearchQuery: (String) -> Unit,
     onClickPlay: (String, Boolean) -> Unit,
     onTestGraphics: (String) -> Unit,
+    onEdit: (LibraryItem) -> Unit,
     onRefresh: () -> Unit,
     onNavigateRoute: (String) -> Unit,
     onLogout: () -> Unit,
@@ -147,7 +169,6 @@ private fun LibraryScreenContent(
     var selectedAppId by remember { mutableStateOf<String?>(null) }
     // Keep a stable reference to the selected item so detail view doesn't disappear during list refresh/pagination.
     var selectedLibraryItem by remember { mutableStateOf<LibraryItem?>(null) }
-    var editedLibraryItem by remember { mutableStateOf<LibraryItem?>(null) }
     val filterFabExpanded by remember { derivedStateOf { listState.firstVisibleItemIndex == 0 } }
 
     // Dialog state for add custom game prompt
@@ -191,6 +212,18 @@ private fun LibraryScreenContent(
         }
     }
 
+    val isFrontend = state.libraryLayout == app.gamenative.ui.enums.PaneType.FRONTEND
+
+    // When in Frontend mode, force landscape. Otherwise follow system.
+    LaunchedEffect(isFrontend) {
+        if (isFrontend) {
+            PluviaApp.events.emit(AndroidEvent.SetAllowedOrientation(EnumSet.of(Orientation.LANDSCAPE, Orientation.REVERSE_LANDSCAPE)))
+        } else {
+            // Revert to unspecified (follows system sensor)
+            PluviaApp.events.emit(AndroidEvent.SetAllowedOrientation(EnumSet.of(Orientation.UNSPECIFIED)))
+        }
+    }
+
     BackHandler(selectedLibraryItem != null) {
         selectedAppId = null
         selectedLibraryItem = null
@@ -217,6 +250,9 @@ private fun LibraryScreenContent(
             WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
         }
         Modifier.padding(top = topPadding)
+    } else if (state.libraryLayout == app.gamenative.ui.enums.PaneType.FRONTEND) {
+        // Frontend mode: True fullscreen, no padding
+        Modifier
     } else {
         // List page keeps safe cutout padding (for notches)
         Modifier.displayCutoutPadding()
@@ -231,12 +267,13 @@ private fun LibraryScreenContent(
                 listState = listState,
                 sheetState = sheetState,
                 onFilterChanged = onFilterChanged,
+                onViewChanged = onViewChanged,
                 onPageChange = onPageChange,
                 onModalBottomSheet = onModalBottomSheet,
                 onIsSearching = onIsSearching,
                 onSearchQuery = onSearchQuery,
                 onClickPlay = onClickPlay,
-                onEdit = { editedLibraryItem = it },
+                onEdit = onEdit,
                 onNavigateRoute = onNavigateRoute,
                 onLogout = onLogout,
                 onNavigate = { appId ->
@@ -246,6 +283,7 @@ private fun LibraryScreenContent(
                 onGoOnline = onGoOnline,
                 onRefresh = onRefresh,
                 onSourceToggle = onSourceToggle,
+                onAddCustomGame = onAddCustomGameClick,
                 isOffline = isOffline,
             )
         } else {
@@ -265,24 +303,26 @@ private fun LibraryScreenContent(
                         onTestGraphics(libraryItem.appId)
                     }
                 },
+                onEdit = onEdit,
             )
         }
 
         if (selectedLibraryItem == null) {
-            Row(
+            val isFrontend = state.libraryLayout == app.gamenative.ui.enums.PaneType.FRONTEND
+            Box(
                 modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(bottom = 24.dp, end = 24.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    .fillMaxSize()
+                    .padding(bottom = 24.dp, start = 24.dp, end = 24.dp)
             ) {
                 if (!state.isSearching) {
                     ExtendedFloatingActionButton(
-                        text = { Text(text = stringResource(R.string.library_filters)) },
+                        text = { Text(text = if (isFrontend) stringResource(R.string.library_layout_title) else stringResource(R.string.library_filters)) },
                         icon = { Icon(imageVector = Icons.Default.FilterList, contentDescription = null) },
                         expanded = filterFabExpanded,
                         onClick = { onModalBottomSheet(true) },
                         containerColor = MaterialTheme.colorScheme.primary,
                         contentColor = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier.align(Alignment.BottomStart)
                     )
                 }
 
@@ -290,6 +330,7 @@ private fun LibraryScreenContent(
                     onClick = onAddCustomGameClick,
                     containerColor = MaterialTheme.colorScheme.secondary,
                     contentColor = MaterialTheme.colorScheme.onSecondary,
+                    modifier = Modifier.align(Alignment.BottomEnd)
                 ) {
                     Icon(
                         imageVector = Icons.Default.Add,
@@ -348,23 +389,6 @@ private fun LibraryScreenContent(
                 }
             )
         }
-
-        if (editedLibraryItem != null) {
-            GameEditDialog(
-                libraryItem = editedLibraryItem!!,
-                onDismiss = { editedLibraryItem = null },
-                onClickPlay = { bootToContainer ->
-                    editedLibraryItem?.let {
-                        onClickPlay(it.appId, bootToContainer)
-                    }
-                },
-                onTestGraphics = {
-                    editedLibraryItem?.let {
-                        onTestGraphics(it.appId)
-                    }
-                }
-            )
-        }
     }
 }
 
@@ -417,6 +441,7 @@ private fun Preview_LibraryScreenContent() {
             onIsSearching = {},
             onSearchQuery = {},
             onFilterChanged = { },
+            onViewChanged = { },
             onPageChange = { },
             onModalBottomSheet = {
                 val currentState = state.modalBottomSheet
@@ -425,6 +450,7 @@ private fun Preview_LibraryScreenContent() {
             },
             onClickPlay = { _, _ -> },
             onTestGraphics = { },
+            onEdit = { },
             onRefresh = { },
             onNavigateRoute = {},
             onLogout = {},

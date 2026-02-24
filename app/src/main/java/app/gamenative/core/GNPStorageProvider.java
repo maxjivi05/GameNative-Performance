@@ -117,15 +117,21 @@ public class GNPStorageProvider extends DocumentsProvider {
         String path = file.getAbsolutePath();
         if (path.equals(base)) return ROOT_ID;
         if (path.startsWith(base)) {
-            return path.substring(base.length() + 1);
+            String rel = path.substring(base.length());
+            if (rel.startsWith("/")) rel = rel.substring(1);
+            return rel;
         }
         return path;
     }
 
     private File getFileForDocId(String docId) {
         File base = getContext().getFilesDir().getParentFile();
-        if (ROOT_ID.equals(docId)) return base;
-        return new File(base, docId);
+        if (ROOT_ID.equals(docId) || docId == null || docId.isEmpty()) return base;
+        File file = new File(base, docId);
+        if (file.getAbsolutePath().startsWith(base.getAbsolutePath())) {
+            return file;
+        }
+        return base;
     }
 
     private void includeFile(MatrixCursor result, String docId, File file) {

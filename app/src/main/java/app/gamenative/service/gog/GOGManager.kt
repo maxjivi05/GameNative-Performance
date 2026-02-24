@@ -522,7 +522,11 @@ class GOGManager @Inject constructor(
         return withContext(Dispatchers.IO) {
             try {
                 val gameId = libraryItem.gameId.toString()
-                val installPath = getGameInstallPath(gameId, libraryItem.name)
+                
+                // Cancel active download if any
+                GOGService.cancelDownload(gameId)
+
+                val installPath = getAppDirPath(libraryItem.appId)
                 val installDir = File(installPath)
 
                 // Delete the manifest file
@@ -545,9 +549,8 @@ class GOGManager @Inject constructor(
                 }
 
                 // Remove all markers
-                val appDirPath = getAppDirPath(libraryItem.appId)
-                MarkerUtils.removeMarker(appDirPath, Marker.DOWNLOAD_COMPLETE_MARKER)
-                MarkerUtils.removeMarker(appDirPath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
+                MarkerUtils.removeMarker(installPath, Marker.DOWNLOAD_COMPLETE_MARKER)
+                MarkerUtils.removeMarker(installPath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
 
                 // Update database - mark as not installed
                 val game = getGameFromDbById(gameId)

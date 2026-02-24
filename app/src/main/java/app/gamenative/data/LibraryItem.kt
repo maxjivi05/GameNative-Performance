@@ -33,6 +33,7 @@ data class LibraryItem(
     val playTime: Long = 0, // Minutes
     val lastSessionTime: Long = 0, // Minutes
     val lastPlayed: Long = 0, // Timestamp
+    val isInstalled: Boolean = false,
 ) {
     val clientIconUrl: String
         get() = when (gameSource) {

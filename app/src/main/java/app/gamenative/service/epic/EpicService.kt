@@ -185,6 +185,9 @@ class EpicService : Service() {
             }
 
             return try {
+                // Cancel active download if any
+                cancelDownload(appId)
+
                 // Get the game to find its install path
                 val game = instance.epicManager.getGameById(appId)
                 if (game == null) {
@@ -202,6 +205,8 @@ class EpicService : Service() {
                     }
                     MarkerUtils.removeMarker(path, Marker.DOWNLOAD_COMPLETE_MARKER)
                     MarkerUtils.removeMarker(path, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
+                } else {
+                    Timber.tag("Epic").w("Epic game directory doesn't exist: $path")
                 }
 
                 // Uninstall from database (keeps the entry but marks as not installed)

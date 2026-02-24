@@ -1,5 +1,7 @@
 package app.gamenative.ui.screen.library.components
 
+import android.app.Activity
+import android.content.pm.ActivityInfo
 import android.content.res.Configuration
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -40,8 +42,7 @@ import app.gamenative.data.LibraryItem
 import app.gamenative.ui.data.LibraryState
 import app.gamenative.ui.enums.AppFilter
 import app.gamenative.ui.internal.fakeAppInfo
-import app.gamenative.service.DownloadService
-import app.gamenative.service.SteamService
+
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.component.topbar.AccountButton
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -54,6 +55,7 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -77,55 +79,19 @@ import timber.log.Timber
 
 /**
  * Calculates the installed games count based on the current filter state.
+ * Uses live data from LibraryState instead of stale PrefManager caches.
  *
- * @param state The current library state containing filters and visibility settings
- * @return The number of installed games, respecting current filters and source visibility
+ * @param state The current library state
+ * @return The number of installed games
  */
 private fun calculateInstalledCount(state: LibraryState): Int {
-    // If INSTALLED filter is active, all items in the filtered list are installed
-    if (state.appInfoSortType.contains(AppFilter.INSTALLED)) {
-        return state.totalAppsInFilter
-    }
-
-    // Otherwise, count all installed games (respecting source visibility)
-    val downloadDirectoryApps = DownloadService.getDownloadDirectoryApps()
-
-    // Count installed Steam games
-    val steamCount = if (state.showSteamInLibrary) {
-        downloadDirectoryApps.count()
+    return if (state.appInfoSortType.contains(AppFilter.INSTALLED)) {
+        // All items in the filtered list are installed
+        state.totalAppsInFilter
     } else {
-        0
+        // Live count computed from the full combined list in the ViewModel
+        state.totalInstalledCount
     }
-
-    // Count Custom Games (always considered "installed")
-    val customGameCount = if (state.showCustomGamesInLibrary) {
-        PrefManager.customGamesCount
-    } else {
-        0
-    }
-
-    // Count GOG games that are installed (from PrefManager)
-    val gogCount = if (state.showGOGInLibrary) {
-        PrefManager.gogInstalledGamesCount
-    } else {
-        0
-    }
-
-    // Count Epic games that are installed (from PrefManager)
-    val epicCount = if (state.showEpicInLibrary) {
-        PrefManager.epicInstalledGamesCount
-    } else {
-        0
-    }
-
-    // Count Amazon games that are installed (TODO: implement when Amazon library sync is ready)
-    val amazonCount = if (state.showAmazonInLibrary) {
-        0  // TODO: Add PrefManager.amazonInstalledGamesCount when implemented
-    } else {
-        0
-    }
-
-    return steamCount + customGameCount + gogCount + epicCount + amazonCount
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -135,6 +101,7 @@ internal fun LibraryListPane(
     listState: LazyGridState,
     sheetState: SheetState,
     onFilterChanged: (AppFilter) -> Unit,
+    onViewChanged: (app.gamenative.ui.enums.PaneType) -> Unit,
     onModalBottomSheet: (Boolean) -> Unit,
     onPageChange: (Int) -> Unit,
     onIsSearching: (Boolean) -> Unit,
@@ -147,6 +114,7 @@ internal fun LibraryListPane(
     onGoOnline: () -> Unit,
     onRefresh: () -> Unit,
     onSourceToggle: (GameSource) -> Unit,
+    onAddCustomGame: () -> Unit = {},
     isOffline: Boolean = false,
 ) {
     val context = LocalContext.current
@@ -155,11 +123,8 @@ internal fun LibraryListPane(
     // Calculate installed count based on current filter state
     val installedCount = remember(
         state.appInfoSortType,
-        state.showSteamInLibrary,
-        state.showCustomGamesInLibrary,
-        state.showGOGInLibrary,
-        state.showEpicInLibrary,
         state.totalAppsInFilter,
+        state.totalInstalledCount,
     ) {
         calculateInstalledCount(state)
     }
@@ -173,7 +138,21 @@ internal fun LibraryListPane(
     // Responsive width for better layouts
     val isViewWide = DeviceUtils.isViewWide(currentWindowAdaptiveInfo())
 
-    var paneType: PaneType by remember { mutableStateOf(PrefManager.libraryLayout) }
+    var paneType: PaneType by remember(state.libraryLayout) { mutableStateOf(state.libraryLayout) }
+
+    // Lock orientation to landscape when FRONTEND mode is active
+    DisposableEffect(paneType) {
+        val activity = context as? Activity
+        if (paneType == PaneType.FRONTEND) {
+            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+        } else {
+            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+        }
+        onDispose {
+            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+        }
+    }
+
     val columnType = remember(paneType) {
         when (paneType) {
             PaneType.GRID_HERO -> GridCells.Adaptive(minSize = 200.dp)
@@ -198,8 +177,7 @@ internal fun LibraryListPane(
     LaunchedEffect(isViewWide, paneType) {
         // Set initial paneType at first launch depending on orientation
         if (paneType == PaneType.UNDECIDED) {
-            paneType = PaneType.LIST
-            PrefManager.libraryLayout = paneType
+            onViewChanged(PaneType.LIST)
         }
 
     }
@@ -216,69 +194,116 @@ internal fun LibraryListPane(
     Scaffold(
         snackbarHost = { SnackbarHost(snackBarHost) }
     ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(top = paddingValues.calculateTopPadding())
-        ) {
-            // Modern Header with gradient
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-                    .padding(vertical = headerTopPadding)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
+        Box(modifier = Modifier.fillMaxSize()) {
+            if (paneType == PaneType.FRONTEND) {
+                LibraryFrontendPane(
+                    state = state,
+                    onNavigate = onNavigate,
+                    onClickPlay = onClickPlay,
+                    onAddCustomGame = onAddCustomGame,
+                    onViewChanged = onViewChanged,
+                    onModalBottomSheet = onModalBottomSheet,
+                                    onNavigateRoute = onNavigateRoute,
+                                    onEdit = onEdit,
+                                    onSearchQuery = onSearchQuery,
+                                )
+                            } else {                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(top = paddingValues.calculateTopPadding())
                 ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally
+                    // Modern Header with gradient
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp)
+                            .padding(vertical = headerTopPadding)
                     ) {
-                        Text(
-                            text = "GameNative",
-                            style = MaterialTheme.typography.headlineSmall.copy(
-                                fontWeight = FontWeight.Bold,
-                                brush = Brush.horizontalGradient(
-                                    colors = listOf(
-                                        MaterialTheme.colorScheme.primary,
-                                        MaterialTheme.colorScheme.tertiary
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    text = "GameNative",
+                                    style = MaterialTheme.typography.headlineSmall.copy(
+                                        fontWeight = FontWeight.Bold,
+                                        brush = Brush.horizontalGradient(
+                                            colors = listOf(
+                                                MaterialTheme.colorScheme.primary,
+                                                MaterialTheme.colorScheme.tertiary
+                                            )
+                                        )
                                     )
                                 )
-                            )
-                        )
-                        Text(
-                            text = androidx.compose.ui.res.stringResource(app.gamenative.R.string.performance),
-                            style = MaterialTheme.typography.headlineSmall.copy(
-                                fontWeight = FontWeight.Bold,
-                                brush = Brush.horizontalGradient(
-                                    colors = listOf(
-                                        MaterialTheme.colorScheme.primary,
-                                        MaterialTheme.colorScheme.tertiary
+                                Text(
+                                    text = androidx.compose.ui.res.stringResource(app.gamenative.R.string.performance),
+                                    style = MaterialTheme.typography.headlineSmall.copy(
+                                        fontWeight = FontWeight.Bold,
+                                        brush = Brush.horizontalGradient(
+                                            colors = listOf(
+                                                MaterialTheme.colorScheme.primary,
+                                                MaterialTheme.colorScheme.tertiary
+                                            )
+                                        )
                                     )
                                 )
-                            )
-                        )
-                        Text(
-                            text = androidx.compose.ui.res.stringResource(
-                                app.gamenative.R.string.library_game_count,
-                                state.totalAppsInFilter,
-                                installedCount
-                            ),
-                            style = MaterialTheme.typography.bodySmall.copy(
-                                fontSize = MaterialTheme.typography.bodySmall.fontSize * 1.125f
-                            ),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                                Text(
+                                    text = androidx.compose.ui.res.stringResource(
+                                        app.gamenative.R.string.library_game_count,
+                                        state.totalAppsInFilter,
+                                        installedCount
+                                    ),
+                                    style = MaterialTheme.typography.bodySmall.copy(
+                                        fontSize = MaterialTheme.typography.bodySmall.fontSize * 1.125f
+                                    ),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.weight(1f))
+
+                            if (isViewWide) {
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .padding(horizontal = 30.dp)
+                                ) {
+                                    LibrarySearchBar(
+                                        state = state,
+                                        listState = listState,
+                                        onSearchQuery = onSearchQuery,
+                                    )
+                                }
+                            } else {
+                                Spacer(modifier = Modifier.weight(1f))
+                            }
+
+                            // User profile button
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+                                    .padding(8.dp)
+                            ) {
+                                AccountButton(
+                                    onNavigateRoute = onNavigateRoute,
+                                    onLogout = onLogout,
+                                    onGoOnline = onGoOnline,
+                                    isOffline = isOffline,
+                                )
+                            }
+                        }
                     }
 
-                    Spacer(modifier = Modifier.weight(1f))
-
-                    if (isViewWide) {
+                    if (! isViewWide) {
+                        // Search bar
                         Box(
                             modifier = Modifier
-                                .weight(1f)
-                                .padding(horizontal = 30.dp)
+                                .fillMaxWidth()
+                                .padding(horizontal = 20.dp, vertical = 12.dp)
                         ) {
                             LibrarySearchBar(
                                 state = state,
@@ -286,210 +311,177 @@ internal fun LibraryListPane(
                                 onSearchQuery = onSearchQuery,
                             )
                         }
-                    } else {
-                        Spacer(modifier = Modifier.weight(1f))
                     }
 
-                    // User profile button
+                    // Game list
                     Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
-                            .padding(8.dp)
+                        modifier = Modifier.fillMaxSize(),
                     ) {
-                        AccountButton(
-                            onNavigateRoute = onNavigateRoute,
-                            onLogout = onLogout,
-                            onGoOnline = onGoOnline,
-                            isOffline = isOffline,
+                        // Track skeleton overlay alpha (fade out when games are loaded)
+                        // Show skeleton overlay when loading OR when list is empty (initial state)
+                        // But hide if final count is 0 (no games match filters)
+                        var shouldShowSkeletonOverlay by remember {
+                            mutableStateOf(true) // Start visible
+                        }
+
+                        // Fade out skeleton overlay when games appear
+                        val skeletonAlpha by animateFloatAsState(
+                            targetValue = if (shouldShowSkeletonOverlay) 1f else 0f,
+                            animationSpec = tween(durationMillis = 300),
+                            label = "skeletonFadeOut"
                         )
+
+                        // Update skeleton overlay visibility based on loading state and games
+                        LaunchedEffect(state.isLoading, state.appInfoList.size, state.totalAppsInFilter) {
+                            // Hide skeleton loaders if final count is 0 (no games match filters)
+                            if (state.totalAppsInFilter == 0 && !state.isLoading) {
+                                shouldShowSkeletonOverlay = false
+                            } else if (state.isLoading && state.appInfoList.isEmpty() && state.totalAppsInFilter > 0) {
+                                // Still loading and we expect games, show skeleton overlay
+                                shouldShowSkeletonOverlay = true
+                            } else if (state.appInfoList.isNotEmpty() && !state.isLoading) {
+                                // Games are loaded and loading is complete, start fading out skeleton overlay
+                                delay(100) // Small delay to let games render and fade in
+                                shouldShowSkeletonOverlay = false
+                            } else if (!state.isLoading && state.appInfoList.isEmpty() && state.totalAppsInFilter == 0) {
+                                // Loading complete but no games (filters exclude everything), hide skeletons
+                                shouldShowSkeletonOverlay = false
+                            }
+                        }
+
+                        val totalSkeletonCount = remember(state.showSteamInLibrary, state.showCustomGamesInLibrary, state.showGOGInLibrary, state.showEpicInLibrary, state.showAmazonInLibrary) {
+                            val customCount = if (state.showCustomGamesInLibrary) PrefManager.customGamesCount else 0
+                            val steamCount = if (state.showSteamInLibrary) PrefManager.steamGamesCount else 0
+                            val gogInstalledCount = if (state.showGOGInLibrary) PrefManager.gogInstalledGamesCount else 0
+                            val epicInstalledCount = if (state.showEpicInLibrary) PrefManager.epicInstalledGamesCount else 0
+                            val amazonInstalledCount = if (state.showAmazonInLibrary) 0 else 0  // TODO: Add PrefManager.amazonInstalledGamesCount when implemented
+                            val total = customCount + steamCount + gogInstalledCount + epicInstalledCount + amazonInstalledCount
+                            Timber.tag("LibraryListPane").d("Skeleton calculation - Custom: $customCount, Steam: $steamCount, GOG installed: $gogInstalledCount, Epic installed: $epicInstalledCount, Amazon installed: $amazonInstalledCount, Total: $total")
+                            // Show at least a few skeletons, but not more than a reasonable amount
+                            if (total == 0) 6 else minOf(total, 20)
+                        }
+
+                        // Show actual games (base layer)
+                        if (state.appInfoList.isNotEmpty()) {
+                            PullToRefreshBox(
+                                isRefreshing = state.isRefreshing,
+                                onRefresh = onRefresh,
+                                state = pullToRefreshState
+                            ) {
+                                LazyVerticalGrid(
+                                    columns = columnType,
+                                    state = listState,
+                                    modifier = Modifier.fillMaxSize(),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                    contentPadding = PaddingValues(
+                                        start = 20.dp,
+                                        end = 20.dp,
+                                        bottom = 72.dp
+                                    ),
+                                ) {
+                                    items(items = state.appInfoList, key = { it.index }) { item ->
+                                        // Fade-in animation for items
+                                        var isVisible by remember(item.index) { mutableStateOf(false) }
+                                        val alpha by animateFloatAsState(
+                                            targetValue = if (isVisible) 1f else 0f,
+                                            animationSpec = tween(durationMillis = 300),
+                                            label = "fadeIn"
+                                        )
+
+                                        LaunchedEffect(item.index) {
+                                            isVisible = true
+                                        }
+
+                                        Box(modifier = Modifier.alpha(alpha)) {
+                                            if (item.index > 0 && paneType == PaneType.LIST) {
+                                                // Dividers in list view
+                                                HorizontalDivider()
+                                            }
+                                            AppItem(
+                                                appInfo = item,
+                                                onClick = { onNavigate(item.appId) },
+                                                onEditClick = { onEdit(item) },
+                                                onPlayClick = { onClickPlay(item.appId, false) },
+                                                paneType = paneType,
+                                                onFocus = { targetOfScroll = item.index },
+                                                imageRefreshCounter = state.imageRefreshCounter,
+                                                compatibilityStatus = state.compatibilityMap[item.name],
+                                            )
+                                        }
+                                    }
+                                    if (state.appInfoList.size < state.totalAppsInFilter) {
+                                        item {
+                                            Box(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .padding(16.dp),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                CircularProgressIndicator()
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // Skeleton loaders as overlay (fades out when games are loaded)
+                        // Use a separate non-interactive state so it doesn't interfere with scrolling
+                        val skeletonListState = remember { LazyGridState() }
+                        if (skeletonAlpha > 0f) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .alpha(skeletonAlpha)
+                                    .pointerInteropFilter { false } // Non-interactive - allows touch events to pass through
+                            ) {
+                                LazyVerticalGrid(
+                                    columns = columnType,
+                                    state = skeletonListState,
+                                    modifier = Modifier.fillMaxSize(),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                    contentPadding = PaddingValues(
+                                        start = 20.dp,
+                                        end = 20.dp,
+                                        bottom = 72.dp
+                                    ),
+                                ) {
+                                    items(totalSkeletonCount) { index ->
+                                        if (index > 0 && paneType == PaneType.LIST) {
+                                            HorizontalDivider()
+                                        }
+                                        GameSkeletonLoader(
+                                            paneType = paneType,
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
 
-            if (! isViewWide) {
-                // Search bar
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 12.dp)
-                ) {
-                    LibrarySearchBar(
-                        state = state,
-                        listState = listState,
-                        onSearchQuery = onSearchQuery,
-                    )
-                }
-            }
-
-            // Game list
-            Box(
-                modifier = Modifier.fillMaxSize(),
-            ) {
-                // Track skeleton overlay alpha (fade out when games are loaded)
-                // Show skeleton overlay when loading OR when list is empty (initial state)
-                // But hide if final count is 0 (no games match filters)
-                var shouldShowSkeletonOverlay by remember {
-                    mutableStateOf(true) // Start visible
-                }
-
-                // Fade out skeleton overlay when games appear
-                val skeletonAlpha by animateFloatAsState(
-                    targetValue = if (shouldShowSkeletonOverlay) 1f else 0f,
-                    animationSpec = tween(durationMillis = 300),
-                    label = "skeletonFadeOut"
+            if (state.modalBottomSheet) {
+                ModalBottomSheet(
+                    onDismissRequest = { onModalBottomSheet(false) },
+                    sheetState = sheetState,
+                    content = {
+                        LibraryBottomSheet(
+                            selectedFilters = state.appInfoSortType,
+                            onFilterChanged = onFilterChanged,
+                            currentView = paneType,
+                            onViewChanged = { newPaneType ->
+                                onViewChanged(newPaneType)
+                            },
+                            showSteam = state.showSteamInLibrary,
+                            showCustomGames = state.showCustomGamesInLibrary,
+                            showGOG = state.showGOGInLibrary,
+                            showEpic = state.showEpicInLibrary,
+                            showAmazon = state.showAmazonInLibrary,
+                            onSourceToggle = onSourceToggle,
+                        )
+                    },
                 )
-
-                // Update skeleton overlay visibility based on loading state and games
-                LaunchedEffect(state.isLoading, state.appInfoList.size, state.totalAppsInFilter) {
-                    // Hide skeleton loaders if final count is 0 (no games match filters)
-                    if (state.totalAppsInFilter == 0 && !state.isLoading) {
-                        shouldShowSkeletonOverlay = false
-                    } else if (state.isLoading && state.appInfoList.isEmpty() && state.totalAppsInFilter > 0) {
-                        // Still loading and we expect games, show skeleton overlay
-                        shouldShowSkeletonOverlay = true
-                    } else if (state.appInfoList.isNotEmpty() && !state.isLoading) {
-                        // Games are loaded and loading is complete, start fading out skeleton overlay
-                        delay(100) // Small delay to let games render and fade in
-                        shouldShowSkeletonOverlay = false
-                    } else if (!state.isLoading && state.appInfoList.isEmpty() && state.totalAppsInFilter == 0) {
-                        // Loading complete but no games (filters exclude everything), hide skeletons
-                        shouldShowSkeletonOverlay = false
-                    }
-                }
-
-                val totalSkeletonCount = remember(state.showSteamInLibrary, state.showCustomGamesInLibrary, state.showGOGInLibrary, state.showEpicInLibrary, state.showAmazonInLibrary) {
-                    val customCount = if (state.showCustomGamesInLibrary) PrefManager.customGamesCount else 0
-                    val steamCount = if (state.showSteamInLibrary) PrefManager.steamGamesCount else 0
-                    val gogInstalledCount = if (state.showGOGInLibrary) PrefManager.gogInstalledGamesCount else 0
-                    val epicInstalledCount = if (state.showEpicInLibrary) PrefManager.epicInstalledGamesCount else 0
-                    val amazonInstalledCount = if (state.showAmazonInLibrary) 0 else 0  // TODO: Add PrefManager.amazonInstalledGamesCount when implemented
-                    val total = customCount + steamCount + gogInstalledCount + epicInstalledCount + amazonInstalledCount
-                    Timber.tag("LibraryListPane").d("Skeleton calculation - Custom: $customCount, Steam: $steamCount, GOG installed: $gogInstalledCount, Epic installed: $epicInstalledCount, Amazon installed: $amazonInstalledCount, Total: $total")
-                    // Show at least a few skeletons, but not more than a reasonable amount
-                    if (total == 0) 6 else minOf(total, 20)
-                }
-
-                // Show actual games (base layer)
-                if (state.appInfoList.isNotEmpty()) {
-                    PullToRefreshBox(
-                        isRefreshing = state.isRefreshing,
-                        onRefresh = onRefresh,
-                        state = pullToRefreshState
-                    ) {
-                        LazyVerticalGrid(
-                            columns = columnType,
-                            state = listState,
-                            modifier = Modifier.fillMaxSize(),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            contentPadding = PaddingValues(
-                                start = 20.dp,
-                                end = 20.dp,
-                                bottom = 72.dp
-                            ),
-                        ) {
-                            items(items = state.appInfoList, key = { it.index }) { item ->
-                                // Fade-in animation for items
-                                var isVisible by remember(item.index) { mutableStateOf(false) }
-                                val alpha by animateFloatAsState(
-                                    targetValue = if (isVisible) 1f else 0f,
-                                    animationSpec = tween(durationMillis = 300),
-                                    label = "fadeIn"
-                                )
-
-                                LaunchedEffect(item.index) {
-                                    isVisible = true
-                                }
-
-                                Box(modifier = Modifier.alpha(alpha)) {
-                                    if (item.index > 0 && paneType == PaneType.LIST) {
-                                        // Dividers in list view
-                                        HorizontalDivider()
-                                    }
-                                    AppItem(
-                                        appInfo = item,
-                                        onClick = { onNavigate(item.appId) },
-                                        onEditClick = { onEdit(item) },
-                                        onPlayClick = { onClickPlay(item.appId, false) },
-                                        paneType = paneType,
-                                        onFocus = { targetOfScroll = item.index },
-                                        imageRefreshCounter = state.imageRefreshCounter,
-                                        compatibilityStatus = state.compatibilityMap[item.name],
-                                    )
-                                }
-                            }
-                            if (state.appInfoList.size < state.totalAppsInFilter) {
-                                item {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(16.dp),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        CircularProgressIndicator()
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // Skeleton loaders as overlay (fades out when games are loaded)
-                // Use a separate non-interactive state so it doesn't interfere with scrolling
-                val skeletonListState = remember { LazyGridState() }
-                if (skeletonAlpha > 0f) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .alpha(skeletonAlpha)
-                            .pointerInteropFilter { false } // Non-interactive - allows touch events to pass through
-                    ) {
-                        LazyVerticalGrid(
-                            columns = columnType,
-                            state = skeletonListState,
-                            modifier = Modifier.fillMaxSize(),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            contentPadding = PaddingValues(
-                                start = 20.dp,
-                                end = 20.dp,
-                                bottom = 72.dp
-                            ),
-                        ) {
-                            items(totalSkeletonCount) { index ->
-                                if (index > 0 && paneType == PaneType.LIST) {
-                                    HorizontalDivider()
-                                }
-                                GameSkeletonLoader(
-                                    paneType = paneType,
-                                )
-                            }
-                        }
-                    }
-                }
-
-                if (state.modalBottomSheet) {
-                    ModalBottomSheet(
-                        onDismissRequest = { onModalBottomSheet(false) },
-                        sheetState = sheetState,
-                        content = {
-                            LibraryBottomSheet(
-                                selectedFilters = state.appInfoSortType,
-                                onFilterChanged = onFilterChanged,
-                                currentView = paneType,
-                                onViewChanged = { newPaneType ->
-                                    PrefManager.libraryLayout = newPaneType
-                                    paneType = newPaneType
-                                },
-                                showSteam = state.showSteamInLibrary,
-                                showCustomGames = state.showCustomGamesInLibrary,
-                                showGOG = state.showGOGInLibrary,
-                                showEpic = state.showEpicInLibrary,
-                                showAmazon = state.showAmazonInLibrary,
-                                onSourceToggle = onSourceToggle,
-                            )
-                        },
-                    )
-                }
             }
         }
     }
@@ -530,6 +522,7 @@ private fun Preview_LibraryListPane() {
                 state = state,
                 sheetState = sheetState,
                 onFilterChanged = { },
+                onViewChanged = { },
                 onPageChange = { },
                 onModalBottomSheet = {
                     val currentState = state.modalBottomSheet

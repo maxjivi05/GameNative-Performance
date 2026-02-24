@@ -38,6 +38,7 @@ internal fun LibraryDetailPane(
     libraryItem: LibraryItem?,
     onClickPlay: (Boolean) -> Unit,
     onTestGraphics: () -> Unit,
+    onEdit: (LibraryItem) -> Unit,
     onBack: () -> Unit,
 ) {
     Surface {
@@ -58,6 +59,7 @@ internal fun LibraryDetailPane(
                 listState = listState,
                 sheetState = sheetState,
                 onFilterChanged = {},
+                onViewChanged = {},
                 onPageChange = {},
                 onModalBottomSheet = {},
                 onIsSearching = {},
@@ -101,6 +103,7 @@ private fun Preview_LibraryDetailPane() {
             ),
             onClickPlay = { },
             onTestGraphics = { },
+            onEdit = { },
             onBack = { },
         )
     }

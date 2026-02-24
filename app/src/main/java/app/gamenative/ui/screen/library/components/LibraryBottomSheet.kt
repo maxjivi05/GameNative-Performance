@@ -17,6 +17,7 @@ import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.PhotoAlbum
 import androidx.compose.material.icons.filled.PhotoSizeSelectActual
+import androidx.compose.material.icons.filled.Slideshow
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -174,6 +175,12 @@ fun LibraryBottomSheet(
                 label = { Text(text = stringResource(R.string.library_layout_hero)) },
                 selected = (currentView == PaneType.GRID_HERO),
                 leadingIcon = { Icon(imageVector = Icons.Default.PhotoSizeSelectActual, contentDescription = null) },
+            )
+            FlowFilterChip(
+                onClick = { onViewChanged(PaneType.FRONTEND) },
+                label = { Text(text = stringResource(R.string.library_layout_frontend)) },
+                selected = (currentView == PaneType.FRONTEND),
+                leadingIcon = { Icon(imageVector = Icons.Default.Slideshow, contentDescription = null) },
             )
         }
 

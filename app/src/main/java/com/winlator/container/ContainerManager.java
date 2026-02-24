@@ -231,6 +231,8 @@ public class ContainerManager {
         dstContainer.setWineVersion(srcContainer.getWineVersion());
         dstContainer.setForceAdrenoClocks(srcContainer.isForceAdrenoClocks());
         dstContainer.setRootPerformanceMode(srcContainer.isRootPerformanceMode());
+        dstContainer.setDxvkVersion(srcContainer.getDxvkVersion());
+        dstContainer.setVkd3dVersion(srcContainer.getVkd3dVersion());
         dstContainer.saveData();
 
         containers.add(dstContainer);

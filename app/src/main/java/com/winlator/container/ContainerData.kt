@@ -151,6 +151,15 @@ data class ContainerData(
                     "rootPerformanceMode" to state.rootPerformanceMode,
                     "dxvkVersion" to state.dxvkVersion,
                     "vkd3dVersion" to state.vkd3dVersion,
+                    "renderer" to state.renderer,
+                    "csmt" to state.csmt,
+                    "videoPciDeviceID" to state.videoPciDeviceID,
+                    "offScreenRenderingMode" to state.offScreenRenderingMode,
+                    "strictShaderMath" to state.strictShaderMath,
+                    "videoMemorySize" to state.videoMemorySize,
+                    "mouseWarpOverride" to state.mouseWarpOverride,
+                    "shaderBackend" to state.shaderBackend,
+                    "useGLSL" to state.useGLSL,
                 )
             },
             restore = { savedMap ->
@@ -211,6 +220,15 @@ data class ContainerData(
                     rootPerformanceMode = (savedMap["rootPerformanceMode"] as? Boolean) ?: false,
                     dxvkVersion = (savedMap["dxvkVersion"] as? String),
                     vkd3dVersion = (savedMap["vkd3dVersion"] as? String),
+                    renderer = (savedMap["renderer"] as? String) ?: "gl",
+                    csmt = (savedMap["csmt"] as? Boolean) ?: true,
+                    videoPciDeviceID = (savedMap["videoPciDeviceID"] as? Int) ?: 1728,
+                    offScreenRenderingMode = (savedMap["offScreenRenderingMode"] as? String) ?: "fbo",
+                    strictShaderMath = (savedMap["strictShaderMath"] as? Boolean) ?: true,
+                    videoMemorySize = (savedMap["videoMemorySize"] as? String) ?: "2048",
+                    mouseWarpOverride = (savedMap["mouseWarpOverride"] as? String) ?: "disable",
+                    shaderBackend = (savedMap["shaderBackend"] as? String) ?: "glsl",
+                    useGLSL = (savedMap["useGLSL"] as? String) ?: "enabled",
                 )
             },
         )

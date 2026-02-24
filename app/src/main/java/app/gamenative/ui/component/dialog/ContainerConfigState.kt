@@ -52,6 +52,7 @@ class ContainerConfigState(
     val graphicsDriverIndex: MutableIntState,
     val dxWrapperIndex: MutableIntState,
     val dxvkVersionIndex: MutableIntState,
+    val vkd3dVersionIndex: MutableIntState,
     val graphicsDriverVersionIndex: MutableIntState,
     val audioDriverIndex: MutableIntState,
     val gpuNameIndex: MutableIntState,

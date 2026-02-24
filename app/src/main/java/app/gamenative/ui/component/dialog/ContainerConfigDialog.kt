@@ -705,10 +705,13 @@ fun ContainerConfigScreen(
     val dxvkVersionIndexRef = rememberSaveable { mutableIntStateOf(0) }
     var dxvkVersionIndex by dxvkVersionIndexRef
 
+    val vkd3dVersionIndexRef = rememberSaveable { mutableIntStateOf(0) }
+    var vkd3dVersionIndex by vkd3dVersionIndexRef
+
     // VKD3D version control (forced depending on driver)
     fun vkd3dForcedVersion(): String {
         val driverType = StringUtils.parseIdentifier(graphicsDrivers[graphicsDriverIndex])
-        val isVortekLike = config.containerVariant.equals(Container.GLIBC) && driverType == "vortek" || driverType == "adreno" || driverType == "sd-8-elite"
+        val isVortekLike = config.containerVariant.equals(Container.GLIBC) && (driverType == "vortek" || driverType == "adreno" || driverType == "sd-8-elite")
         return if (isVortekLike) "2.6" else "2.14.1"
     }
 
@@ -734,77 +737,115 @@ fun ContainerConfigScreen(
             dxvkOptions = dxvkOptions,
         )
     }
-// Keep dxwrapperConfig in sync when VKD3D selected
-        LaunchedEffect(graphicsDriverIndex, dxWrapperIndex) {
-            val isVKD3D = StringUtils.parseIdentifier(dxWrappers[dxWrapperIndex]) == "vkd3d"
-            if (isVKD3D) {
-                val kvs = KeyValueSet(config.dxwrapperConfig)
-                if (kvs.get("vkd3dVersion").isEmpty()) {
-                    kvs.put("vkd3dVersion", vkd3dForcedVersion())
-                }
-                // Ensure a default VKD3D feature level is set
-                if (kvs.get("vkd3dFeatureLevel").isEmpty()) {
-                    kvs.put("vkd3dFeatureLevel", "12_1")
-                }
-                config = config.copy(dxwrapperConfig = kvs.toString())
-            }
-        }
 
-        LaunchedEffect(versionsLoaded, dxvkOptions, dxvkVersionsBase, graphicsDriverIndex, dxWrapperIndex, config.dxwrapperConfig) {
-            if (!versionsLoaded) return@LaunchedEffect
-            val kvs = KeyValueSet(config.dxwrapperConfig)
-            val configuredVersion = kvs.get("version")
-            if (configuredVersion.isEmpty()) return@LaunchedEffect
-            val context = currentDxvkContext()
-            if (context.ids.isEmpty()) return@LaunchedEffect
-            val normalizedConfiguredVersion = StringUtils.parseIdentifier(configuredVersion)
-            val foundIndex = context.ids.indexOfFirst {
-                it == configuredVersion || StringUtils.parseIdentifier(it) == normalizedConfiguredVersion
-            }
-            val defaultIndex = context.ids.indexOfFirst {
-                it == DefaultVersion.DXVK || StringUtils.parseIdentifier(it) == StringUtils.parseIdentifier(DefaultVersion.DXVK)
-            }.coerceAtLeast(0)
-            val newIdx = if (foundIndex >= 0) foundIndex else defaultIndex
-            if (dxvkVersionIndex != newIdx) dxvkVersionIndex = newIdx
+    // Sync VKD3D version index from config
+    LaunchedEffect(versionsLoaded, vkd3dOptions, vkd3dVersionsBase, config.vkd3dVersion, config.dxwrapperConfig) {
+        if (!versionsLoaded) return@LaunchedEffect
+        val kvs = KeyValueSet(config.dxwrapperConfig)
+        val legacyVkd3dVer = kvs.get("vkd3dVersion")
+        val effectiveVkd3d = config.vkd3dVersion ?: legacyVkd3dVer
+        if (effectiveVkd3d.isEmpty() || effectiveVkd3d == "Disabled") {
+            vkd3dVersionIndex = 0
+            return@LaunchedEffect
         }
-        // When DXVK version defaults to an 'async' build, enable DXVK_ASYNC by default
-        LaunchedEffect(versionsLoaded, dxvkVersionIndex, graphicsDriverIndex, dxWrapperIndex) {
-            if (!versionsLoaded) return@LaunchedEffect
-            val context = currentDxvkContext()
-            if (context.ids.isEmpty()) return@LaunchedEffect
-            if (dxvkVersionIndex !in context.ids.indices) dxvkVersionIndex = 0
+        val rawIds = if (isBionicVariant) vkd3dOptions.ids else vkd3dVersionsBase
+        val itemIds = listOf("Disabled") + rawIds
+        val foundIndex = itemIds.indexOf(effectiveVkd3d).let {
+            if (it >= 0) it else itemIds.indexOfFirst { id -> id != "Disabled" && effectiveVkd3d.startsWith(id) }.coerceAtLeast(0)
+        }
+        if (vkd3dVersionIndex != foundIndex) vkd3dVersionIndex = foundIndex
+    }
 
-            // Ensure index within range or default
-            val selectedVersion = context.ids.getOrNull(dxvkVersionIndex).orEmpty()
-            val version = if (selectedVersion.isEmpty()) {
-                if (context.isVortekLike) "async-1.10.3" else DefaultVersion.DXVK
-            } else selectedVersion
-            val envSet = EnvVars(config.envVars)
-            // Update dxwrapperConfig version only when DXVK wrapper selected
-            val wrapperIsDxvk = StringUtils.parseIdentifier(dxWrappers[dxWrapperIndex]) == "dxvk"
-            val kvs = KeyValueSet(config.dxwrapperConfig)
-            val currentVersion = kvs.get("version")
-            // Only update if the version actually changed (don't overwrite on initial load if it matches)
-            if (wrapperIsDxvk) {
-                // Check if we need to update - only if current version doesn't match selected version
-                val needsUpdate = currentVersion.isEmpty() ||
-                    (currentVersion != version && StringUtils.parseIdentifier(currentVersion) != StringUtils.parseIdentifier(version))
-                if (needsUpdate) {
-                    kvs.put("version", version)
-                }
-            }
-            if (version.contains("async", ignoreCase = true)) {
-                kvs.put("async", "1")
-            } else {
-                kvs.put("async", "0")
-            }
-            if (version.contains("gplasync", ignoreCase = true)) {
-                kvs.put("asyncCache", "1")
-            } else {
-                kvs.put("asyncCache", "0")
-            }
+    // Keep dxwrapperConfig in sync when VKD3D selected or changed
+    LaunchedEffect(graphicsDriverIndex, dxWrapperIndex, config.vkd3dVersion) {
+        val isVKD3D = StringUtils.parseIdentifier(dxWrappers[dxWrapperIndex]) == "vkd3d"
+        val kvs = KeyValueSet(config.dxwrapperConfig)
+        val currentVkd3d = kvs.get("vkd3dVersion")
+        
+        var changed = false
+        if (isVKD3D && currentVkd3d.isEmpty()) {
+            kvs.put("vkd3dVersion", vkd3dForcedVersion())
+            changed = true
+        } else if (config.vkd3dVersion != null && config.vkd3dVersion != currentVkd3d) {
+            kvs.put("vkd3dVersion", config.vkd3dVersion)
+            changed = true
+        }
+        
+        // Ensure a default VKD3D feature level is set
+        if (kvs.get("vkd3dFeatureLevel").isEmpty()) {
+            kvs.put("vkd3dFeatureLevel", "12_1")
+            changed = true
+        }
+        
+        if (changed) {
+            config = config.copy(dxwrapperConfig = kvs.toString())
+        }
+    }
+
+    LaunchedEffect(versionsLoaded, dxvkOptions, dxvkVersionsBase, graphicsDriverIndex, dxWrapperIndex, config.dxwrapperConfig, config.dxvkVersion) {
+        if (!versionsLoaded) return@LaunchedEffect
+        val kvs = KeyValueSet(config.dxwrapperConfig)
+        val legacyVersion = kvs.get("version")
+        val configuredVersion = config.dxvkVersion ?: legacyVersion
+        if (configuredVersion.isEmpty() || configuredVersion == "Disabled") {
+            dxvkVersionIndex = 0
+            return@LaunchedEffect
+        }
+        
+        val context = currentDxvkContext()
+        if (context.ids.isEmpty()) return@LaunchedEffect
+        val normalizedConfiguredVersion = StringUtils.parseIdentifier(configuredVersion)
+        val foundIndex = context.ids.indexOfFirst {
+            it == configuredVersion || StringUtils.parseIdentifier(it) == normalizedConfiguredVersion
+        }
+        val defaultIndex = context.ids.indexOfFirst {
+            it == DefaultVersion.DXVK || StringUtils.parseIdentifier(it) == StringUtils.parseIdentifier(DefaultVersion.DXVK)
+        }.coerceAtLeast(0)
+        val newIdx = if (foundIndex >= 0) foundIndex else defaultIndex
+        if (dxvkVersionIndex != newIdx) dxvkVersionIndex = newIdx
+    }
+
+    // When DXVK version defaults to an 'async' build, enable DXVK_ASYNC by default
+    LaunchedEffect(versionsLoaded, dxvkVersionIndex, graphicsDriverIndex, dxWrapperIndex, config.dxvkVersion) {
+        if (!versionsLoaded) return@LaunchedEffect
+        val context = currentDxvkContext()
+        if (context.ids.isEmpty()) return@LaunchedEffect
+        if (dxvkVersionIndex !in context.ids.indices) dxvkVersionIndex = 0
+
+        // Ensure index within range or default
+        val selectedVersion = context.ids.getOrNull(dxvkVersionIndex).orEmpty()
+        val version = if (selectedVersion.isEmpty()) {
+            if (context.isVortekLike) "async-1.10.3" else DefaultVersion.DXVK
+        } else selectedVersion
+        
+        val envSet = EnvVars(config.envVars)
+        val kvs = KeyValueSet(config.dxwrapperConfig)
+        val currentVersion = kvs.get("version")
+        
+        var changed = false
+        // Update dxwrapperConfig version only when explicitly changed via new field
+        if (config.dxvkVersion != null && config.dxvkVersion != currentVersion) {
+            kvs.put("version", config.dxvkVersion)
+            changed = true
+        }
+        
+        val effectiveVersion = config.dxvkVersion ?: currentVersion.ifEmpty { version }
+        val asyncVal = if (effectiveVersion.contains("async", ignoreCase = true)) "1" else "0"
+        if (kvs.get("async") != asyncVal) {
+            kvs.put("async", asyncVal)
+            changed = true
+        }
+        
+        val asyncCacheVal = if (effectiveVersion.contains("gplasync", ignoreCase = true)) "1" else "0"
+        if (kvs.get("asyncCache") != asyncCacheVal) {
+            kvs.put("asyncCache", asyncCacheVal)
+            changed = true
+        }
+        
+        if (changed) {
             config = config.copy(envVars = envSet.toString(), dxwrapperConfig = kvs.toString())
         }
+    }
         val audioDriverIndexRef = rememberSaveable {
             val driverIndex = audioDrivers.indexOfFirst { StringUtils.parseIdentifier(it) == config.audioDriver }
             mutableIntStateOf(if (driverIndex >= 0) driverIndex else 0)
@@ -998,6 +1039,7 @@ fun ContainerConfigScreen(
             graphicsDriverIndex = graphicsDriverIndexRef,
             dxWrapperIndex = dxWrapperIndexRef,
             dxvkVersionIndex = dxvkVersionIndexRef,
+            vkd3dVersionIndex = vkd3dVersionIndexRef,
             graphicsDriverVersionIndex = graphicsDriverVersionIndexRef,
             audioDriverIndex = audioDriverIndexRef,
             gpuNameIndex = gpuNameIndexRef,
