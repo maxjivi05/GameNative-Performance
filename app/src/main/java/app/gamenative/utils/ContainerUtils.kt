@@ -417,6 +417,15 @@ object ContainerUtils {
             } else {
                 Timber.i("Successfully updated container prefix for Wine version: ${containerData.wineVersion}")
             }
+            // Clear Steam DLL markers so replaceSteamApi() re-runs with the new Wine version's registry
+            val steamAppId = extractGameIdFromContainerId(container.id)
+            val appDirPath = SteamService.getAppDirPath(steamAppId)
+            MarkerUtils.removeMarker(appDirPath, Marker.STEAM_DLL_REPLACED)
+            MarkerUtils.removeMarker(appDirPath, Marker.STEAM_DLL_RESTORED)
+            MarkerUtils.removeMarker(appDirPath, Marker.STEAM_COLDCLIENT_USED)
+            Timber.i("Wine version changed: cleared Steam DLL markers for container ${container.id}.")
+            // Delete stale DLL backup cache so it's rebuilt for the new wine version's DLLs
+            FileUtils.delete(File(container.rootDir, ImageFs.CACHE_PATH + "/original_dlls"))
         }
 
         val userRegFile = File(container.rootDir, ".wine/user.reg")
