@@ -704,6 +704,10 @@ fun XServerScreen(
             .fillMaxSize()
             .pointerHoverIcon(PointerIcon(0))
             .pointerInteropFilter { event ->
+                // Let PerformanceHUD handle touch first (drag/tap to reposition/toggle layout)
+                val hudHandled = performanceHUD?.handleTouchEvent(event) == true
+                if (hudHandled) return@pointerInteropFilter true
+
                 val overlayHandled = swapInputOverlay
                     ?.takeIf { it.visibility == View.VISIBLE }
                     ?.dispatchTouchEvent(event) == true

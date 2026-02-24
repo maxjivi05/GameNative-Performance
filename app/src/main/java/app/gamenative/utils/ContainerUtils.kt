@@ -205,36 +205,44 @@ object ContainerUtils {
     }
 
     fun toContainerData(container: Container): ContainerData {
-        val renderer: String
-        val csmt: Boolean
-        val videoPciDeviceID: Int
-        val offScreenRenderingMode: String
-        val strictShaderMath: Boolean
-        val videoMemorySize: String
-        val mouseWarpOverride: String
+        var renderer: String = PrefManager.renderer
+        var csmt: Boolean = PrefManager.csmt
+        var videoPciDeviceID: Int = PrefManager.videoPciDeviceID
+        var offScreenRenderingMode: String = PrefManager.offScreenRenderingMode
+        var strictShaderMath: Boolean = PrefManager.strictShaderMath
+        var videoMemorySize: String = PrefManager.videoMemorySize
+        var mouseWarpOverride: String = PrefManager.mouseWarpOverride
 
-        val userRegFile = File(container.rootDir, ".wine/user.reg")
-        WineRegistryEditor(userRegFile).use { registryEditor ->
-            renderer =
-                registryEditor.getStringValue("Software\\Wine\\Direct3D", "renderer", PrefManager.renderer)
-            csmt =
-                registryEditor.getDwordValue("Software\\Wine\\Direct3D", "csmt", if (PrefManager.csmt) 3 else 0) != 0
+        try {
+            val userRegFile = File(container.rootDir, ".wine/user.reg")
+            if (userRegFile.exists()) {
+                WineRegistryEditor(userRegFile).use { registryEditor ->
+                    renderer =
+                        registryEditor.getStringValue("Software\\Wine\\Direct3D", "renderer", PrefManager.renderer)
+                    csmt =
+                        registryEditor.getDwordValue("Software\\Wine\\Direct3D", "csmt", if (PrefManager.csmt) 3 else 0) != 0
 
-            videoPciDeviceID =
-                registryEditor.getDwordValue("Software\\Wine\\Direct3D", "VideoPciDeviceID", PrefManager.videoPciDeviceID)
+                    videoPciDeviceID =
+                        registryEditor.getDwordValue("Software\\Wine\\Direct3D", "VideoPciDeviceID", PrefManager.videoPciDeviceID)
 
-            offScreenRenderingMode =
-                registryEditor.getStringValue("Software\\Wine\\Direct3D", "OffScreenRenderingMode", PrefManager.offScreenRenderingMode)
+                    offScreenRenderingMode =
+                        registryEditor.getStringValue("Software\\Wine\\Direct3D", "OffScreenRenderingMode", PrefManager.offScreenRenderingMode)
 
-            val strictShader = if (PrefManager.strictShaderMath) 1 else 0
-            strictShaderMath =
-                registryEditor.getDwordValue("Software\\Wine\\Direct3D", "strict_shader_math", strictShader) != 0
+                    val strictShader = if (PrefManager.strictShaderMath) 1 else 0
+                    strictShaderMath =
+                        registryEditor.getDwordValue("Software\\Wine\\Direct3D", "strict_shader_math", strictShader) != 0
 
-            videoMemorySize =
-                registryEditor.getStringValue("Software\\Wine\\Direct3D", "VideoMemorySize", PrefManager.videoMemorySize)
+                    videoMemorySize =
+                        registryEditor.getStringValue("Software\\Wine\\Direct3D", "VideoMemorySize", PrefManager.videoMemorySize)
 
-            mouseWarpOverride =
-                registryEditor.getStringValue("Software\\Wine\\DirectInput", "MouseWarpOverride", PrefManager.mouseWarpOverride)
+                    mouseWarpOverride =
+                        registryEditor.getStringValue("Software\\Wine\\DirectInput", "MouseWarpOverride", PrefManager.mouseWarpOverride)
+                }
+            } else {
+                Timber.w("user.reg not found at ${userRegFile.path}, using PrefManager defaults for registry values")
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Failed to read Wine registry for container ${container.id}, using PrefManager defaults")
         }
 
         // Read controller API settings from container
@@ -404,46 +412,66 @@ object ContainerUtils {
         // Check if Wine version changed and update prefix if needed
         if (container.wineVersion != containerData.wineVersion) {
             Timber.i("Wine version changed from '${container.wineVersion}' to '${containerData.wineVersion}'. Updating prefix...")
-            val containerManager = ContainerManager(context)
-            val contentsManager = ContentsManager(context)
-            val success = containerManager.extractContainerPatternFile(
-                containerData.wineVersion,
-                contentsManager,
-                container.rootDir,
-                null
-            )
-            if (!success) {
-                Timber.e("Failed to extract container pattern for new Wine version: ${containerData.wineVersion}")
-            } else {
-                Timber.i("Successfully updated container prefix for Wine version: ${containerData.wineVersion}")
+            try {
+                val containerManager = ContainerManager(context)
+                val contentsManager = ContentsManager(context)
+                val success = containerManager.extractContainerPatternFile(
+                    containerData.wineVersion,
+                    contentsManager,
+                    container.rootDir,
+                    null
+                )
+                if (!success) {
+                    Timber.e("Failed to extract container pattern for new Wine version: ${containerData.wineVersion}")
+                } else {
+                    Timber.i("Successfully updated container prefix for Wine version: ${containerData.wineVersion}")
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Exception during Wine version change extraction from '${container.wineVersion}' to '${containerData.wineVersion}'")
             }
             // Clear Steam DLL markers so replaceSteamApi() re-runs with the new Wine version's registry
-            val steamAppId = extractGameIdFromContainerId(container.id)
-            val appDirPath = SteamService.getAppDirPath(steamAppId)
-            MarkerUtils.removeMarker(appDirPath, Marker.STEAM_DLL_REPLACED)
-            MarkerUtils.removeMarker(appDirPath, Marker.STEAM_DLL_RESTORED)
-            MarkerUtils.removeMarker(appDirPath, Marker.STEAM_COLDCLIENT_USED)
-            Timber.i("Wine version changed: cleared Steam DLL markers for container ${container.id}.")
+            try {
+                val steamAppId = extractGameIdFromContainerId(container.id)
+                val appDirPath = SteamService.getAppDirPath(steamAppId)
+                MarkerUtils.removeMarker(appDirPath, Marker.STEAM_DLL_REPLACED)
+                MarkerUtils.removeMarker(appDirPath, Marker.STEAM_DLL_RESTORED)
+                MarkerUtils.removeMarker(appDirPath, Marker.STEAM_COLDCLIENT_USED)
+                Timber.i("Wine version changed: cleared Steam DLL markers for container ${container.id}.")
+            } catch (e: Exception) {
+                Timber.w(e, "Failed to clear Steam DLL markers during wine version change")
+            }
             // Delete stale DLL backup cache so it's rebuilt for the new wine version's DLLs
             FileUtils.delete(File(container.rootDir, ImageFs.CACHE_PATH + "/original_dlls"))
         }
 
-        val userRegFile = File(container.rootDir, ".wine/user.reg")
-        WineRegistryEditor(userRegFile).use { registryEditor ->
-            registryEditor.setStringValue("Software\\Wine\\Direct3D", "renderer", containerData.renderer)
-            registryEditor.setDwordValue("Software\\Wine\\Direct3D", "csmt", if (containerData.csmt) 3 else 0)
-            registryEditor.setDwordValue("Software\\Wine\\Direct3D", "VideoPciDeviceID", containerData.videoPciDeviceID)
-            registryEditor.setDwordValue(
-                "Software\\Wine\\Direct3D",
-                "VideoPciVendorID",
-                getGPUCards(context)[containerData.videoPciDeviceID]!!.vendorId,
-            )
-            registryEditor.setStringValue("Software\\Wine\\Direct3D", "OffScreenRenderingMode", containerData.offScreenRenderingMode)
-            registryEditor.setDwordValue("Software\\Wine\\Direct3D", "strict_shader_math", if (containerData.strictShaderMath) 1 else 0)
-            registryEditor.setStringValue("Software\\Wine\\Direct3D", "VideoMemorySize", containerData.videoMemorySize)
-            registryEditor.setStringValue("Software\\Wine\\DirectInput", "MouseWarpOverride", containerData.mouseWarpOverride)
-            registryEditor.setStringValue("Software\\Wine\\Direct3D", "shader_backend", "glsl")
-            registryEditor.setStringValue("Software\\Wine\\Direct3D", "UseGLSL", "enabled")
+        // Write registry settings — wrapped in try/catch so a failure here never crashes the app
+        try {
+            val userRegFile = File(container.rootDir, ".wine/user.reg")
+            // Ensure the .wine directory exists (may be missing after a failed extraction)
+            userRegFile.parentFile?.mkdirs()
+            WineRegistryEditor(userRegFile).use { registryEditor ->
+                registryEditor.setStringValue("Software\\Wine\\Direct3D", "renderer", containerData.renderer)
+                registryEditor.setDwordValue("Software\\Wine\\Direct3D", "csmt", if (containerData.csmt) 3 else 0)
+                registryEditor.setDwordValue("Software\\Wine\\Direct3D", "VideoPciDeviceID", containerData.videoPciDeviceID)
+                val gpuInfo = getGPUCards(context)[containerData.videoPciDeviceID]
+                if (gpuInfo != null) {
+                    registryEditor.setDwordValue(
+                        "Software\\Wine\\Direct3D",
+                        "VideoPciVendorID",
+                        gpuInfo.vendorId,
+                    )
+                } else {
+                    Timber.w("GPU device ID ${containerData.videoPciDeviceID} not found in GPU map, skipping VideoPciVendorID")
+                }
+                registryEditor.setStringValue("Software\\Wine\\Direct3D", "OffScreenRenderingMode", containerData.offScreenRenderingMode)
+                registryEditor.setDwordValue("Software\\Wine\\Direct3D", "strict_shader_math", if (containerData.strictShaderMath) 1 else 0)
+                registryEditor.setStringValue("Software\\Wine\\Direct3D", "VideoMemorySize", containerData.videoMemorySize)
+                registryEditor.setStringValue("Software\\Wine\\DirectInput", "MouseWarpOverride", containerData.mouseWarpOverride)
+                registryEditor.setStringValue("Software\\Wine\\Direct3D", "shader_backend", "glsl")
+                registryEditor.setStringValue("Software\\Wine\\Direct3D", "UseGLSL", "enabled")
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Failed to write Wine registry settings for container ${container.id}")
         }
 
         container.name = containerData.name

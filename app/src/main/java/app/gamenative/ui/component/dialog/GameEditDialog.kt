@@ -507,8 +507,14 @@ fun GameEditDialog(
                             initialConfig = containerData,
                             onDismissRequest = { currentView = EditView.MENU },
                             onSave = { config ->
-                                screenModel.saveContainerConfig(context, libraryItem, config)
                                 currentView = EditView.MENU
+                                coroutineScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                                    try {
+                                        screenModel.saveContainerConfig(context, libraryItem, config)
+                                    } catch (e: Exception) {
+                                        timber.log.Timber.e(e, "Failed to save container config for ${libraryItem.appId}")
+                                    }
+                                }
                             }
                         )
                     }
@@ -574,13 +580,18 @@ fun GameEditDialog(
             },
             onReset = {
                 showContainerDialog = false
-                // Reset logic - access via screenModel? screenModel.resetContainerToDefaults is protected.
-                // We might need to duplicate it or expose it.
-                // For now, let's use ContainerUtils directly.
-                val container = ContainerUtils.getOrCreateContainer(context, libraryItem.appId)
-                val defaults = ContainerUtils.getDefaultContainerData().copy(drives = container.drives)
-                ContainerUtils.applyToContainer(context, libraryItem.appId, defaults)
-                Toast.makeText(context, "Container reset to defaults", Toast.LENGTH_SHORT).show()
+                coroutineScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                    try {
+                        val container = ContainerUtils.getOrCreateContainer(context, libraryItem.appId)
+                        val defaults = ContainerUtils.getDefaultContainerData().copy(drives = container.drives)
+                        ContainerUtils.applyToContainer(context, libraryItem.appId, defaults)
+                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                            Toast.makeText(context, "Container reset to defaults", Toast.LENGTH_SHORT).show()
+                        }
+                    } catch (e: Exception) {
+                        timber.log.Timber.e(e, "Failed to reset container to defaults for ${libraryItem.appId}")
+                    }
+                }
             },
             onTestGraphics = onTestGraphics
         )

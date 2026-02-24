@@ -26,11 +26,23 @@ import com.winlator.xserver.XLock;
 import com.winlator.xserver.XServer;
 
 import java.util.ArrayList;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
 public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindowModificationListener, Pointer.OnPointerMotionListener {
+    /** Atomic frame counter incremented on every onDrawFrame call. Read and reset by PerformanceHUD. */
+    private static final AtomicInteger frameCounter = new AtomicInteger(0);
+
+    public static int getAndResetFrameCount() {
+        return frameCounter.getAndSet(0);
+    }
+
+    public static int getFrameCount() {
+        return frameCounter.get();
+    }
+
     public final XServerView xServerView;
     private final XServer xServer;
     private final VertexAttribute quadVertices = new VertexAttribute("position", 2);
@@ -116,6 +128,7 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
 
     @Override
     public void onDrawFrame(GL10 gl) {
+        frameCounter.incrementAndGet();
         if (toggleFullscreen) {
             fullscreen = !fullscreen;
             toggleFullscreen = false;

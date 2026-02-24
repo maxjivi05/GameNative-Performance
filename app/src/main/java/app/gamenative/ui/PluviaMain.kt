@@ -755,16 +755,23 @@ fun PluviaMain(
         DialogType.SAVE_CONTAINER_CONFIG -> {
             onConfirmClick = {
                 // Save the container config permanently
-                pendingSaveAppId?.let { appId ->
-                    IntentLaunchManager.getEffectiveContainerConfig(context, appId)?.let { config ->
-                        ContainerUtils.applyToContainer(context, appId, config)
-                        Timber.i("[PluviaMain]: Saved container configuration for app $appId")
-                    }
-                    // Clear the temporary override after saving
-                    IntentLaunchManager.clearTemporaryOverride(appId)
-                }
+                val saveAppId = pendingSaveAppId
                 pendingSaveAppId = null
                 setMessageDialogState(MessageDialogState(false))
+                if (saveAppId != null) {
+                    scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                        try {
+                            IntentLaunchManager.getEffectiveContainerConfig(context, saveAppId)?.let { config ->
+                                ContainerUtils.applyToContainer(context, saveAppId, config)
+                                Timber.i("[PluviaMain]: Saved container configuration for app $saveAppId")
+                            }
+                            // Clear the temporary override after saving
+                            IntentLaunchManager.clearTemporaryOverride(saveAppId)
+                        } catch (e: Exception) {
+                            Timber.e(e, "Failed to save container config for $saveAppId")
+                        }
+                    }
+                }
             }
             onDismissClick = {
                 // Discard the temporary config and restore original

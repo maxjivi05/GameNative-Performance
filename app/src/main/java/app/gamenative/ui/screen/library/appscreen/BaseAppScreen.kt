@@ -438,12 +438,18 @@ abstract class BaseAppScreen {
      * This is common behavior for all game sources.
      */
     protected fun resetContainerToDefaults(context: Context, libraryItem: LibraryItem) {
-        val container = ContainerUtils.getOrCreateContainer(context, libraryItem.appId)
-        val defaults = ContainerUtils.getDefaultContainerData().copy(drives = container.drives)
-
-        ContainerUtils.applyToContainer(context, libraryItem.appId, defaults)
-
-        Toast.makeText(context, "Container reset to defaults", Toast.LENGTH_SHORT).show()
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+            try {
+                val container = ContainerUtils.getOrCreateContainer(context, libraryItem.appId)
+                val defaults = ContainerUtils.getDefaultContainerData().copy(drives = container.drives)
+                ContainerUtils.applyToContainer(context, libraryItem.appId, defaults)
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    Toast.makeText(context, "Container reset to defaults", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                timber.log.Timber.e(e, "Failed to reset container to defaults for ${libraryItem.appId}")
+            }
+        }
     }
 
     /**
@@ -864,9 +870,15 @@ abstract class BaseAppScreen {
                 title = "${displayInfo.name} Config",
                 initialConfig = containerData,
                 onDismissRequest = { showConfigDialog = false },
-                onSave = {
-                    saveContainerConfig(context, libraryItem, it)
+                onSave = { config ->
                     showConfigDialog = false
+                    uiScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                        try {
+                            saveContainerConfig(context, libraryItem, config)
+                        } catch (e: Exception) {
+                            timber.log.Timber.e(e, "Failed to save container config for ${libraryItem.appId}")
+                        }
+                    }
                 },
             )
         }
