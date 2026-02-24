@@ -77,6 +77,15 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.foundation.BorderStroke
+import android.view.KeyEvent
+
 private enum class EditView {
     MENU,
     SETTINGS
@@ -86,12 +95,18 @@ private enum class EditView {
 @Composable
 fun GameEditDialog(
     libraryItem: LibraryItem,
+    isFrontend: Boolean = false,
     onDismiss: () -> Unit,
     onClickPlay: (Boolean) -> Unit,
     onTestGraphics: () -> Unit,
 ) {
     val context = LocalContext.current
     var currentView by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(EditView.MENU) }
+    
+    // Controller focus state
+    var focusedIndex by remember { mutableIntStateOf(0) }
+    val focusRequesters = remember { List(12) { FocusRequester() } }
+    val coroutineScope = rememberCoroutineScope()
     
     // Get the appropriate screen model based on game source
     val screenModel = remember(libraryItem.gameSource) {
@@ -186,6 +201,139 @@ fun GameEditDialog(
         importSaveLauncher = importSaveLauncher
     )
 
+    val orderedTypes = listOf(
+        AppOptionMenuType.EditContainer, // Settings
+        AppOptionMenuType.Controller,
+        AppOptionMenuType.Saves,
+        AppOptionMenuType.Container,
+        AppOptionMenuType.CreateShortcut,
+        AppOptionMenuType.ExportFrontend,
+        AppOptionMenuType.FetchSteamGridDBImages,
+        AppOptionMenuType.GetSupport
+    )
+    
+    val filteredMenuOptions = orderedTypes.mapNotNull { type ->
+        menuOptions.find { it.optionType == type }
+    }
+
+    // Request initial focus when opening the menu in frontend mode
+    LaunchedEffect(currentView, isFrontend) {
+        if (isFrontend && currentView == EditView.MENU && filteredMenuOptions.isNotEmpty()) {
+            kotlinx.coroutines.delay(100)
+            focusRequesters[0].requestFocus()
+            focusedIndex = 0
+        }
+    }
+
+    // Controller input handling for Dialog
+    DisposableEffect(currentView, focusedIndex, filteredMenuOptions.size) {
+        val keyListener: (AndroidEvent.KeyEvent) -> Boolean = { event ->
+            if (event.event.action == android.view.KeyEvent.ACTION_DOWN) {
+                when (event.event.keyCode) {
+                    KeyEvent.KEYCODE_DPAD_LEFT -> {
+                        if (isFrontend && currentView == EditView.MENU) {
+                            if (focusedIndex % 3 > 0) {
+                                focusedIndex--
+                                focusRequesters[focusedIndex].requestFocus()
+                            }
+                            true
+                        } else false
+                    }
+                    KeyEvent.KEYCODE_DPAD_RIGHT -> {
+                        if (isFrontend && currentView == EditView.MENU) {
+                            if (focusedIndex % 3 < 2 && focusedIndex < filteredMenuOptions.size - 1) {
+                                focusedIndex++
+                                focusRequesters[focusedIndex].requestFocus()
+                            }
+                            true
+                        } else false
+                    }
+                    KeyEvent.KEYCODE_DPAD_UP -> {
+                        if (isFrontend && currentView == EditView.MENU) {
+                            if (focusedIndex >= 3) {
+                                focusedIndex -= 3
+                                focusRequesters[focusedIndex].requestFocus()
+                            }
+                            true
+                        } else false
+                    }
+                    KeyEvent.KEYCODE_DPAD_DOWN -> {
+                        if (isFrontend && currentView == EditView.MENU) {
+                            val nextIdx = focusedIndex + 3
+                            val totalSize = if (screenModel.isInstalled(context, libraryItem)) filteredMenuOptions.size + 1 else filteredMenuOptions.size
+                            if (nextIdx < totalSize) {
+                                focusedIndex = nextIdx
+                                focusRequesters[focusedIndex].requestFocus()
+                            }
+                            true
+                        } else false
+                    }
+                    KeyEvent.KEYCODE_BUTTON_A -> { // Select
+                        if (currentView == EditView.MENU) {
+                            filteredMenuOptions.getOrNull(focusedIndex)?.onClick?.invoke()
+                            true
+                        } else false
+                    }
+                    KeyEvent.KEYCODE_BUTTON_B -> { // Back
+                        if (currentView == EditView.SETTINGS) {
+                            currentView = EditView.MENU
+                        } else {
+                            onDismiss()
+                        }
+                        true
+                    }
+                    else -> false
+                }
+            } else false
+        }
+
+        val motionListener: (AndroidEvent.MotionEvent) -> Boolean = { motionEvent ->
+            if (isFrontend && currentView == EditView.MENU) {
+                val event = motionEvent.event
+                if (event is android.view.MotionEvent) {
+                    val axisX = event.getAxisValue(android.view.MotionEvent.AXIS_X)
+                    val axisY = event.getAxisValue(android.view.MotionEvent.AXIS_Y)
+                    
+                    if (axisX < -0.5f) { // Left
+                         if (focusedIndex % 3 > 0) {
+                            focusedIndex--
+                            focusRequesters[focusedIndex].requestFocus()
+                        }
+                        true
+                    } else if (axisX > 0.5f) { // Right
+                        if (focusedIndex % 3 < 2 && focusedIndex < filteredMenuOptions.size - 1) {
+                            focusedIndex++
+                            focusRequesters[focusedIndex].requestFocus()
+                        }
+                        true
+                    } else if (axisY < -0.5f) { // Up
+                        if (focusedIndex >= 3) {
+                            focusedIndex -= 3
+                            focusRequesters[focusedIndex].requestFocus()
+                        }
+                        true
+                    } else if (axisY > 0.5f) { // Down
+                        val nextIdx = focusedIndex + 3
+                        val totalSize = if (screenModel.isInstalled(context, libraryItem)) filteredMenuOptions.size + 1 else filteredMenuOptions.size
+                        if (nextIdx < totalSize) {
+                            focusedIndex = nextIdx
+                            focusRequesters[focusedIndex].requestFocus()
+                        }
+                        true
+                    } else false
+                } else false
+            } else false
+        }
+
+        PluviaApp.events.on<AndroidEvent.KeyEvent, Boolean>(keyListener)
+        PluviaApp.events.on<AndroidEvent.MotionEvent, Boolean>(motionListener)
+
+        onDispose {
+            PluviaApp.events.off<AndroidEvent.KeyEvent, Boolean>(keyListener)
+            PluviaApp.events.off<AndroidEvent.MotionEvent, Boolean>(motionListener)
+        }
+    }
+
     Dialog(
         onDismissRequest = {
             if (currentView == EditView.SETTINGS) {
@@ -210,8 +358,8 @@ fun GameEditDialog(
         }
 
         Surface(
-            modifier = Modifier.fillMaxSize(),
-            shape = androidx.compose.ui.graphics.RectangleShape,
+            modifier = if (isFrontend && currentView == EditView.MENU) Modifier.fillMaxWidth(0.9f).height(350.dp) else Modifier.fillMaxSize(),
+            shape = if (isFrontend && currentView == EditView.MENU) RoundedCornerShape(24.dp) else androidx.compose.ui.graphics.RectangleShape,
             color = MaterialTheme.colorScheme.surface,
             tonalElevation = 8.dp
         ) {
@@ -238,55 +386,91 @@ fun GameEditDialog(
                         
                         HorizontalDivider()
                         
-                        // Menu Items List
-                        Column(
-                            modifier = Modifier
-                                .weight(1f)
-                                .verticalScroll(rememberScrollState())
-                                .padding(horizontal = 16.dp, vertical = 16.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            // Filter options based on requirement
-                            // User wants: "Settings, Controller, Saves, Container, Create Shortcut, Export for Frontend, Fetch Game Images, Get Support"
-                            // And "Test Graphics" inside Container.
-                            
-                            // Map existing options to this order
-                            val orderedTypes = listOf(
-                                AppOptionMenuType.EditContainer, // Settings
-                                AppOptionMenuType.Controller,
-                                AppOptionMenuType.Saves,
-                                AppOptionMenuType.Container,
-                                AppOptionMenuType.CreateShortcut,
-                                AppOptionMenuType.ExportFrontend,
-                                AppOptionMenuType.FetchSteamGridDBImages,
-                                AppOptionMenuType.GetSupport
-                            )
-                            
-                            orderedTypes.forEach { type ->
-                                val option = menuOptions.find { it.optionType == type }
-                                if (option != null) {
-                                    val label = if (type == AppOptionMenuType.EditContainer) "Settings" else type.text
-                                    MenuButton(
-                                        text = label,
-                                        onClick = option.onClick
-                                    )
+                            if (isFrontend) {
+                                // 3-column horizontal grid for Frontend View
+                                LazyVerticalGrid(
+                                    columns = GridCells.Fixed(3),
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .padding(16.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    itemsIndexed(filteredMenuOptions) { index, option ->
+                                        MenuButton(
+                                            text = option.optionType.text,
+                                            isFocused = focusedIndex == index,
+                                            onClick = { 
+                                                focusedIndex = index
+                                                option.onClick() 
+                                            },
+                                            modifier = Modifier
+                                                .focusRequester(focusRequesters[index])
+                                                .onFocusChanged { if (it.isFocused) focusedIndex = index }
+                                        )
+                                    }
+
+                                if (screenModel.isInstalled(context, libraryItem)) {
+                                    item {
+                                        MenuButton(
+                                            text = stringResource(R.string.uninstall),
+                                            isFocused = focusedIndex == filteredMenuOptions.size,
+                                            containerColor = MaterialTheme.colorScheme.errorContainer,
+                                            contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                                            onClick = {
+                                                focusedIndex = filteredMenuOptions.size
+                                                screenModel.onDeleteDownloadClick(context, libraryItem)
+                                            },
+                                            modifier = Modifier
+                                                .focusRequester(focusRequesters[filteredMenuOptions.size])
+                                                .onFocusChanged { if (it.isFocused) focusedIndex = filteredMenuOptions.size }
+                                        )
+                                    }
                                 }
                             }
-
-                            // Add Uninstall button at the bottom if installed
-                            if (screenModel.isInstalled(context, libraryItem)) {
-                                MenuButton(
-                                    text = stringResource(R.string.uninstall),
-                                    containerColor = MaterialTheme.colorScheme.errorContainer,
-                                    contentColor = MaterialTheme.colorScheme.onErrorContainer,
-                                    onClick = {
-                                        screenModel.onDeleteDownloadClick(context, libraryItem)
-                                        // The uninstall logic in BaseAppScreen/SteamAppScreen shows a dialog
-                                        // which is handled by AdditionalDialogs in AppScreen.
-                                        // Since we are in GameEditDialog, we might need to close this dialog 
-                                        // or let the uninstall dialog appear on top.
-                                    }
+                        } else {
+                            // Menu Items List (Vertical)
+                            Column(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .verticalScroll(rememberScrollState())
+                                    .padding(horizontal = 16.dp, vertical = 16.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                // Map existing options to this order
+                                val orderedTypesInternal = listOf(
+                                    AppOptionMenuType.EditContainer, // Settings
+                                    AppOptionMenuType.Controller,
+                                    AppOptionMenuType.Saves,
+                                    AppOptionMenuType.Container,
+                                    AppOptionMenuType.CreateShortcut,
+                                    AppOptionMenuType.ExportFrontend,
+                                    AppOptionMenuType.FetchSteamGridDBImages,
+                                    AppOptionMenuType.GetSupport
                                 )
+                                
+                                orderedTypesInternal.forEach { type ->
+                                    val option = menuOptions.find { it.optionType == type }
+                                    if (option != null) {
+                                        val label = if (type == AppOptionMenuType.EditContainer) "Settings" else type.text
+                                        MenuButton(
+                                            text = label,
+                                            onClick = option.onClick
+                                        )
+                                    }
+                                }
+
+                                // Add Uninstall button at the bottom if installed
+                                if (screenModel.isInstalled(context, libraryItem)) {
+                                    MenuButton(
+                                        text = stringResource(R.string.uninstall),
+                                        containerColor = MaterialTheme.colorScheme.errorContainer,
+                                        contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                                        onClick = {
+                                            screenModel.onDeleteDownloadClick(context, libraryItem)
+                                        }
+                                    )
+                                }
                             }
                         }
                         
@@ -477,22 +661,31 @@ fun GameEditDialog(
 @Composable
 fun MenuButton(
     text: String,
+    isFocused: Boolean = false,
     containerColor: Color = MaterialTheme.colorScheme.secondaryContainer,
     contentColor: Color = MaterialTheme.colorScheme.onSecondaryContainer,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
+    val effectiveContainerColor = if (isFocused) MaterialTheme.colorScheme.primary else containerColor
+    val effectiveContentColor = if (isFocused) MaterialTheme.colorScheme.onPrimary else contentColor
+    val border = if (isFocused) BorderStroke(2.dp, MaterialTheme.colorScheme.onPrimary) else null
+
     Button(
         onClick = onClick,
-        modifier = Modifier.fillMaxWidth().height(50.dp),
+        modifier = modifier.fillMaxWidth().height(50.dp),
         shape = RoundedCornerShape(12.dp),
+        border = border,
         colors = ButtonDefaults.buttonColors(
-            containerColor = containerColor,
-            contentColor = contentColor
+            containerColor = effectiveContainerColor,
+            contentColor = effectiveContentColor
         )
     ) {
         Text(
             text = text,
-            style = MaterialTheme.typography.bodyLarge
+            style = MaterialTheme.typography.bodyLarge,
+            maxLines = 1,
+            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
         )
     }
 }

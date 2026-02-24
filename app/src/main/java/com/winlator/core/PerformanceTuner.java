@@ -20,6 +20,9 @@ public class PerformanceTuner {
     private static boolean isRootPerfRunning = false;
     private static boolean isNonRootPerfRunning = false;
     private static String cachedMaxFreq = null;
+    private static boolean isRootAccessGranted = false;
+    private static java.lang.Process persistentSuProcess = null;
+    private static DataOutputStream persistentSuOutputStream = null;
 
     private static boolean isLibraryLoaded = false;
 
@@ -49,19 +52,27 @@ public class PerformanceTuner {
     }
 
     public static void checkRootAccessAsync(RootCheckCallback callback) {
+        if (isRootAccessGranted) {
+            callback.onResult(true);
+            return;
+        }
         executor.execute(() -> {
             boolean hasRoot = checkRootAccess();
+            isRootAccessGranted = hasRoot;
             handler.post(() -> callback.onResult(hasRoot));
         });
     }
 
     public static boolean checkRootAccess() {
+        if (isRootAccessGranted) return true;
         java.lang.Process p = null;
         try {
             // Use a timeout to prevent hanging if root app is unresponsive
             p = Runtime.getRuntime().exec(new String[]{"su", "-c", "id"});
             if (p.waitFor(5, TimeUnit.SECONDS)) {
-                return p.exitValue() == 0;
+                boolean hasRoot = p.exitValue() == 0;
+                isRootAccessGranted = hasRoot;
+                return hasRoot;
             } else {
                 p.destroy();
                 return false;
@@ -73,26 +84,37 @@ public class PerformanceTuner {
     }
 
     public static void startRootPerformanceMode() {
-        if (isRootPerfRunning) return;
+        if (isRootPerfRunning || !isRootAccessGranted) return;
         isRootPerfRunning = true;
         
-        rootPerfRunnable = new Runnable() {
-            @Override
-            public void run() {
-                if (!isRootPerfRunning) return;
-                
-                executor.execute(() -> {
-                    if (shouldReapplyRoot()) {
-                        applyRootPerformanceSettings();
-                    }
-                });
-                
-                handler.postDelayed(this, 500);
-            }
-        };
-        
         executor.execute(() -> {
+            try {
+                if (persistentSuProcess == null) {
+                    persistentSuProcess = Runtime.getRuntime().exec("su");
+                    persistentSuOutputStream = new DataOutputStream(persistentSuProcess.getOutputStream());
+                }
+            } catch (IOException e) {
+                Log.e(TAG, "Failed to start persistent su process", e);
+                isRootPerfRunning = false;
+                return;
+            }
+
             detectMaxFrequency();
+            
+            rootPerfRunnable = new Runnable() {
+                @Override
+                public void run() {
+                    if (!isRootPerfRunning) return;
+                    
+                    executor.execute(() -> {
+                        if (shouldReapplyRoot()) {
+                            applyRootPerformanceSettings();
+                        }
+                    });
+                    
+                    handler.postDelayed(this, 1000);
+                }
+            };
             handler.post(rootPerfRunnable);
         });
     }
@@ -102,6 +124,19 @@ public class PerformanceTuner {
         if (rootPerfRunnable != null) {
             handler.removeCallbacks(rootPerfRunnable);
             rootPerfRunnable = null;
+        }
+        
+        if (persistentSuOutputStream != null) {
+            try {
+                persistentSuOutputStream.writeBytes("exit\n");
+                persistentSuOutputStream.flush();
+                persistentSuOutputStream.close();
+            } catch (IOException e) {}
+            persistentSuOutputStream = null;
+        }
+        if (persistentSuProcess != null) {
+            persistentSuProcess.destroy();
+            persistentSuProcess = null;
         }
     }
 
@@ -130,6 +165,9 @@ public class PerformanceTuner {
     }
 
     private static boolean shouldReapplyRoot() {
+        // For shouldReapplyRoot, we might still need to call su -c cat
+        // but let's try reading it directly first if possible (usually not)
+        // Optimization: Use a simpler check or skip reapplication if already applied
         String current = readNode("/sys/class/kgsl/kgsl-3d0/devfreq/cur_freq");
         if (current == null || cachedMaxFreq == null) return true;
         
@@ -165,12 +203,14 @@ public class PerformanceTuner {
     }
 
     private static String readNode(String path) {
+        // This still creates a process. To truly optimize, we'd need to keep a reader open.
+        // But let's at least ensure we only call it when necessary.
         java.lang.Process p = null;
         try {
             p = Runtime.getRuntime().exec(new String[]{"su", "-c", "cat " + path});
             BufferedReader reader = new BufferedReader(new InputStreamReader(p.getInputStream()));
             String line = reader.readLine();
-            if (p.waitFor(2, TimeUnit.SECONDS)) {
+            if (p.waitFor(1, TimeUnit.SECONDS)) {
                 return line;
             } else {
                 p.destroy();
@@ -183,44 +223,40 @@ public class PerformanceTuner {
     }
 
     private static void applyRootPerformanceSettings() {
-        StringBuilder script = new StringBuilder();
-        script.append("for cpu in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do echo performance > $cpu; done\n");
+        if (persistentSuOutputStream == null) return;
         
-        String[] gpuGovNodes = {
-            "/sys/class/kgsl/kgsl-3d0/devfreq/governor",
-            "/sys/class/devfreq/kgsl-3d0/governor",
-            "/sys/class/devfreq/gpufreq/governor",
-            "/sys/class/kgsl/kgsl-3d0/devfreq/adreno_governor"
-        };
-        for (String node : gpuGovNodes) script.append("echo performance > ").append(node).append(" 2>/dev/null\n");
-
-        script.append("echo 1 > /sys/class/kgsl/kgsl-3d0/force_clk_on 2>/dev/null\n");
-        script.append("echo 1 > /sys/class/kgsl/kgsl-3d0/force_bus_on 2>/dev/null\n");
-        script.append("echo 1 > /sys/class/kgsl/kgsl-3d0/force_rail_on 2>/dev/null\n");
-        script.append("echo 1 > /sys/class/kgsl/kgsl-3d0/force_no_nap 2>/dev/null\n");
-        
-        script.append("echo 0 > /sys/class/kgsl/kgsl-3d0/min_pwrlevel 2>/dev/null\n");
-        script.append("echo 0 > /sys/class/kgsl/kgsl-3d0/max_pwrlevel 2>/dev/null\n");
-        script.append("echo 0 > /sys/class/kgsl/kgsl-3d0/thermal_pwrlevel 2>/dev/null\n");
-
-        if (cachedMaxFreq != null) {
-            script.append("echo ").append(cachedMaxFreq).append(" > /sys/class/kgsl/kgsl-3d0/devfreq/min_freq 2>/dev/null\n");
-            script.append("echo ").append(cachedMaxFreq).append(" > /sys/class/kgsl/kgsl-3d0/devfreq/max_freq 2>/dev/null\n");
-            script.append("echo ").append(cachedMaxFreq).append(" > /sys/class/kgsl/kgsl-3d0/gpuclk 2>/dev/null\n");
-            script.append("echo ").append(cachedMaxFreq).append(" > /sys/class/kgsl/kgsl-3d0/max_gpuclk 2>/dev/null\n");
-        }
-
-        java.lang.Process process = null;
         try {
-            process = Runtime.getRuntime().exec("su");
-            DataOutputStream os = new DataOutputStream(process.getOutputStream());
-            os.writeBytes(script.toString());
-            os.writeBytes("exit\n");
-            os.flush();
-            os.close();
-            process.waitFor(3, TimeUnit.SECONDS);
+            StringBuilder script = new StringBuilder();
+            script.append("for cpu in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do echo performance > $cpu; done\n");
+            
+            String[] gpuGovNodes = {
+                "/sys/class/kgsl/kgsl-3d0/devfreq/governor",
+                "/sys/class/devfreq/kgsl-3d0/governor",
+                "/sys/class/devfreq/gpufreq/governor",
+                "/sys/class/kgsl/kgsl-3d0/devfreq/adreno_governor"
+            };
+            for (String node : gpuGovNodes) script.append("echo performance > ").append(node).append(" 2>/dev/null\n");
+
+            script.append("echo 1 > /sys/class/kgsl/kgsl-3d0/force_clk_on 2>/dev/null\n");
+            script.append("echo 1 > /sys/class/kgsl/kgsl-3d0/force_bus_on 2>/dev/null\n");
+            script.append("echo 1 > /sys/class/kgsl/kgsl-3d0/force_rail_on 2>/dev/null\n");
+            script.append("echo 1 > /sys/class/kgsl/kgsl-3d0/force_no_nap 2>/dev/null\n");
+            
+            script.append("echo 0 > /sys/class/kgsl/kgsl-3d0/min_pwrlevel 2>/dev/null\n");
+            script.append("echo 0 > /sys/class/kgsl/kgsl-3d0/max_pwrlevel 2>/dev/null\n");
+            script.append("echo 0 > /sys/class/kgsl/kgsl-3d0/thermal_pwrlevel 2>/dev/null\n");
+
+            if (cachedMaxFreq != null) {
+                script.append("echo ").append(cachedMaxFreq).append(" > /sys/class/kgsl/kgsl-3d0/devfreq/min_freq 2>/dev/null\n");
+                script.append("echo ").append(cachedMaxFreq).append(" > /sys/class/kgsl/kgsl-3d0/devfreq/max_freq 2>/dev/null\n");
+                script.append("echo ").append(cachedMaxFreq).append(" > /sys/class/kgsl/kgsl-3d0/gpuclk 2>/dev/null\n");
+                script.append("echo ").append(cachedMaxFreq).append(" > /sys/class/kgsl/kgsl-3d0/max_gpuclk 2>/dev/null\n");
+            }
+            
+            persistentSuOutputStream.writeBytes(script.toString());
+            persistentSuOutputStream.flush();
         } catch (Exception e) {
-            if (process != null) process.destroy();
+            Log.e(TAG, "Failed to apply root settings via persistent process", e);
         }
     }
 }

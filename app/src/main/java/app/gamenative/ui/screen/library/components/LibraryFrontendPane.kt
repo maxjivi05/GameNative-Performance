@@ -67,6 +67,12 @@ import com.skydoves.landscapist.coil.CoilImage
 import kotlinx.coroutines.launch
 import java.io.File
 
+import android.hardware.input.InputManager
+import android.content.Context
+import android.view.InputDevice
+import androidx.compose.ui.graphics.vector.ImageVector
+import com.winlator.inputcontrols.ExternalController
+
 private enum class FrontendTab(val label: String) {
     LIBRARY("Library"),
     STEAM("Steam"),
@@ -74,6 +80,10 @@ private enum class FrontendTab(val label: String) {
     GOG("GOG"),
     AMAZON("Amazon"),
     CUSTOM("Custom"),
+}
+
+private enum class ControllerType {
+    NONE, XBOX, PLAYSTATION, GENERIC
 }
 
 @Composable
@@ -116,6 +126,49 @@ private fun rememberFrontendArtUrl(item: LibraryItem, isHero: Boolean = false): 
 }
 
 @Composable
+private fun ControllerBadge(
+    button: String,
+    controllerType: ControllerType,
+    modifier: Modifier = Modifier
+) {
+    val (label, color) = when (controllerType) {
+        ControllerType.PLAYSTATION -> {
+            when (button) {
+                "A" -> "X" to Color(0xFF5865F2)
+                "B" -> "O" to Color(0xFFED4245)
+                "X" -> "□" to Color(0xFFEB459E)
+                "Y" -> "△" to Color(0xFF3BA559)
+                else -> button to Color.White.copy(alpha = 0.8f)
+            }
+        }
+        else -> {
+            when (button) {
+                "A" -> "A" to Color(0xFF3BA559)
+                "B" -> "B" to Color(0xFFED4245)
+                "X" -> "X" to Color(0xFF5865F2)
+                "Y" -> "Y" to Color(0xFFFEE75C)
+                else -> button to Color.White.copy(alpha = 0.8f)
+            }
+        }
+    }
+
+    Surface(
+        color = color.copy(alpha = 0.2f),
+        shape = RoundedCornerShape(4.dp),
+        border = BorderStroke(1.dp, color.copy(alpha = 0.5f)),
+        modifier = modifier
+    ) {
+        Text(
+            text = label,
+            color = color,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+        )
+    }
+}
+
+@Composable
 internal fun LibraryFrontendPane(
     state: LibraryState,
     onNavigate: (String) -> Unit,
@@ -126,13 +179,47 @@ internal fun LibraryFrontendPane(
     onNavigateRoute: (String) -> Unit,
     onEdit: (LibraryItem) -> Unit,
     onSearchQuery: (String) -> Unit,
+    onFocusChanged: (LibraryItem?) -> Unit = {},
 ) {
+    val context = LocalContext.current
     var selectedTabIdx by remember { mutableIntStateOf(0) }
     val tabs = FrontendTab.entries
     val coroutineScope = rememberCoroutineScope()
     var isSearchingLocally by remember { mutableStateOf(false) }
     val searchFocusRequester = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
+
+    var connectedControllerType by remember { mutableStateOf(ControllerType.NONE) }
+
+    // Detect connected controller
+    LaunchedEffect(Unit) {
+        val inputManager = context.getSystemService(Context.INPUT_SERVICE) as InputManager
+        val checkControllers = {
+            val deviceIds = inputManager.inputDeviceIds
+            var foundType = ControllerType.NONE
+            for (id in deviceIds) {
+                val device = inputManager.getInputDevice(id)
+                if (device != null && (device.sources and InputDevice.SOURCE_GAMEPAD == InputDevice.SOURCE_GAMEPAD)) {
+                    val controller = ExternalController.getController(id)
+                    if (controller != null) {
+                        foundType = if (controller.isPlayStationController) ControllerType.PLAYSTATION
+                        else if (controller.isXboxController) ControllerType.XBOX
+                        else ControllerType.GENERIC
+                        break
+                    }
+                }
+            }
+            connectedControllerType = foundType
+        }
+
+        checkControllers()
+        
+        // Simple polling for connection changes
+        while(true) {
+            kotlinx.coroutines.delay(2000)
+            checkControllers()
+        }
+    }
 
     val tabItems: List<LibraryItem> = remember(selectedTabIdx, state.appInfoList, state.searchQuery) {
         if (state.searchQuery.isNotEmpty()) {
@@ -170,6 +257,11 @@ internal fun LibraryFrontendPane(
         if (pagerState.currentPage < tabItems.size) tabItems[pagerState.currentPage] else null
     }
 
+    // Sync focus changes to parent
+    LaunchedEffect(focusedItem) {
+        onFocusChanged(focusedItem)
+    }
+
     // Controller Input Handling
     DisposableEffect(focusedItem, selectedTabIdx, pagerCount, isSearchingLocally) {
         val keyListener: (AndroidEvent.KeyEvent) -> Boolean = { event ->
@@ -180,11 +272,11 @@ internal fun LibraryFrontendPane(
                     true
                 } else if (!isSearchingLocally) {
                     when (event.event.keyCode) {
-                        KeyEvent.KEYCODE_BUTTON_L2 -> {
+                        KeyEvent.KEYCODE_BUTTON_L1 -> {
                             selectedTabIdx = (selectedTabIdx - 1 + tabs.size) % tabs.size
                             true
                         }
-                        KeyEvent.KEYCODE_BUTTON_R2 -> {
+                        KeyEvent.KEYCODE_BUTTON_R1 -> {
                             selectedTabIdx = (selectedTabIdx + 1) % tabs.size
                             true
                         }
@@ -200,12 +292,29 @@ internal fun LibraryFrontendPane(
                                 true
                             } else false
                         }
-                        KeyEvent.KEYCODE_BUTTON_A -> { // X (PS) / A (Xbox)
-                            focusedItem?.let { onClickPlay(it.appId, false) }
-                            true
+                        KeyEvent.KEYCODE_DPAD_UP -> {
+                            // If we add more vertical elements, handle them here
+                            // For now, toggle search if pressed up
+                            if (!isSearchingLocally) {
+                                isSearchingLocally = true
+                                coroutineScope.launch {
+                                    kotlinx.coroutines.delay(100)
+                                    searchFocusRequester.requestFocus()
+                                }
+                                true
+                            } else false
+                        }
+                        KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_BUTTON_X -> { // X (PS) / A (Xbox) or Square (PS) / X (Xbox)
+                            if (event.event.keyCode == KeyEvent.KEYCODE_BUTTON_A) {
+                                focusedItem?.let { onClickPlay(it.appId, false) }
+                                true
+                            } else {
+                                focusedItem?.let { onEdit(it) }
+                                true
+                            }
                         }
                         KeyEvent.KEYCODE_BUTTON_Y -> { // Triangle (PS) / Y (Xbox)
-                            onNavigateRoute("settings")
+                            focusedItem?.let { onEdit(it) }
                             true
                         }
                         KeyEvent.KEYCODE_BUTTON_B -> { // Circle (PS) / B (Xbox)
@@ -223,6 +332,8 @@ internal fun LibraryFrontendPane(
                 val event = motionEvent.event
                 if (event is android.view.MotionEvent) {
                     val axisX = event.getAxisValue(android.view.MotionEvent.AXIS_X)
+                    val axisY = event.getAxisValue(android.view.MotionEvent.AXIS_Y)
+                    
                     if (axisX < -0.5f) {
                         if (pagerState.currentPage > 0) {
                             coroutineScope.launch { pagerState.animateScrollToPage(pagerState.currentPage - 1) }
@@ -231,6 +342,16 @@ internal fun LibraryFrontendPane(
                     } else if (axisX > 0.5f) {
                         if (pagerState.currentPage < pagerCount - 1) {
                             coroutineScope.launch { pagerState.animateScrollToPage(pagerState.currentPage + 1) }
+                            true
+                        } else false
+                    } else if (axisY < -0.5f) {
+                        // Joystick Up
+                        if (!isSearchingLocally) {
+                            isSearchingLocally = true
+                            coroutineScope.launch {
+                                kotlinx.coroutines.delay(100)
+                                searchFocusRequester.requestFocus()
+                            }
                             true
                         } else false
                     } else false
@@ -374,35 +495,57 @@ internal fun LibraryFrontendPane(
                         }
                     }
 
-                    // TABS
-                    ScrollableTabRow(
-                        selectedTabIndex = selectedTabIdx,
-                        containerColor = Color.Transparent,
-                        divider = {},
-                        edgePadding = 0.dp,
-                        indicator = { tabPositions ->
-                            if (selectedTabIdx < tabPositions.size) {
-                                TabRowDefaults.PrimaryIndicator(
-                                    modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTabIdx]),
-                                    color = MaterialTheme.colorScheme.primary,
-                                    height = 3.dp
+                    // TABS with floating badges
+                    Box(contentAlignment = Alignment.TopCenter) {
+                        ScrollableTabRow(
+                            selectedTabIndex = selectedTabIdx,
+                            containerColor = Color.Transparent,
+                            divider = {},
+                            edgePadding = 0.dp,
+                            indicator = { tabPositions ->
+                                if (selectedTabIdx < tabPositions.size) {
+                                    TabRowDefaults.PrimaryIndicator(
+                                        modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTabIdx]),
+                                        color = MaterialTheme.colorScheme.primary,
+                                        height = 3.dp
+                                    )
+                                }
+                            }
+                        ) {
+                            tabs.forEachIndexed { index, tab ->
+                                Tab(
+                                    selected = selectedTabIdx == index,
+                                    onClick = { selectedTabIdx = index },
+                                    text = {
+                                        Text(
+                                            text = tab.label,
+                                            fontSize = 16.sp,
+                                            fontWeight = if (selectedTabIdx == index) FontWeight.Bold else FontWeight.Normal,
+                                            color = if (selectedTabIdx == index) Color.White else Color.White.copy(alpha = 0.6f)
+                                        )
+                                    }
                                 )
                             }
                         }
-                    ) {
-                        tabs.forEachIndexed { index, tab ->
-                            Tab(
-                                selected = selectedTabIdx == index,
-                                onClick = { selectedTabIdx = index },
-                                text = {
-                                    Text(
-                                        text = tab.label,
-                                        fontSize = 16.sp,
-                                        fontWeight = if (selectedTabIdx == index) FontWeight.Bold else FontWeight.Normal,
-                                        color = if (selectedTabIdx == index) Color.White else Color.White.copy(alpha = 0.6f)
-                                    )
-                                }
-                            )
+
+                        if (connectedControllerType != ControllerType.NONE) {
+                            // Float badges above the tabs
+                            Box(modifier = Modifier.matchParentSize().padding(horizontal = 8.dp)) {
+                                ControllerBadge(
+                                    button = "L1",
+                                    controllerType = connectedControllerType,
+                                    modifier = Modifier
+                                        .align(Alignment.TopStart)
+                                        .offset(y = (-18).dp)
+                                )
+                                ControllerBadge(
+                                    button = "R1",
+                                    controllerType = connectedControllerType,
+                                    modifier = Modifier
+                                        .align(Alignment.TopEnd)
+                                        .offset(y = (-18).dp)
+                                )
+                            }
                         }
                     }
                     
@@ -552,12 +695,14 @@ internal fun LibraryFrontendPane(
                     .zIndex(2f),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text(
-                    focusedItem.name,
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold
-                )
+                if (connectedControllerType == ControllerType.NONE) {
+                    Text(
+                        focusedItem.name,
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
                 
                 val totalHours = focusedItem.playTime / 60
                 val totalMinutes = focusedItem.playTime % 60
@@ -573,6 +718,26 @@ internal fun LibraryFrontendPane(
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.padding(top = 4.dp)
                 )
+
+                if (connectedControllerType != ControllerType.NONE) {
+                    Row(
+                        modifier = Modifier.padding(top = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            ControllerBadge("A", connectedControllerType)
+                            Text("Play", color = Color.White, fontSize = 12.sp, modifier = Modifier.padding(start = 4.dp))
+                        }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            ControllerBadge("Y", connectedControllerType)
+                            Text("Game Menu", color = Color.White, fontSize = 12.sp, modifier = Modifier.padding(start = 4.dp))
+                        }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            ControllerBadge("B", connectedControllerType)
+                            Text("Back to List", color = Color.White, fontSize = 12.sp, modifier = Modifier.padding(start = 4.dp))
+                        }
+                    }
+                }
             }
         }
     }

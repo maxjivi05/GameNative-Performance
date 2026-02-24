@@ -34,6 +34,7 @@ public class NavigationDialog extends ContentDialog {
     public static final int ACTION_MOTION_CONTROLS = 8;
     public static final int ACTION_PAUSE_GAME = 9;
     public static final int ACTION_TASK_MANAGER = 10;
+    public static final int ACTION_HUD = 11;
 
     public interface NavigationListener {
         void onNavigationItemSelected(int itemId);
@@ -83,6 +84,8 @@ public class NavigationDialog extends ContentDialog {
         }
 
         addMenuItem(context, grid, R.drawable.icon_motion_controls, R.string.motion_controls, ACTION_MOTION_CONTROLS, listener, 1.0f);
+
+        addMenuItem(context, grid, R.drawable.icon_monitor, R.string.hud, ACTION_HUD, listener, 1.0f);
 
         addMenuItem(context, grid, R.drawable.icon_exit, R.string.exit_game, ACTION_EXIT_GAME, listener, 1.0f);
     }

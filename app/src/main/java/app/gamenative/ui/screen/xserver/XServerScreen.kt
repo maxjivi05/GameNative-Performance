@@ -114,6 +114,7 @@ import com.winlator.inputcontrols.InputControlsManager
 import com.winlator.inputcontrols.MotionControls
 import com.winlator.inputcontrols.TouchMouse
 import com.winlator.widget.FrameRating
+import com.winlator.widget.PerformanceHUD
 import com.winlator.widget.InputControlsView
 import com.winlator.widget.TouchpadView
 import com.winlator.widget.XServerView
@@ -252,6 +253,7 @@ fun XServerScreen(
     var needsUnpacking = false
     var containerVariantChanged = false
     var frameRating by remember { mutableStateOf<FrameRating?>(null) }
+    var performanceHUD by remember { mutableStateOf<PerformanceHUD?>(null) }
     var frameRatingWindowId = -1
     var vkbasaltConfig = ""
     var taskAffinityMask = 0
@@ -575,6 +577,25 @@ fun XServerScreen(
 
                         NavigationDialog.ACTION_MOTION_CONTROLS -> {
                             com.winlator.inputcontrols.MotionControls.getInstance(context).showContentDialog(context, null)
+                        }
+
+                        NavigationDialog.ACTION_HUD -> {
+                            var parent = xServerView?.parent as? ViewGroup
+                            while (parent != null && parent !is FrameLayout) {
+                                parent = parent.parent as? ViewGroup
+                            }
+                            val targetLayout = parent as? FrameLayout ?: xServerView?.parent as? FrameLayout
+
+                            if (performanceHUD == null) {
+                                performanceHUD = PerformanceHUD(context)
+                                performanceHUD?.let { hud ->
+                                    targetLayout?.addView(hud)
+                                    hud.bringToFront()
+                                }
+                            } else {
+                                targetLayout?.removeView(performanceHUD)
+                                performanceHUD = null
+                            }
                         }
 
                         NavigationDialog.ACTION_STRETCH_TO_FULLSCREEN -> {
@@ -1832,6 +1853,7 @@ private fun setupXEnvironment(
     envVars.put("WINEPREFIX", imageFs.wineprefix)
     if (container.isShowFPS){
         envVars.put("DXVK_HUD", "fps,frametimes")
+        envVars.put("DXVK_HUD_LOG_PATH", "/tmp/dxvk_fps")
         envVars.put("VK_INSTANCE_LAYERS", "VK_LAYER_MESA_overlay")
         envVars.put("MESA_OVERLAY_SHOW_FPS", 1)
     }

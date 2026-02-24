@@ -115,6 +115,7 @@ internal fun LibraryListPane(
     onRefresh: () -> Unit,
     onSourceToggle: (GameSource) -> Unit,
     onAddCustomGame: () -> Unit = {},
+    onFocusChanged: (LibraryItem?) -> Unit = {},
     isOffline: Boolean = false,
 ) {
     val context = LocalContext.current
@@ -206,6 +207,7 @@ internal fun LibraryListPane(
                                     onNavigateRoute = onNavigateRoute,
                                     onEdit = onEdit,
                                     onSearchQuery = onSearchQuery,
+                                    onFocusChanged = onFocusChanged,
                                 )
                             } else {                Column(
                     modifier = Modifier

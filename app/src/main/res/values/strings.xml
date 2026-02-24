@@ -1070,6 +1070,7 @@
     <string name="direction">Direction</string>
     <string name="gyro_mode">Gyroscope Activation Mode</string>
     <string name="motion_controls">Motion Controls</string>
+    <string name="hud">HUD</string>
     <string name="macros_hint">Toggle buttons to enable autofire.</string>
     <string name="macros">Macros</string>
     <string name="include_triggers_note">Also apply turbo to L2/R2 as digital presses</string>
