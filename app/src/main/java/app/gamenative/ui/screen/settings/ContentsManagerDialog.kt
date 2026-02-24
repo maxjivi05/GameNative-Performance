@@ -364,7 +364,8 @@ fun ContentsManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                                         ContentProfile.ContentType.CONTENT_TYPE_VKD3D,
                                         ContentProfile.ContentType.CONTENT_TYPE_BOX64,
                                         ContentProfile.ContentType.CONTENT_TYPE_WOWBOX64,
-                                        ContentProfile.ContentType.CONTENT_TYPE_FEXCORE
+                                        ContentProfile.ContentType.CONTENT_TYPE_FEXCORE,
+                                        ContentProfile.ContentType.CONTENT_TYPE_WINE
                                     )
                                     types.forEach { t ->
                                         DropdownMenuItem(text = { Text(t.toString()) }, onClick = { selectedMtrType = t; selectedMtrProfile = null; typeExpandedMtr = false })
@@ -395,11 +396,42 @@ fun ContentsManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                             }
 
                             if (selectedMtrProfile != null) {
+                                val isUpdate = installedProfiles.any { it.verName == selectedMtrProfile!!.verName && it.verCode < selectedMtrProfile!!.verCode }
                                 Button(
                                     onClick = { downloadAndInstallContent(selectedMtrProfile!!) },
                                     enabled = !isBusy,
                                     modifier = Modifier.padding(top = 16.dp)
-                                ) { Text("Download & Install") }
+                                ) { Text(if (isUpdate) "Upgrade Content" else "Download & Install") }
+                            }
+                        }
+                    }
+
+                    // Special case: show Wine/Proton available list even in local mode if type is Wine
+                    if (selectedSource != ContentSource.MTR && currentType == ContentProfile.ContentType.CONTENT_TYPE_WINE) {
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+                        Text("Available Online (Wine/Proton):", style = MaterialTheme.typography.titleMedium)
+                        if (isLoadingMtr) {
+                            CircularProgressIndicator(modifier = Modifier.padding(16.dp))
+                        } else {
+                            val wineProfiles = mtrContents.filter { it.type == ContentProfile.ContentType.CONTENT_TYPE_WINE }
+                            wineProfiles.forEach { p ->
+                                val isInstalled = installedProfiles.any { it.verName == p.verName && it.verCode >= p.verCode }
+                                val canUpgrade = installedProfiles.any { it.verName == p.verName && it.verCode < p.verCode }
+                                
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text("${p.verName} (${p.verCode})", modifier = Modifier.weight(1f))
+                                    if (isInstalled) {
+                                        Text("Installed", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                                    } else {
+                                        Button(onClick = { downloadAndInstallContent(p) }, enabled = !isBusy) {
+                                            Text(if (canUpgrade) "Upgrade" else "Install")
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -460,7 +492,8 @@ fun ContentsManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                                 ContentProfile.ContentType.CONTENT_TYPE_VKD3D,
                                 ContentProfile.ContentType.CONTENT_TYPE_BOX64,
                                 ContentProfile.ContentType.CONTENT_TYPE_WOWBOX64,
-                                ContentProfile.ContentType.CONTENT_TYPE_FEXCORE
+                                ContentProfile.ContentType.CONTENT_TYPE_FEXCORE,
+                                ContentProfile.ContentType.CONTENT_TYPE_WINE
                             )
                             allowed.forEach { t ->
                                 DropdownMenuItem(

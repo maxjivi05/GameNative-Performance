@@ -1,0 +1,147 @@
+{
+	"configurations" : 
+	[
+		{
+			"directories" : 
+			[
+				{
+					"build" : ".",
+					"childIndexes" : 
+					[
+						1,
+						2
+					],
+					"jsonFile" : "directory-.-Debug-f5ebdc15457944623624.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.6.0"
+					},
+					"projectIndex" : 0,
+					"source" : ".",
+					"targetIndexes" : 
+					[
+						0,
+						3
+					]
+				},
+				{
+					"build" : "virglrenderer",
+					"jsonFile" : "directory-virglrenderer-Debug-b307ea07d60f6ba15999.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.22.1"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 1,
+					"source" : "virglrenderer",
+					"targetIndexes" : 
+					[
+						2
+					]
+				},
+				{
+					"build" : "patchelf",
+					"jsonFile" : "directory-patchelf-Debug-3d9eae28729df8a10480.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.22.1"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 2,
+					"source" : "patchelf",
+					"targetIndexes" : 
+					[
+						1
+					]
+				}
+			],
+			"name" : "Debug",
+			"projects" : 
+			[
+				{
+					"childIndexes" : 
+					[
+						1,
+						2
+					],
+					"directoryIndexes" : 
+					[
+						0
+					],
+					"name" : "Pluvia",
+					"targetIndexes" : 
+					[
+						0,
+						3
+					]
+				},
+				{
+					"directoryIndexes" : 
+					[
+						1
+					],
+					"name" : "VirGLRenderer",
+					"parentIndex" : 0,
+					"targetIndexes" : 
+					[
+						2
+					]
+				},
+				{
+					"directoryIndexes" : 
+					[
+						2
+					],
+					"name" : "PatchElf",
+					"parentIndex" : 0,
+					"targetIndexes" : 
+					[
+						1
+					]
+				}
+			],
+			"targets" : 
+			[
+				{
+					"directoryIndex" : 0,
+					"id" : "evshim::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-evshim-Debug-e97846be248261f38d33.json",
+					"name" : "evshim",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 2,
+					"id" : "patchelf::@34e0f137fc7625edf7c9",
+					"jsonFile" : "target-patchelf-Debug-8cf8f583f892bdd92d4e.json",
+					"name" : "patchelf",
+					"projectIndex" : 2
+				},
+				{
+					"directoryIndex" : 1,
+					"id" : "virglrenderer::@b02222b02b17b4412ae0",
+					"jsonFile" : "target-virglrenderer-Debug-6bbcc2c7819ad1aa0306.json",
+					"name" : "virglrenderer",
+					"projectIndex" : 1
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "winlator::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-winlator-Debug-8dfe30e58873162496cd.json",
+					"name" : "winlator",
+					"projectIndex" : 0
+				}
+			]
+		}
+	],
+	"kind" : "codemodel",
+	"paths" : 
+	{
+		"build" : "/home/max/Build/GameNative-Enh-source/Continue/app/.cxx/Debug/48713l2o/arm64-v8a",
+		"source" : "/home/max/Build/GameNative-Enh-source/Continue/app/src/main/cpp"
+	},
+	"version" : 
+	{
+		"major" : 2,
+		"minor" : 3
+	}
+}

@@ -101,6 +101,16 @@ fun HomeLibraryScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var editedLibraryItem by remember { mutableStateOf<LibraryItem?>(null) }
+    var focusedFrontendItem by remember { mutableStateOf<LibraryItem?>(null) }
+
+    // When in Frontend mode and the Edit Dialog is open, 
+    // allow L1/R1 tab switching to update the edited item.
+    val isFrontend = state.libraryLayout == app.gamenative.ui.enums.PaneType.FRONTEND
+    LaunchedEffect(focusedFrontendItem, isFrontend) {
+        if (isFrontend && editedLibraryItem != null && focusedFrontendItem != null) {
+            editedLibraryItem = focusedFrontendItem
+        }
+    }
 
     LibraryScreenContent(
         state = state,
@@ -121,12 +131,14 @@ fun HomeLibraryScreen(
         onGoOnline = onGoOnline,
         onSourceToggle = viewModel::onSourceToggle,
         onAddCustomGameFolder = viewModel::addCustomGameFolder,
+        onFocusChanged = { if (isFrontend) focusedFrontendItem = it },
         isOffline = isOffline,
     )
 
     if (editedLibraryItem != null) {
         GameEditDialog(
             libraryItem = editedLibraryItem!!,
+            isFrontend = state.libraryLayout == app.gamenative.ui.enums.PaneType.FRONTEND,
             onDismiss = { editedLibraryItem = null },
             onClickPlay = { bootToContainer ->
                 editedLibraryItem?.let {
@@ -163,6 +175,7 @@ private fun LibraryScreenContent(
     onGoOnline: () -> Unit,
     onSourceToggle: (GameSource) -> Unit,
     onAddCustomGameFolder: (String) -> Unit,
+    onFocusChanged: (LibraryItem?) -> Unit = {},
     isOffline: Boolean = false,
 ) {
     val context = LocalContext.current
@@ -284,6 +297,7 @@ private fun LibraryScreenContent(
                 onRefresh = onRefresh,
                 onSourceToggle = onSourceToggle,
                 onAddCustomGame = onAddCustomGameClick,
+                onFocusChanged = onFocusChanged,
                 isOffline = isOffline,
             )
         } else {

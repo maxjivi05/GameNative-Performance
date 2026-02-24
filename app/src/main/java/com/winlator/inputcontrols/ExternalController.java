@@ -346,7 +346,15 @@ public class ExternalController {
         InputDevice device = InputDevice.getDevice(getDeviceId());
         if (device == null) return false;
         int vendorId = device.getVendorId();
-        return vendorId == 0x045E; // Microsoft's Vendor ID for Xbox controllers
+        return vendorId == 0x045E || vendorId == 0x2DC8; // Microsoft or 8BitDo (Xbox mode)
+    }
+
+    public boolean isPlayStationController() {
+        InputDevice device = InputDevice.getDevice(getDeviceId());
+        if (device == null) return false;
+        int vendorId = device.getVendorId();
+        // 0x054C is Sony, 0x05C4/0x09CC are DualShock 4, 0x0CE6 is DualSense
+        return vendorId == 0x054C;
     }
 
     private void processXboxTriggerButton(MotionEvent event) {
