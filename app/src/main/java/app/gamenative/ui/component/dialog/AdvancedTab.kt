@@ -12,7 +12,7 @@ import com.alorma.compose.settings.ui.SettingsGroup
 @Composable
 fun AdvancedTabContent(state: ContainerConfigState) {
     val config = state.config.value
-    SettingsGroup() {
+    app.gamenative.ui.component.settings.FrontendAwareSettingsGroupNoScope() {
         SettingsListDropdown(
             colors = settingsTileColors(),
             title = { Text(text = stringResource(R.string.startup_selection)) },

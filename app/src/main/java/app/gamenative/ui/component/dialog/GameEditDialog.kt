@@ -120,6 +120,7 @@ fun GameEditDialog(
     }
 
     var containerData by remember { mutableStateOf(ContainerData()) }
+    var isSavingConfig by remember { mutableStateOf(false) }
     
     // Launchers for actions
     val exportFrontendLauncher = rememberLauncherForActivityResult(
@@ -504,15 +505,19 @@ fun GameEditDialog(
                         // We override onDismissRequest to go back to MENU
                         ContainerConfigScreen(
                             title = "${libraryItem.name} Config",
+                            isFrontend = isFrontend,
                             initialConfig = containerData,
                             onDismissRequest = { currentView = EditView.MENU },
                             onSave = { config ->
-                                currentView = EditView.MENU
+                                isSavingConfig = true
                                 coroutineScope.launch(kotlinx.coroutines.Dispatchers.IO) {
                                     try {
                                         screenModel.saveContainerConfig(context, libraryItem, config)
                                     } catch (e: Exception) {
                                         timber.log.Timber.e(e, "Failed to save container config for ${libraryItem.appId}")
+                                    } finally {
+                                        isSavingConfig = false
+                                        currentView = EditView.MENU
                                     }
                                 }
                             }
@@ -522,6 +527,12 @@ fun GameEditDialog(
             }
         }
     }
+
+    app.gamenative.ui.component.dialog.LoadingDialog(
+        visible = isSavingConfig,
+        progress = -1f,
+        message = androidx.compose.ui.res.stringResource(app.gamenative.R.string.settings_saving_restarting)
+    )
     
     // Render any additional dialogs from the screen model (e.g., Uninstall confirmation)
     screenModel.AdditionalDialogs(

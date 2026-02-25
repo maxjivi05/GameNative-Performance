@@ -65,15 +65,17 @@ import app.gamenative.ui.icons.Steam
 import app.gamenative.utils.CustomGameScanner
 import com.skydoves.landscapist.ImageOptions
 import com.skydoves.landscapist.coil.CoilImage
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.File
+import kotlin.math.abs
+import kotlin.math.roundToInt
 
 import android.hardware.input.InputManager
 import android.content.Context
 import android.view.InputDevice
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -366,6 +368,12 @@ internal fun LibraryFrontendPane(
     var installDialogItem by remember { mutableStateOf<LibraryItem?>(null) }
     var storefrontHeaderOffsetY by remember { mutableFloatStateOf(0f) }
 
+    // Hoisted grid state for storefront tabs — accessible from controller input handlers
+    val gridState = rememberLazyGridState()
+    var focusedGridIndex by remember { mutableIntStateOf(0) }
+    var rightStickX by remember { mutableFloatStateOf(0f) }
+    var rightStickY by remember { mutableFloatStateOf(0f) }
+
     // Helper: handle game click — if uninstalled on a storefront tab, show install dialog
     val handleGameClick: (LibraryItem) -> Unit = { item ->
         val isLibraryTab = tabs[selectedTabIdx] == FrontendTab.LIBRARY
@@ -401,7 +409,7 @@ internal fun LibraryFrontendPane(
         
         // Simple polling for connection changes
         while(true) {
-            kotlinx.coroutines.delay(2000)
+            delay(2000)
             checkControllers()
         }
     }
@@ -430,11 +438,16 @@ internal fun LibraryFrontendPane(
     }
 
     val isCustomTab = tabs[selectedTabIdx] == FrontendTab.CUSTOM
+    val isLibraryOrCustom = tabs[selectedTabIdx] == FrontendTab.LIBRARY || isCustomTab
     val pagerCount = if (isCustomTab) tabItems.size + 1 else tabItems.size
     val pagerState = rememberPagerState(pageCount = { pagerCount })
 
-    val focusedItem: LibraryItem? = remember(pagerState.currentPage, tabItems) {
-        if (pagerState.currentPage < tabItems.size) tabItems[pagerState.currentPage] else null
+    val focusedItem: LibraryItem? = remember(pagerState.currentPage, focusedGridIndex, tabItems, isLibraryOrCustom) {
+        if (isLibraryOrCustom) {
+            if (pagerState.currentPage < tabItems.size) tabItems[pagerState.currentPage] else null
+        } else {
+            if (focusedGridIndex in tabItems.indices) tabItems[focusedGridIndex] else null
+        }
     }
 
     // Sync focus changes to parent
@@ -442,8 +455,48 @@ internal fun LibraryFrontendPane(
         onFocusChanged(focusedItem)
     }
 
+    // Right joystick continuous scroll
+    LaunchedEffect(rightStickX, rightStickY) {
+        if (isLibraryOrCustom) {
+            // Carousel: right stick X = fast page browsing
+            if (abs(rightStickX) > 0.3f) {
+                val speed = (abs(rightStickX) * 10f).roundToInt().coerceIn(3, 12) // pages per sec
+                val delayMs = (1000L / speed)
+                while (true) {
+                    val target = if (rightStickX > 0) {
+                        (pagerState.currentPage + 1).coerceAtMost(pagerCount - 1)
+                    } else {
+                        (pagerState.currentPage - 1).coerceAtLeast(0)
+                    }
+                    if (target != pagerState.currentPage) {
+                        pagerState.scrollToPage(target)
+                    }
+                    delay(delayMs)
+                }
+            }
+        } else {
+            // Grid tabs: right stick Y = smooth pixel scroll
+            if (abs(rightStickY) > 0.3f) {
+                val speed = rightStickY * 18f // pixels per frame-ish
+                while (true) {
+                    gridState.scroll { scrollBy(speed) }
+                    delay(16L) // ~60fps
+                }
+            } else if (abs(rightStickY) <= 0.1f) {
+                // Released — snap focusedGridIndex to first visible item
+                val firstVisible = gridState.firstVisibleItemIndex
+                if (firstVisible in tabItems.indices) {
+                    focusedGridIndex = firstVisible
+                }
+            }
+        }
+    }
+
     // Controller Input Handling
-    DisposableEffect(focusedItem, selectedTabIdx, pagerCount, isSearchingLocally) {
+    DisposableEffect(focusedItem, selectedTabIdx, pagerCount, isSearchingLocally, isLibraryOrCustom) {
+        var lastLeftStickNavTime = 0L
+        val STICK_NAV_DEBOUNCE_MS = 200L
+
         val keyListener: (AndroidEvent.KeyEvent) -> Boolean = { event ->
             if (event.event.action == android.view.KeyEvent.ACTION_DOWN) {
                 if (isSearchingLocally && event.event.keyCode == KeyEvent.KEYCODE_BACK) {
@@ -461,30 +514,73 @@ internal fun LibraryFrontendPane(
                             true
                         }
                         KeyEvent.KEYCODE_DPAD_LEFT -> {
-                            if (pagerState.currentPage > 0) {
-                                coroutineScope.launch { pagerState.animateScrollToPage(pagerState.currentPage - 1) }
-                                true
-                            } else false
+                            if (isLibraryOrCustom) {
+                                if (pagerState.currentPage > 0) {
+                                    coroutineScope.launch { pagerState.animateScrollToPage(pagerState.currentPage - 1) }
+                                    true
+                                } else false
+                            } else {
+                                val newIdx = (focusedGridIndex - 1).coerceAtLeast(0)
+                                if (newIdx != focusedGridIndex) {
+                                    focusedGridIndex = newIdx
+                                    coroutineScope.launch { gridState.animateScrollToItem(newIdx) }
+                                    true
+                                } else false
+                            }
                         }
                         KeyEvent.KEYCODE_DPAD_RIGHT -> {
-                            if (pagerState.currentPage < pagerCount - 1) {
-                                coroutineScope.launch { pagerState.animateScrollToPage(pagerState.currentPage + 1) }
-                                true
-                            } else false
+                            if (isLibraryOrCustom) {
+                                if (pagerState.currentPage < pagerCount - 1) {
+                                    coroutineScope.launch { pagerState.animateScrollToPage(pagerState.currentPage + 1) }
+                                    true
+                                } else false
+                            } else {
+                                val newIdx = (focusedGridIndex + 1).coerceAtMost(tabItems.size - 1)
+                                if (newIdx != focusedGridIndex) {
+                                    focusedGridIndex = newIdx
+                                    coroutineScope.launch { gridState.animateScrollToItem(newIdx) }
+                                    true
+                                } else false
+                            }
                         }
                         KeyEvent.KEYCODE_DPAD_UP -> {
-                            // If we add more vertical elements, handle them here
-                            // For now, toggle search if pressed up
-                            if (!isSearchingLocally) {
-                                isSearchingLocally = true
-                                coroutineScope.launch {
-                                    kotlinx.coroutines.delay(100)
-                                    searchFocusRequester.requestFocus()
+                            if (isLibraryOrCustom) {
+                                if (!isSearchingLocally) {
+                                    isSearchingLocally = true
+                                    coroutineScope.launch {
+                                        delay(100)
+                                        searchFocusRequester.requestFocus()
+                                    }
+                                    true
+                                } else false
+                            } else {
+                                val newIdx = focusedGridIndex - 4
+                                if (newIdx >= 0) {
+                                    focusedGridIndex = newIdx
+                                    coroutineScope.launch { gridState.animateScrollToItem(newIdx) }
+                                    true
+                                } else {
+                                    // Already at top row — open search
+                                    isSearchingLocally = true
+                                    coroutineScope.launch {
+                                        delay(100)
+                                        searchFocusRequester.requestFocus()
+                                    }
+                                    true
                                 }
-                                true
+                            }
+                        }
+                        KeyEvent.KEYCODE_DPAD_DOWN -> {
+                            if (!isLibraryOrCustom) {
+                                val newIdx = (focusedGridIndex + 4).coerceAtMost(tabItems.size - 1)
+                                if (newIdx != focusedGridIndex) {
+                                    focusedGridIndex = newIdx
+                                    coroutineScope.launch { gridState.animateScrollToItem(newIdx) }
+                                    true
+                                } else false
                             } else false
                         }
-                        KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_BUTTON_X -> { // X (PS) / A (Xbox) or Square (PS) / X (Xbox)
+                        KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_BUTTON_X -> {
                             if (event.event.keyCode == KeyEvent.KEYCODE_BUTTON_A) {
                                 focusedItem?.let { handleGameClick(it) }
                                 true
@@ -493,15 +589,15 @@ internal fun LibraryFrontendPane(
                                 true
                             }
                         }
-                        KeyEvent.KEYCODE_BUTTON_Y -> { // Triangle (PS) / Y (Xbox)
+                        KeyEvent.KEYCODE_BUTTON_Y -> {
                             focusedItem?.let { onEdit(it) }
                             true
                         }
-                        KeyEvent.KEYCODE_BUTTON_B -> { // Circle (PS) / B (Xbox)
+                        KeyEvent.KEYCODE_BUTTON_B -> {
                             onViewChanged(PaneType.LIST)
                             true
                         }
-                        KeyEvent.KEYCODE_BUTTON_R2 -> { // R2 — refresh game list
+                        KeyEvent.KEYCODE_BUTTON_R2 -> {
                             onRefresh()
                             true
                         }
@@ -517,27 +613,82 @@ internal fun LibraryFrontendPane(
                 if (event is android.view.MotionEvent) {
                     val axisX = event.getAxisValue(android.view.MotionEvent.AXIS_X)
                     val axisY = event.getAxisValue(android.view.MotionEvent.AXIS_Y)
-                    
-                    if (axisX < -0.5f) {
-                        if (pagerState.currentPage > 0) {
-                            coroutineScope.launch { pagerState.animateScrollToPage(pagerState.currentPage - 1) }
-                            true
-                        } else false
-                    } else if (axisX > 0.5f) {
-                        if (pagerState.currentPage < pagerCount - 1) {
-                            coroutineScope.launch { pagerState.animateScrollToPage(pagerState.currentPage + 1) }
-                            true
-                        } else false
-                    } else if (axisY < -0.5f) {
-                        // Joystick Up
-                        if (!isSearchingLocally) {
-                            isSearchingLocally = true
-                            coroutineScope.launch {
-                                kotlinx.coroutines.delay(100)
-                                searchFocusRequester.requestFocus()
-                            }
-                            true
-                        } else false
+                    val axisZ = event.getAxisValue(android.view.MotionEvent.AXIS_Z)
+                    val axisRZ = event.getAxisValue(android.view.MotionEvent.AXIS_RZ)
+
+                    // Right stick — update state for continuous scroll LaunchedEffect
+                    rightStickX = axisZ
+                    rightStickY = axisRZ
+
+                    // Left stick — acts like D-pad with debounce
+                    val now = System.currentTimeMillis()
+                    if (now - lastLeftStickNavTime > STICK_NAV_DEBOUNCE_MS) {
+                        if (isLibraryOrCustom) {
+                            if (axisX < -0.5f) {
+                                if (pagerState.currentPage > 0) {
+                                    lastLeftStickNavTime = now
+                                    coroutineScope.launch { pagerState.animateScrollToPage(pagerState.currentPage - 1) }
+                                    true
+                                } else false
+                            } else if (axisX > 0.5f) {
+                                if (pagerState.currentPage < pagerCount - 1) {
+                                    lastLeftStickNavTime = now
+                                    coroutineScope.launch { pagerState.animateScrollToPage(pagerState.currentPage + 1) }
+                                    true
+                                } else false
+                            } else if (axisY < -0.5f) {
+                                lastLeftStickNavTime = now
+                                isSearchingLocally = true
+                                coroutineScope.launch {
+                                    delay(100)
+                                    searchFocusRequester.requestFocus()
+                                }
+                                true
+                            } else false
+                        } else {
+                            // Grid tabs: left stick navigates grid cells
+                            if (axisX < -0.5f) {
+                                val newIdx = (focusedGridIndex - 1).coerceAtLeast(0)
+                                if (newIdx != focusedGridIndex) {
+                                    lastLeftStickNavTime = now
+                                    focusedGridIndex = newIdx
+                                    coroutineScope.launch { gridState.animateScrollToItem(newIdx) }
+                                }
+                                true
+                            } else if (axisX > 0.5f) {
+                                val newIdx = (focusedGridIndex + 1).coerceAtMost(tabItems.size - 1)
+                                if (newIdx != focusedGridIndex) {
+                                    lastLeftStickNavTime = now
+                                    focusedGridIndex = newIdx
+                                    coroutineScope.launch { gridState.animateScrollToItem(newIdx) }
+                                }
+                                true
+                            } else if (axisY < -0.5f) {
+                                val newIdx = focusedGridIndex - 4
+                                if (newIdx >= 0) {
+                                    lastLeftStickNavTime = now
+                                    focusedGridIndex = newIdx
+                                    coroutineScope.launch { gridState.animateScrollToItem(newIdx) }
+                                    true
+                                } else {
+                                    lastLeftStickNavTime = now
+                                    isSearchingLocally = true
+                                    coroutineScope.launch {
+                                        delay(100)
+                                        searchFocusRequester.requestFocus()
+                                    }
+                                    true
+                                }
+                            } else if (axisY > 0.5f) {
+                                val newIdx = (focusedGridIndex + 4).coerceAtMost(tabItems.size - 1)
+                                if (newIdx != focusedGridIndex) {
+                                    lastLeftStickNavTime = now
+                                    focusedGridIndex = newIdx
+                                    coroutineScope.launch { gridState.animateScrollToItem(newIdx) }
+                                }
+                                true
+                            } else false
+                        }
                     } else false
                 } else false
             } else false
@@ -554,6 +705,9 @@ internal fun LibraryFrontendPane(
 
     LaunchedEffect(selectedTabIdx) {
         pagerState.scrollToPage(0)
+        focusedGridIndex = 0
+        rightStickX = 0f
+        rightStickY = 0f
         storefrontHeaderOffsetY = 0f // Reset header visibility on tab switch
     }
 
@@ -677,7 +831,7 @@ internal fun LibraryFrontendPane(
                                 onClick = { 
                                     isSearchingLocally = true
                                     coroutineScope.launch {
-                                        kotlinx.coroutines.delay(100)
+                                        delay(100)
                                         searchFocusRequester.requestFocus()
                                     }
                                 },
@@ -877,7 +1031,7 @@ internal fun LibraryFrontendPane(
             }
         } else {
             // Storefront tabs (Steam, Epic, GOG, Amazon): 4-column vertical grid
-            val gridState = rememberLazyGridState()
+            // gridState is hoisted above for controller access
 
             // Track scroll direction for header auto-hide
             var headerVisible by remember { mutableStateOf(true) }
@@ -924,15 +1078,24 @@ internal fun LibraryFrontendPane(
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                     contentPadding = PaddingValues(top = 80.dp, bottom = 24.dp)
                 ) {
-                    items(items = tabItems, key = { it.appId }) { item ->
+                    items(count = tabItems.size, key = { tabItems[it].appId }) { index ->
+                        val item = tabItems[index]
+                        val isFocused = index == focusedGridIndex
                         val artUrl = rememberFrontendArtUrl(item, isHero = false)
+                        val focusScale by animateFloatAsState(
+                            targetValue = if (isFocused) 1.04f else 1f,
+                            animationSpec = tween(200),
+                            label = "gridFocusScale"
+                        )
                         Box(
                             modifier = Modifier
                                 .aspectRatio(1.25f)
+                                .scale(focusScale)
                                 .clip(RoundedCornerShape(10.dp))
                                 .clickable { handleGameClick(item) }
                                 .border(
-                                    BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)),
+                                    if (isFocused) BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
+                                    else BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)),
                                     RoundedCornerShape(10.dp)
                                 )
                         ) {

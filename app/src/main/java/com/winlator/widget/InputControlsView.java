@@ -413,7 +413,7 @@ public class InputControlsView extends View {
                         );
                     }
                 }
-            }, 0, 1000 / 60); // 60 FPS
+            }, 0, 1000 / 120); // 120 FPS for lower-latency mouse movement
         }
     }
 

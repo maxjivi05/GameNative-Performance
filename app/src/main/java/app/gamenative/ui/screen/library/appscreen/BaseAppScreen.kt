@@ -864,6 +864,8 @@ abstract class BaseAppScreen {
             optionsMenu = optionsMenu.toTypedArray(),
         )
 
+        var isSavingConfig by remember { mutableStateOf(false) }
+
         // Show container config dialog if needed
         if (showConfigDialog) {
             ContainerConfigDialog(
@@ -871,17 +873,26 @@ abstract class BaseAppScreen {
                 initialConfig = containerData,
                 onDismissRequest = { showConfigDialog = false },
                 onSave = { config ->
-                    showConfigDialog = false
+                    isSavingConfig = true
                     uiScope.launch(kotlinx.coroutines.Dispatchers.IO) {
                         try {
                             saveContainerConfig(context, libraryItem, config)
                         } catch (e: Exception) {
                             timber.log.Timber.e(e, "Failed to save container config for ${libraryItem.appId}")
+                        } finally {
+                            isSavingConfig = false
+                            showConfigDialog = false
                         }
                     }
                 },
             )
         }
+
+        app.gamenative.ui.component.dialog.LoadingDialog(
+            visible = isSavingConfig,
+            progress = -1f,
+            message = androidx.compose.ui.res.stringResource(R.string.settings_saving_restarting)
+        )
 
         if (showContainerDialog) {
             ContainerOptionsDialog(

@@ -67,6 +67,12 @@ public class WinHandler {
     private final ArrayDeque<Runnable> actions = new ArrayDeque<>();
     private final List<Integer> gamepadClients = new CopyOnWriteArrayList<>();
 
+    // Dedicated buffer for direct gamepad state sends — bypasses the action queue
+    // to eliminate thread context switch latency on every controller event
+    private final ByteBuffer gamepadDirectBuf = ByteBuffer.allocate(64).order(ByteOrder.LITTLE_ENDIAN);
+    private final DatagramPacket gamepadDirectPkt = new DatagramPacket(gamepadDirectBuf.array(), 64);
+    private final Object gamepadSendLock = new Object();
+
     private boolean initReceived = false;
     private boolean running = false;
     private byte inputType = DEFAULT_INPUT_TYPE;
@@ -191,7 +197,7 @@ public class WinHandler {
             localhost = InetAddress.getLocalHost();
 
             // P1
-            String p1Path = "/data/data/app.gamenative/files/imagefs/tmp/gamepad.mem";
+            String p1Path = context.getFilesDir().getAbsolutePath() + "/imagefs/tmp/gamepad.mem";
             File p1 = new File(p1Path);
             p1.getParentFile().mkdirs();
             try (RandomAccessFile raf = new RandomAccessFile(p1, "rw")) {
@@ -203,7 +209,7 @@ public class WinHandler {
 
             // P2..P4
             for (int i = 0; i < extraGamepadBuffers.length; i++) {
-                String path = "/data/data/app.gamenative/files/imagefs/tmp/gamepad" + (i + 1) + ".mem";
+                String path = context.getFilesDir().getAbsolutePath() + "/imagefs/tmp/gamepad" + (i + 1) + ".mem";
                 File f = new File(path);
                 try (RandomAccessFile raf = new RandomAccessFile(f, "rw")) {
                     raf.setLength(64);
@@ -605,7 +611,9 @@ public class WinHandler {
                 final ControlsProfile profile = getInputControlsView().getProfile();
                 boolean useVirtual = profile != null && profile.isVirtualGamepad();
 
-                if (!useVirtual && (currentController == null || !currentController.isConnected())) {
+                // Use controller manager assignment instead of expensive isConnected()
+                // which iterates all device IDs on every poll
+                if (!useVirtual && currentController == null) {
                     currentController = ExternalController.getController(0);
                     if (currentController != null) currentController.setTriggerType(triggerType);
                 }
@@ -660,49 +668,45 @@ public class WinHandler {
                     currentController = null;
                 }
 
-                addAction(() -> {
-                    sendData.rewind();
-                    sendData.put(RequestCodes.GET_GAMEPAD_STATE);
-                    sendData.put((byte) (enabled ? 1 : 0));
+                // Respond directly — we already hold the actions lock, so sendData is safe.
+                // Eliminates thread context switch to send thread for the most frequent request.
+                sendData.rewind();
+                sendData.put(RequestCodes.GET_GAMEPAD_STATE);
+                sendData.put((byte) (enabled ? 1 : 0));
 
-                    if (enabled) {
-                        sendData.putInt(gamepadId);
+                if (enabled) {
+                    sendData.putInt(gamepadId);
 
-                        GamepadState state = useVirtual
-                                ? profile.getGamepadState()
-                                : currentController.state;
+                    GamepadState state = useVirtual
+                            ? profile.getGamepadState()
+                            : currentController.state;
 
-                        // cache for SHM pokes when virtual
-                        if (useVirtual && state != null) {
-                            lastVirtualState = state;
-                            hasVirtualState  = true;
-                            // also update gyro arming from the virtual state
-                            updateVirtualActivator(state);
-                        }
-
-                        // Temporarily apply gyro, write, then restore
-                        float oLX = state.thumbLX, oLY = state.thumbLY;
-                        float oRX = state.thumbRX, oRY = state.thumbRY;
-
-                        if (gyroEnabled) {
-                            if (gyroToLeftStick) {
-                                state.thumbLX = Mathf.clamp(oLX + gyroX, -1f, 1f);
-                                state.thumbLY = Mathf.clamp(oLY + gyroY, -1f, 1f);
-                            } else {
-                                state.thumbRX = Mathf.clamp(oRX + gyroX, -1f, 1f);
-                                state.thumbRY = Mathf.clamp(oRY + gyroY, -1f, 1f);
-                            }
-                        }
-
-                        state.writeTo(sendData);
-
-                        // restore
-                        state.thumbLX = oLX; state.thumbLY = oLY;
-                        state.thumbRX = oRX; state.thumbRY = oRY;
+                    if (useVirtual && state != null) {
+                        lastVirtualState = state;
+                        hasVirtualState  = true;
+                        updateVirtualActivator(state);
                     }
 
-                    sendPacket(port);
-                });
+                    float oLX = state.thumbLX, oLY = state.thumbLY;
+                    float oRX = state.thumbRX, oRY = state.thumbRY;
+
+                    if (gyroEnabled) {
+                        if (gyroToLeftStick) {
+                            state.thumbLX = Mathf.clamp(oLX + gyroX, -1f, 1f);
+                            state.thumbLY = Mathf.clamp(oLY + gyroY, -1f, 1f);
+                        } else {
+                            state.thumbRX = Mathf.clamp(oRX + gyroX, -1f, 1f);
+                            state.thumbRY = Mathf.clamp(oRY + gyroY, -1f, 1f);
+                        }
+                    }
+
+                    state.writeTo(sendData);
+
+                    state.thumbLX = oLX; state.thumbLY = oLY;
+                    state.thumbRX = oRX; state.thumbRY = oRY;
+                }
+
+                sendPacket(port);
                 break;
             }
 
@@ -727,55 +731,69 @@ public class WinHandler {
     }
 
     public void sendGamepadState() {
-        if (!initReceived || gamepadClients.isEmpty() || xinputDisabled) return;
+        if (!initReceived || xinputDisabled) return;
+        if (gamepadClients.isEmpty()) return;
 
-        final ControlsProfile profile = getInputControlsView().getProfile();
+        final DatagramSocket sock = this.socket;
+        if (sock == null || sock.isClosed()) return;
+
+        final com.winlator.widget.InputControlsView icv = getInputControlsView();
+        if (icv == null) return;
+        final ControlsProfile profile = icv.getProfile();
         final boolean useVirtual = profile != null && profile.isVirtualGamepad();
-        final boolean enabled = currentController != null || useVirtual;
+        final ExternalController ctrl = currentController; // capture to avoid race
+        final boolean enabled = ctrl != null || useVirtual;
 
-        for (final int port : gamepadClients) {
-            addAction(() -> {
-                sendData.rewind();
-                sendData.put(RequestCodes.GET_GAMEPAD_STATE);
-                sendData.put((byte) (enabled ? 1 : 0));
+        // Send directly from calling thread using dedicated buffer — eliminates
+        // the synchronized action queue + thread context switch that previously
+        // added latency on every controller event
+        synchronized (gamepadSendLock) {
+            gamepadDirectBuf.rewind();
+            gamepadDirectBuf.put(RequestCodes.GET_GAMEPAD_STATE);
+            gamepadDirectBuf.put((byte) (enabled ? 1 : 0));
 
-                if (enabled) {
-                    sendData.putInt(!useVirtual ? currentController.getDeviceId() : profile.id);
+            if (enabled) {
+                gamepadDirectBuf.putInt(!useVirtual ? ctrl.getDeviceId() : profile.id);
 
-                    GamepadState state = useVirtual ? profile.getGamepadState()
-                            : currentController.state;
+                GamepadState state = useVirtual ? profile.getGamepadState() : ctrl.state;
 
-                    // cache for SHM pokes when virtual
-                    if (useVirtual && state != null) {
-                        lastVirtualState = state;
-                        hasVirtualState  = true;
-                        // also update gyro arming from the virtual state
-                        updateVirtualActivator(state);
-                    }
-
-                    // Temporarily apply gyro offsets, write, then restore
-                    float oLX = state.thumbLX, oLY = state.thumbLY;
-                    float oRX = state.thumbRX, oRY = state.thumbRY;
-
-                    if (gyroEnabled) {
-                        if (gyroToLeftStick) {
-                            state.thumbLX = Mathf.clamp(oLX + gyroX, -1f, 1f);
-                            state.thumbLY = Mathf.clamp(oLY + gyroY, -1f, 1f);
-                        } else {
-                            state.thumbRX = Mathf.clamp(oRX + gyroX, -1f, 1f);
-                            state.thumbRY = Mathf.clamp(oRY + gyroY, -1f, 1f);
-                        }
-                    }
-
-                    state.writeTo(sendData);
-
-                    // restore original values
-                    state.thumbLX = oLX; state.thumbLY = oLY;
-                    state.thumbRX = oRX; state.thumbRY = oRY;
+                if (useVirtual && state != null) {
+                    lastVirtualState = state;
+                    hasVirtualState  = true;
+                    updateVirtualActivator(state);
                 }
 
-                sendPacket(port);
-            });
+                // Temporarily apply gyro offsets, write, then restore
+                float oLX = state.thumbLX, oLY = state.thumbLY;
+                float oRX = state.thumbRX, oRY = state.thumbRY;
+
+                if (gyroEnabled) {
+                    if (gyroToLeftStick) {
+                        state.thumbLX = Mathf.clamp(oLX + gyroX, -1f, 1f);
+                        state.thumbLY = Mathf.clamp(oLY + gyroY, -1f, 1f);
+                    } else {
+                        state.thumbRX = Mathf.clamp(oRX + gyroX, -1f, 1f);
+                        state.thumbRY = Mathf.clamp(oRY + gyroY, -1f, 1f);
+                    }
+                }
+
+                state.writeTo(gamepadDirectBuf);
+
+                state.thumbLX = oLX; state.thumbLY = oLY;
+                state.thumbRX = oRX; state.thumbRY = oRY;
+            }
+
+            // Build packet once, send to all clients (avoids per-client rebuild)
+            int size = gamepadDirectBuf.position();
+            gamepadDirectPkt.setAddress(localhost);
+            gamepadDirectPkt.setLength(size);
+
+            for (int port : gamepadClients) {
+                gamepadDirectPkt.setPort(port);
+                try {
+                    sock.send(gamepadDirectPkt);
+                } catch (IOException ignored) {}
+            }
         }
     }
 

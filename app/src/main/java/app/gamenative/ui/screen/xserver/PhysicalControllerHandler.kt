@@ -124,7 +124,7 @@ class PhysicalControllerHandler(
                     val deltaY = (mouseMoveOffset.y * 10 * cursorSpeed).toInt()
                     xServer?.injectPointerMoveDelta(deltaX, deltaY)
                 }
-            }, 0, 1000 / 60)
+            }, 0, 1000 / 120) // 120 FPS for smoother, lower-latency mouse movement
         }
     }
 

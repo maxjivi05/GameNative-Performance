@@ -48,6 +48,9 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import android.view.KeyEvent
+import app.gamenative.events.AndroidEvent
+import app.gamenative.PluviaApp
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -168,6 +171,7 @@ fun ContainerConfigDialog(
 @Composable
 fun ContainerConfigScreen(
     default: Boolean = false,
+    isFrontend: Boolean = false,
     title: String,
     initialConfig: ContainerData,
     onDismissRequest: () -> Unit,
@@ -1164,17 +1168,20 @@ fun ContainerConfigScreen(
             onConfirmClick = onDismissRequest,
         )
 
-    ContainerConfigContent(
-        title = title,
-        config = config,
-        initialConfig = initialConfig,
-        state = state,
-        onDismissCheck = onDismissCheck,
-        onSave = onSave,
-        nonzeroResolutionError = nonzeroResolutionError,
-        aspectResolutionError = aspectResolutionError,
-        default = default,
-    )
+    androidx.compose.runtime.CompositionLocalProvider(app.gamenative.ui.component.settings.LocalIsFrontend provides isFrontend) {
+        ContainerConfigContent(
+            title = title,
+            config = config,
+            initialConfig = initialConfig,
+            state = state,
+            onDismissCheck = onDismissCheck,
+            onSave = onSave,
+            nonzeroResolutionError = nonzeroResolutionError,
+            aspectResolutionError = aspectResolutionError,
+            default = default,
+            isFrontend = isFrontend,
+        )
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -1189,6 +1196,7 @@ fun ContainerConfigContent(
     nonzeroResolutionError: String,
     aspectResolutionError: String,
     default: Boolean,
+    isFrontend: Boolean = false,
 ) {
     val scrollState = rememberScrollState()
 
@@ -1230,6 +1238,33 @@ fun ContainerConfigContent(
             stringResource(R.string.container_config_tab_drives),
             stringResource(R.string.container_config_tab_advanced)
         )
+
+        DisposableEffect(isFrontend, tabs.size) {
+            val keyListener: (AndroidEvent.KeyEvent) -> Boolean = { event ->
+                if (isFrontend && event.event.action == KeyEvent.ACTION_DOWN) {
+                    when (event.event.keyCode) {
+                        KeyEvent.KEYCODE_BUTTON_L1 -> {
+                            selectedTab = if (selectedTab > 0) selectedTab - 1 else tabs.size - 1
+                            true
+                        }
+                        KeyEvent.KEYCODE_BUTTON_R1 -> {
+                            selectedTab = if (selectedTab < tabs.size - 1) selectedTab + 1 else 0
+                            true
+                        }
+                        else -> false
+                    }
+                } else false
+            }
+            if (isFrontend) {
+                PluviaApp.events.on<AndroidEvent.KeyEvent, Boolean>(keyListener)
+            }
+            onDispose {
+                if (isFrontend) {
+                    PluviaApp.events.off<AndroidEvent.KeyEvent, Boolean>(keyListener)
+                }
+            }
+        }
+
         Column(
             modifier = Modifier
                 .padding(

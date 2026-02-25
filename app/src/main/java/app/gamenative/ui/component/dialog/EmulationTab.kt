@@ -19,10 +19,10 @@ fun EmulationTabContent(state: ContainerConfigState) {
     val wineIsX8664 = config.wineVersion.contains("x86_64", true)
     val wineIsArm64Ec = config.wineVersion.contains("arm64ec", true)
 
-    SettingsGroup() {
+    app.gamenative.ui.component.settings.FrontendAwareSettingsGroupNoScope() {
         if (config.containerVariant.equals(Container.BIONIC, ignoreCase = true)) {
             if (wineIsArm64Ec) {
-                SettingsGroup() {
+                app.gamenative.ui.component.settings.FrontendAwareSettingsGroupNoScope() {
                     val fexcoreIndex = state.fexcoreOptions.ids.indexOfFirst { it == config.fexcoreVersion }.coerceAtLeast(0)
                     SettingsListDropdown(
                         colors = settingsTileColors(),

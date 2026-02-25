@@ -117,7 +117,7 @@ fun GeneralTabContent(
         )
     }
 
-    SettingsGroup() {
+    app.gamenative.ui.component.settings.FrontendAwareSettingsGroupNoScope() {
         run {
             val variantIndex = rememberSaveable {
                 mutableIntStateOf(

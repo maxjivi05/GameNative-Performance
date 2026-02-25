@@ -25,6 +25,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import app.gamenative.R
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import app.gamenative.ui.component.dialog.Box64PresetsDialog
 import app.gamenative.ui.component.dialog.ContainerConfigDialog
 import app.gamenative.ui.component.dialog.FEXCorePresetsDialog
@@ -39,6 +42,7 @@ fun PresetsDialog(open: Boolean, onDismiss: () -> Unit) {
     var showConfigDialog by rememberSaveable { mutableStateOf(false) }
     var showBox64PresetsDialog by rememberSaveable { mutableStateOf(false) }
     var showFexcorePresetsDialog by rememberSaveable { mutableStateOf(false) }
+    var isSavingConfig by rememberSaveable { mutableStateOf(false) }
 
     if (showConfigDialog) {
         ContainerConfigDialog(
@@ -47,12 +51,25 @@ fun PresetsDialog(open: Boolean, onDismiss: () -> Unit) {
             default = true,
             initialConfig = ContainerUtils.getDefaultContainerData(),
             onDismissRequest = { showConfigDialog = false },
-            onSave = {
-                showConfigDialog = false
-                ContainerUtils.setDefaultContainerData(it)
+            onSave = { config ->
+                isSavingConfig = true
+                kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+                    try {
+                        ContainerUtils.setDefaultContainerData(config)
+                    } finally {
+                        isSavingConfig = false
+                        showConfigDialog = false
+                    }
+                }
             },
         )
     }
+
+    app.gamenative.ui.component.dialog.LoadingDialog(
+        visible = isSavingConfig,
+        progress = -1f,
+        message = androidx.compose.ui.res.stringResource(app.gamenative.R.string.settings_saving_restarting)
+    )
 
     if (showBox64PresetsDialog) {
         Box64PresetsDialog(

@@ -14,7 +14,7 @@ import com.winlator.container.Container
 @Composable
 fun ControllerTabContent(state: ContainerConfigState, default: Boolean) {
     val config = state.config.value
-    SettingsGroup() {
+    app.gamenative.ui.component.settings.FrontendAwareSettingsGroupNoScope() {
         if (!default) {
             SettingsSwitch(
                 colors = settingsTileColorsAlt(),
