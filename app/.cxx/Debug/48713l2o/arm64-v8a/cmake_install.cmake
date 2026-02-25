@@ -1,4 +1,4 @@
-# Install script for directory: /home/max/Build/GameNative-Enh-source/Continue/app/src/main/cpp
+# Install script for directory: /home/max/Build/GameNative-Enh-source/app/src/main/cpp
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -44,12 +44,12 @@ endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for the subdirectory.
-  include("/home/max/Build/GameNative-Enh-source/Continue/app/.cxx/Debug/48713l2o/arm64-v8a/virglrenderer/cmake_install.cmake")
+  include("/home/max/Build/GameNative-Enh-source/app/.cxx/Debug/48713l2o/arm64-v8a/virglrenderer/cmake_install.cmake")
 endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for the subdirectory.
-  include("/home/max/Build/GameNative-Enh-source/Continue/app/.cxx/Debug/48713l2o/arm64-v8a/patchelf/cmake_install.cmake")
+  include("/home/max/Build/GameNative-Enh-source/app/.cxx/Debug/48713l2o/arm64-v8a/patchelf/cmake_install.cmake")
 endif()
 
 if(CMAKE_INSTALL_COMPONENT)
@@ -60,5 +60,5 @@ endif()
 
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
-file(WRITE "/home/max/Build/GameNative-Enh-source/Continue/app/.cxx/Debug/48713l2o/arm64-v8a/${CMAKE_INSTALL_MANIFEST}"
+file(WRITE "/home/max/Build/GameNative-Enh-source/app/.cxx/Debug/48713l2o/arm64-v8a/${CMAKE_INSTALL_MANIFEST}"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")

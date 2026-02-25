@@ -41,7 +41,7 @@
 		},
 		{
 			"isGenerated" : true,
-			"path" : "/home/max/Build/GameNative-Enh-source/Continue/app/.cxx/Debug/48713l2o/arm64-v8a/CMakeFiles/3.22.1-g37088a8/CMakeSystem.cmake"
+			"path" : "/home/max/Build/GameNative-Enh-source/app/.cxx/Debug/48713l2o/armeabi-v7a/CMakeFiles/3.22.1-g37088a8/CMakeSystem.cmake"
 		},
 		{
 			"isExternal" : true,
@@ -307,7 +307,7 @@
 		},
 		{
 			"isGenerated" : true,
-			"path" : "/home/max/Build/GameNative-Enh-source/Continue/app/.cxx/Debug/48713l2o/arm64-v8a/CMakeFiles/3.22.1-g37088a8/CMakeCCompiler.cmake"
+			"path" : "/home/max/Build/GameNative-Enh-source/app/.cxx/Debug/48713l2o/armeabi-v7a/CMakeFiles/3.22.1-g37088a8/CMakeCCompiler.cmake"
 		},
 		{
 			"isCMake" : true,
@@ -541,7 +541,7 @@
 		},
 		{
 			"isGenerated" : true,
-			"path" : "/home/max/Build/GameNative-Enh-source/Continue/app/.cxx/Debug/48713l2o/arm64-v8a/CMakeFiles/3.22.1-g37088a8/CMakeCXXCompiler.cmake"
+			"path" : "/home/max/Build/GameNative-Enh-source/app/.cxx/Debug/48713l2o/armeabi-v7a/CMakeFiles/3.22.1-g37088a8/CMakeCXXCompiler.cmake"
 		},
 		{
 			"isCMake" : true,
@@ -692,7 +692,7 @@
 		},
 		{
 			"isGenerated" : true,
-			"path" : "/home/max/Build/GameNative-Enh-source/Continue/app/.cxx/Debug/48713l2o/arm64-v8a/CMakeFiles/3.22.1-g37088a8/CMakeCCompiler.cmake"
+			"path" : "/home/max/Build/GameNative-Enh-source/app/.cxx/Debug/48713l2o/armeabi-v7a/CMakeFiles/3.22.1-g37088a8/CMakeCCompiler.cmake"
 		},
 		{
 			"isCMake" : true,
@@ -786,7 +786,7 @@
 		},
 		{
 			"isGenerated" : true,
-			"path" : "/home/max/Build/GameNative-Enh-source/Continue/app/.cxx/Debug/48713l2o/arm64-v8a/CMakeFiles/3.22.1-g37088a8/CMakeCXXCompiler.cmake"
+			"path" : "/home/max/Build/GameNative-Enh-source/app/.cxx/Debug/48713l2o/armeabi-v7a/CMakeFiles/3.22.1-g37088a8/CMakeCXXCompiler.cmake"
 		},
 		{
 			"path" : "virglrenderer/CMakeLists.txt"
@@ -798,8 +798,8 @@
 	"kind" : "cmakeFiles",
 	"paths" : 
 	{
-		"build" : "/home/max/Build/GameNative-Enh-source/Continue/app/.cxx/Debug/48713l2o/arm64-v8a",
-		"source" : "/home/max/Build/GameNative-Enh-source/Continue/app/src/main/cpp"
+		"build" : "/home/max/Build/GameNative-Enh-source/app/.cxx/Debug/48713l2o/armeabi-v7a",
+		"source" : "/home/max/Build/GameNative-Enh-source/app/src/main/cpp"
 	},
 	"version" : 
 	{

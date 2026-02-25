@@ -1,46 +1,46 @@
 {
   "buildFiles": [
-    "/home/max/Build/GameNative-Enh-source/Continue/app/src/main/cpp/CMakeLists.txt",
-    "/home/max/Build/GameNative-Enh-source/Continue/app/src/main/cpp/patchelf/CMakeLists.txt",
-    "/home/max/Build/GameNative-Enh-source/Continue/app/src/main/cpp/virglrenderer/CMakeLists.txt"
+    "/home/max/Build/GameNative-Enh-source/app/src/main/cpp/CMakeLists.txt",
+    "/home/max/Build/GameNative-Enh-source/app/src/main/cpp/patchelf/CMakeLists.txt",
+    "/home/max/Build/GameNative-Enh-source/app/src/main/cpp/virglrenderer/CMakeLists.txt"
   ],
   "cleanCommandsComponents": [
     [
       "/home/max/android-sdk/cmake/3.22.1/bin/ninja",
       "-C",
-      "/home/max/Build/GameNative-Enh-source/Continue/app/.cxx/Debug/48713l2o/arm64-v8a",
+      "/home/max/Build/GameNative-Enh-source/app/.cxx/Debug/48713l2o/arm64-v8a",
       "clean"
     ]
   ],
   "buildTargetsCommandComponents": [
     "/home/max/android-sdk/cmake/3.22.1/bin/ninja",
     "-C",
-    "/home/max/Build/GameNative-Enh-source/Continue/app/.cxx/Debug/48713l2o/arm64-v8a",
+    "/home/max/Build/GameNative-Enh-source/app/.cxx/Debug/48713l2o/arm64-v8a",
     "{LIST_OF_TARGETS_TO_BUILD}"
   ],
   "libraries": {
     "virglrenderer::@b02222b02b17b4412ae0": {
       "artifactName": "virglrenderer",
       "abi": "arm64-v8a",
-      "output": "/home/max/Build/GameNative-Enh-source/Continue/app/build/intermediates/cxx/Debug/48713l2o/obj/arm64-v8a/libvirglrenderer.so",
+      "output": "/home/max/Build/GameNative-Enh-source/app/build/intermediates/cxx/Debug/48713l2o/obj/arm64-v8a/libvirglrenderer.so",
       "runtimeFiles": []
     },
     "winlator::@6890427a1f51a3e7e1df": {
       "artifactName": "winlator",
       "abi": "arm64-v8a",
-      "output": "/home/max/Build/GameNative-Enh-source/Continue/app/build/intermediates/cxx/Debug/48713l2o/obj/arm64-v8a/libwinlator.so",
+      "output": "/home/max/Build/GameNative-Enh-source/app/build/intermediates/cxx/Debug/48713l2o/obj/arm64-v8a/libwinlator.so",
       "runtimeFiles": []
     },
     "patchelf::@34e0f137fc7625edf7c9": {
       "artifactName": "patchelf",
       "abi": "arm64-v8a",
-      "output": "/home/max/Build/GameNative-Enh-source/Continue/app/build/intermediates/cxx/Debug/48713l2o/obj/arm64-v8a/libpatchelf.so",
+      "output": "/home/max/Build/GameNative-Enh-source/app/build/intermediates/cxx/Debug/48713l2o/obj/arm64-v8a/libpatchelf.so",
       "runtimeFiles": []
     },
     "evshim::@6890427a1f51a3e7e1df": {
       "artifactName": "evshim",
       "abi": "arm64-v8a",
-      "output": "/home/max/Build/GameNative-Enh-source/Continue/app/build/intermediates/cxx/Debug/48713l2o/obj/arm64-v8a/libevshim.so",
+      "output": "/home/max/Build/GameNative-Enh-source/app/build/intermediates/cxx/Debug/48713l2o/obj/arm64-v8a/libevshim.so",
       "runtimeFiles": []
     }
   }

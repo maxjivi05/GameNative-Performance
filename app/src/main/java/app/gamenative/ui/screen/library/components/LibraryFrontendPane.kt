@@ -85,6 +85,12 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import com.winlator.inputcontrols.ExternalController
 
+import app.gamenative.service.SteamService
+import app.gamenative.service.epic.EpicAuthManager
+import app.gamenative.service.gog.GOGAuthManager
+import app.gamenative.service.amazon.AmazonAuthManager
+import kotlin.math.sign
+
 private enum class FrontendTab(val label: String) {
     LIBRARY("Library"),
     STEAM("Steam"),
@@ -96,6 +102,16 @@ private enum class FrontendTab(val label: String) {
 
 private enum class ControllerType {
     NONE, XBOX, PLAYSTATION, GENERIC
+}
+
+private fun checkAuthStatus(context: Context, tab: FrontendTab): Boolean {
+    return when (tab) {
+        FrontendTab.STEAM -> SteamService.isLoggedIn
+        FrontendTab.EPIC -> EpicAuthManager.hasStoredCredentials(context)
+        FrontendTab.GOG -> GOGAuthManager.hasStoredCredentials(context)
+        FrontendTab.AMAZON -> AmazonAuthManager.hasStoredCredentials(context)
+        else -> true
+    }
 }
 
 @Composable
@@ -475,15 +491,17 @@ internal fun LibraryFrontendPane(
                 }
             }
         } else {
-            // Grid tabs: right stick Y = smooth pixel scroll
-            if (abs(rightStickY) > 0.3f) {
-                val speed = rightStickY * 18f // pixels per frame-ish
+            // Grid tabs: right stick Y = smooth pixel scroll with cubic scaling for fluid take off
+            if (abs(rightStickY) > 0.15f) {
                 while (true) {
+                    // Cubic scaling: speed = sign(y) * (abs(y)^3) * multiplier
+                    val scaledY = sign(rightStickY) * (abs(rightStickY) * abs(rightStickY) * abs(rightStickY))
+                    val speed = scaledY * 45f // Increased multiplier for higher top speed but cubic curve keeps low-end precise
                     gridState.scroll { scrollBy(speed) }
-                    delay(16L) // ~60fps
+                    delay(12L) // ~80fps for smoother motion
                 }
-            } else if (abs(rightStickY) <= 0.1f) {
-                // Released — snap focusedGridIndex to first visible item
+            } else {
+                // Released or in deadzone — abrupt stop and snap focusedGridIndex to first visible item
                 val firstVisible = gridState.firstVisibleItemIndex
                 if (firstVisible in tabItems.indices) {
                     focusedGridIndex = firstVisible
@@ -581,12 +599,20 @@ internal fun LibraryFrontendPane(
                             } else false
                         }
                         KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_BUTTON_X -> {
-                            if (event.event.keyCode == KeyEvent.KEYCODE_BUTTON_A) {
-                                focusedItem?.let { handleGameClick(it) }
-                                true
+                            val isAuth = checkAuthStatus(context, tabs[selectedTabIdx])
+                            if (!isAuth) {
+                                if (event.event.keyCode == KeyEvent.KEYCODE_BUTTON_A) {
+                                    onNavigateRoute("login")
+                                    true
+                                } else false
                             } else {
-                                focusedItem?.let { onEdit(it) }
-                                true
+                                if (event.event.keyCode == KeyEvent.KEYCODE_BUTTON_A) {
+                                    focusedItem?.let { handleGameClick(it) }
+                                    true
+                                } else {
+                                    focusedItem?.let { onEdit(it) }
+                                    true
+                                }
                             }
                         }
                         KeyEvent.KEYCODE_BUTTON_Y -> {
@@ -1029,128 +1055,158 @@ internal fun LibraryFrontendPane(
                     }
                 }
             }
-        } else {
-            // Storefront tabs (Steam, Epic, GOG, Amazon): 4-column vertical grid
-            // gridState is hoisted above for controller access
-
-            // Track scroll direction for header auto-hide
-            var headerVisible by remember { mutableStateOf(true) }
-            var previousScrollOffset by remember { mutableIntStateOf(0) }
-            var previousFirstVisibleItem by remember { mutableIntStateOf(0) }
-
-            LaunchedEffect(gridState.firstVisibleItemIndex, gridState.firstVisibleItemScrollOffset) {
-                val currentFirst = gridState.firstVisibleItemIndex
-                val currentOffset = gridState.firstVisibleItemScrollOffset
-                val scrollingDown = currentFirst > previousFirstVisibleItem ||
-                    (currentFirst == previousFirstVisibleItem && currentOffset > previousScrollOffset + 10)
-                val scrollingUp = currentFirst < previousFirstVisibleItem ||
-                    (currentFirst == previousFirstVisibleItem && currentOffset < previousScrollOffset - 10)
-                if (scrollingDown && headerVisible) headerVisible = false
-                if (scrollingUp && !headerVisible) headerVisible = true
-                if (currentFirst == 0 && currentOffset == 0) headerVisible = true
-                previousFirstVisibleItem = currentFirst
-                previousScrollOffset = currentOffset
-            }
-
-            // Animate header offset
-            val headerOffsetY by animateFloatAsState(
-                targetValue = if (headerVisible) 0f else -200f,
-                animationSpec = tween(250),
-                label = "headerOffset"
-            )
-
-            // Pull-to-refresh wrapping the storefront grid
-            val pullToRefreshState = rememberPullToRefreshState()
-
-            PullToRefreshBox(
-                isRefreshing = state.isRefreshing,
-                onRefresh = onRefresh,
-                state = pullToRefreshState,
-                modifier = Modifier.fillMaxSize()
-            ) {
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(4),
-                    state = gridState,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                    contentPadding = PaddingValues(top = 80.dp, bottom = 24.dp)
-                ) {
-                    items(count = tabItems.size, key = { tabItems[it].appId }) { index ->
-                        val item = tabItems[index]
-                        val isFocused = index == focusedGridIndex
-                        val artUrl = rememberFrontendArtUrl(item, isHero = false)
-                        val focusScale by animateFloatAsState(
-                            targetValue = if (isFocused) 1.04f else 1f,
-                            animationSpec = tween(200),
-                            label = "gridFocusScale"
-                        )
-                        Box(
-                            modifier = Modifier
-                                .aspectRatio(1.25f)
-                                .scale(focusScale)
-                                .clip(RoundedCornerShape(10.dp))
-                                .clickable { handleGameClick(item) }
-                                .border(
-                                    if (isFocused) BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
-                                    else BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)),
-                                    RoundedCornerShape(10.dp)
-                                )
-                        ) {
-                            if (artUrl.isNotEmpty()) {
-                                CoilImage(
-                                    modifier = Modifier.fillMaxSize(),
-                                    imageModel = { artUrl },
-                                    imageOptions = ImageOptions(contentScale = ContentScale.Crop),
-                                    failure = { FrontendFallbackIcon(item) }
-                                )
-                            } else {
-                                FrontendFallbackIcon(item)
-                            }
-
-                            // Gradient overlay with game name
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .align(Alignment.BottomCenter)
-                                    .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(0.85f))))
-                                    .padding(horizontal = 6.dp, vertical = 4.dp)
-                            ) {
+                } else {
+                    // Storefront tabs (Steam, Epic, GOG, Amazon): 4-column vertical grid
+                    // gridState is hoisted above for controller access
+        
+                    val isAuth = checkAuthStatus(context, tabs[selectedTabIdx])
+        
+                    if (!isAuth) {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(
-                                    item.name,
-                                    color = Color.White,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    fontWeight = FontWeight.SemiBold,
-                                    fontSize = 9.sp,
-                                    lineHeight = 11.sp
+                                    text = "Not Signed In",
+                                    style = MaterialTheme.typography.headlineSmall,
+                                    color = Color.White.copy(alpha = 0.7f)
                                 )
+                                Spacer(Modifier.height(16.dp))
+                                Button(
+                                    onClick = { onNavigateRoute("login") },
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                                    modifier = Modifier.width(200.dp).height(50.dp)
+                                ) {
+                                    Text("Sign In", fontWeight = FontWeight.Bold)
+                                }
+                                
+                                if (connectedControllerType != ControllerType.NONE) {
+                                    Spacer(Modifier.height(16.dp))
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        ControllerBadge("A", connectedControllerType)
+                                        Text("to Sign In", color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp, modifier = Modifier.padding(start = 8.dp))
+                                    }
+                                }
                             }
-
-                            // Install status indicator
-                            if (!item.isInstalled) {
-                                Box(
-                                    modifier = Modifier
-                                        .align(Alignment.TopEnd)
-                                        .padding(4.dp)
-                                        .size(7.dp)
-                                        .background(Color.White.copy(alpha = 0.4f), CircleShape)
-                                )
+                        }
+                    } else {
+                        // Track scroll direction for header auto-hide
+                        var headerVisible by remember { mutableStateOf(true) }
+                        var previousScrollOffset by remember { mutableIntStateOf(0) }
+                        var previousFirstVisibleItem by remember { mutableIntStateOf(0) }
+        
+                        LaunchedEffect(gridState.firstVisibleItemIndex, gridState.firstVisibleItemScrollOffset) {
+                            val currentFirst = gridState.firstVisibleItemIndex
+                            val currentOffset = gridState.firstVisibleItemScrollOffset
+                            val scrollingDown = currentFirst > previousFirstVisibleItem ||
+                                (currentFirst == previousFirstVisibleItem && currentOffset > previousScrollOffset + 10)
+                            val scrollingUp = currentFirst < previousFirstVisibleItem ||
+                                (currentFirst == previousFirstVisibleItem && currentOffset < previousScrollOffset - 10)
+                            if (scrollingDown && headerVisible) headerVisible = false
+                            if (scrollingUp && !headerVisible) headerVisible = true
+                            if (currentFirst == 0 && currentOffset == 0) headerVisible = true
+                            previousFirstVisibleItem = currentFirst
+                            previousScrollOffset = currentOffset
+                        }
+        
+                        // Animate header offset
+                        val headerOffsetY by animateFloatAsState(
+                            targetValue = if (headerVisible) 0f else -200f,
+                            animationSpec = tween(250),
+                            label = "headerOffset"
+                        )
+        
+                        // Pull-to-refresh wrapping the storefront grid
+                        val pullToRefreshState = rememberPullToRefreshState()
+        
+                        PullToRefreshBox(
+                            isRefreshing = state.isRefreshing,
+                            onRefresh = onRefresh,
+                            state = pullToRefreshState,
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            LazyVerticalGrid(
+                                columns = GridCells.Fixed(4),
+                                state = gridState,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(horizontal = 16.dp),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                verticalArrangement = Arrangement.spacedBy(10.dp),
+                                contentPadding = PaddingValues(top = 80.dp, bottom = 24.dp)
+                            ) {
+                                items(count = tabItems.size, key = { tabItems[it].appId }) { index ->
+                                    val item = tabItems[index]
+                                    val isFocused = index == focusedGridIndex
+                                    val artUrl = rememberFrontendArtUrl(item, isHero = false)
+                                    val focusScale by animateFloatAsState(
+                                        targetValue = if (isFocused) 1.04f else 1f,
+                                        animationSpec = tween(200),
+                                        label = "gridFocusScale"
+                                    )
+                                    Box(
+                                        modifier = Modifier
+                                            .aspectRatio(1.25f)
+                                            .scale(focusScale)
+                                            .clip(RoundedCornerShape(10.dp))
+                                            .clickable { handleGameClick(item) }
+                                            .border(
+                                                if (isFocused) BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
+                                                else BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)),
+                                                RoundedCornerShape(10.dp)
+                                            )
+                                    ) {
+                                        if (artUrl.isNotEmpty()) {
+                                            CoilImage(
+                                                modifier = Modifier.fillMaxSize(),
+                                                imageModel = { artUrl },
+                                                imageOptions = ImageOptions(contentScale = ContentScale.Crop),
+                                                failure = { FrontendFallbackIcon(item) }
+                                            )
+                                        } else {
+                                            FrontendFallbackIcon(item)
+                                        }
+        
+                                        // Gradient overlay with game name
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .align(Alignment.BottomCenter)
+                                                .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(0.85f))))
+                                                .padding(horizontal = 6.dp, vertical = 4.dp)
+                                        ) {
+                                            Text(
+                                                item.name,
+                                                color = Color.White,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis,
+                                                fontWeight = FontWeight.SemiBold,
+                                                fontSize = 9.sp,
+                                                lineHeight = 11.sp
+                                            )
+                                        }
+        
+                                        // Install status indicator
+                                        if (!item.isInstalled) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .align(Alignment.TopEnd)
+                                                    .padding(4.dp)
+                                                    .size(7.dp)
+                                                    .background(Color.White.copy(alpha = 0.4f), CircleShape)
+                                            )
+                                        }
+                                    }
+                                }
                             }
+                        }
+        
+                        // Re-show header state for the HEADER Row above (we'll use graphicsLayer)
+                        // Store headerOffsetY in a key that the header can read
+                        SideEffect {
+                            storefrontHeaderOffsetY = headerOffsetY
                         }
                     }
                 }
-            }
-
-            // Re-show header state for the HEADER Row above (we'll use graphicsLayer)
-            // Store headerOffsetY in a key that the header can read
-            SideEffect {
-                storefrontHeaderOffsetY = headerOffsetY
-            }
-        }
-
         // FOOTER — only show on Library/Custom tabs (storefront tabs have no play time)
         if (focusedItem != null && (isLibraryTab || isCustomTab)) {
             Column(

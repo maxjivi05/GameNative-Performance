@@ -8,6 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -42,6 +43,7 @@ fun SettingsTextField(
                 OutlinedTextField(
                     modifier = Modifier
                         .focusRequester(focusRequester)
+                        .focusProperties { canFocus = false } // Prevent controller focus trap
                         .width(76.dp),
                     enabled = enabled,
                     value = value,

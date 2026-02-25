@@ -109,7 +109,7 @@ rule CXX_SHARED_LIBRARY_LINKER__patchelf_Debug
 # Rule for re-running cmake.
 
 rule RERUN_CMAKE
-  command = /home/max/android-sdk/cmake/3.22.1/bin/cmake --regenerate-during-build -S/home/max/Build/GameNative-Enh-source/Continue/app/src/main/cpp -B/home/max/Build/GameNative-Enh-source/Continue/app/.cxx/Debug/48713l2o/arm64-v8a
+  command = /home/max/android-sdk/cmake/3.22.1/bin/cmake --regenerate-during-build -S/home/max/Build/GameNative-Enh-source/app/src/main/cpp -B/home/max/Build/GameNative-Enh-source/app/.cxx/Debug/48713l2o/arm64-v8a
   description = Re-running CMake...
   generator = 1
 

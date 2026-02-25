@@ -105,28 +105,28 @@
 				{
 					"directoryIndex" : 0,
 					"id" : "evshim::@6890427a1f51a3e7e1df",
-					"jsonFile" : "target-evshim-Debug-f09d79b3b81752e5a90a.json",
+					"jsonFile" : "target-evshim-Debug-9296519e3a40b4844153.json",
 					"name" : "evshim",
 					"projectIndex" : 0
 				},
 				{
 					"directoryIndex" : 2,
 					"id" : "patchelf::@34e0f137fc7625edf7c9",
-					"jsonFile" : "target-patchelf-Debug-7eafdf1e1d0102e5b7a9.json",
+					"jsonFile" : "target-patchelf-Debug-df4cc02da580c4a14c6f.json",
 					"name" : "patchelf",
 					"projectIndex" : 2
 				},
 				{
 					"directoryIndex" : 1,
 					"id" : "virglrenderer::@b02222b02b17b4412ae0",
-					"jsonFile" : "target-virglrenderer-Debug-8a8d27827f2e17ee0aec.json",
+					"jsonFile" : "target-virglrenderer-Debug-71055993625201a7d1bd.json",
 					"name" : "virglrenderer",
 					"projectIndex" : 1
 				},
 				{
 					"directoryIndex" : 0,
 					"id" : "winlator::@6890427a1f51a3e7e1df",
-					"jsonFile" : "target-winlator-Debug-e520956b11e78afa7cdd.json",
+					"jsonFile" : "target-winlator-Debug-0c2b46f25d5e206d2be8.json",
 					"name" : "winlator",
 					"projectIndex" : 0
 				}
@@ -136,8 +136,8 @@
 	"kind" : "codemodel",
 	"paths" : 
 	{
-		"build" : "/home/max/Build/GameNative-Enh-source/Continue/app/.cxx/Debug/48713l2o/armeabi-v7a",
-		"source" : "/home/max/Build/GameNative-Enh-source/Continue/app/src/main/cpp"
+		"build" : "/home/max/Build/GameNative-Enh-source/app/.cxx/Debug/48713l2o/arm64-v8a",
+		"source" : "/home/max/Build/GameNative-Enh-source/app/src/main/cpp"
 	},
 	"version" : 
 	{
