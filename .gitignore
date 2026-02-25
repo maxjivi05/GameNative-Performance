@@ -1,4 +1,5 @@
 .gradle/
+app/.cxx/
 build/
 tmp/
 *.apk

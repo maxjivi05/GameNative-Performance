@@ -110,7 +110,7 @@ static void *vjoy_updater(void *arg)
     for (;;) {
         pthread_mutex_lock(&shm_mutex);
 
-        ssize_t n = read(fd, &cur, sizeof cur);
+        ssize_t n = pread(fd, &cur, sizeof cur, 0);
 
         if (n == sizeof cur && memcmp(&cur, &last_state, sizeof cur) != 0) {
 

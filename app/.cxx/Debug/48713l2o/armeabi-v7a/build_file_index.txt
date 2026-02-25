@@ -1,3 +1,0 @@
-/home/max/Build/GameNative-Enh-source/app/src/main/cpp/CMakeLists.txt
-/home/max/Build/GameNative-Enh-source/app/src/main/cpp/patchelf/CMakeLists.txt
-/home/max/Build/GameNative-Enh-source/app/src/main/cpp/virglrenderer/CMakeLists.txt

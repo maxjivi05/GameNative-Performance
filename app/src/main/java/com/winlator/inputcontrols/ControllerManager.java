@@ -47,6 +47,9 @@ public class ControllerManager {
     // This tracks which of the 4 player slots are enabled by the user.
     private final boolean[] enabledSlots = new boolean[4];
 
+    // This tracking ensures multiple identical controllers don't overlap into the same slot
+    private final android.util.SparseIntArray runtimeSlotMap = new android.util.SparseIntArray();
+
     public static final String PREF_PLAYER_SLOT_PREFIX = "controller_slot_";
     public static final String PREF_ENABLED_SLOTS_PREFIX = "enabled_slot_";
 
@@ -77,13 +80,80 @@ public class ControllerManager {
      */
     public void scanForDevices() {
         detectedDevices.clear();
+        runtimeSlotMap.clear();
         int[] deviceIds = inputManager.getInputDeviceIds();
+        
+        SparseArray<List<InputDevice>> byControllerNumber = new SparseArray<>();
+        List<InputDevice> noControllerNumber = new ArrayList<>();
+
         for (int deviceId : deviceIds) {
             InputDevice device = inputManager.getInputDevice(deviceId);
-            if (device != null
-                    && !device.isVirtual()
-                    && isGameController(device)) {
+            if (device != null && !device.isVirtual() && isGameController(device)) {
                 detectedDevices.add(device);
+                int cNum = device.getControllerNumber();
+                if (cNum > 0) {
+                    List<InputDevice> group = byControllerNumber.get(cNum);
+                    if (group == null) {
+                        group = new ArrayList<>();
+                        byControllerNumber.put(cNum, group);
+                    }
+                    group.add(device);
+                } else {
+                    noControllerNumber.add(device);
+                }
+            }
+        }
+
+        List<List<InputDevice>> physicalControllers = new ArrayList<>();
+        for (int i = 0; i < byControllerNumber.size(); i++) {
+            physicalControllers.add(byControllerNumber.valueAt(i));
+        }
+        
+        java.util.Map<String, List<InputDevice>> noNumGroups = new java.util.HashMap<>();
+        for (InputDevice d : noControllerNumber) {
+            String key = "unique_" + d.getId();
+            List<InputDevice> group = new ArrayList<>();
+            group.add(d);
+            noNumGroups.put(key, group);
+        }
+        physicalControllers.addAll(noNumGroups.values());
+
+        boolean[] slotTaken = new boolean[4];
+
+        // Pass 1: Try to match saved assignments
+        for (List<InputDevice> group : physicalControllers) {
+            boolean assigned = false;
+            for (InputDevice d : group) {
+                String id = getDeviceIdentifier(d);
+                if (id != null) {
+                    for (int s = 0; s < 4; s++) {
+                        if (!slotTaken[s] && id.equals(slotAssignments.get(s))) {
+                            for (InputDevice dev : group) {
+                                runtimeSlotMap.put(dev.getId(), s);
+                            }
+                            slotTaken[s] = true;
+                            assigned = true;
+                            break;
+                        }
+                    }
+                }
+                if (assigned) break;
+            }
+        }
+
+        // Pass 2: Auto-assign unassigned groups to remaining ENABLED slots
+        for (List<InputDevice> group : physicalControllers) {
+            if (group.isEmpty() || runtimeSlotMap.indexOfKey(group.get(0).getId()) >= 0) {
+                continue;
+            }
+            for (int s = 0; s < 4; s++) {
+                if (!slotTaken[s] && enabledSlots[s]) {
+                    for (InputDevice dev : group) {
+                        runtimeSlotMap.put(dev.getId(), s);
+                    }
+                    slotTaken[s] = true;
+                    break;
+                }
             }
         }
     }
@@ -273,6 +343,7 @@ public class ControllerManager {
         // Assign the new device to the target slot.
         slotAssignments.put(slotIndex, newDeviceIdentifier);
         saveAssignments(); // Persist the change immediately.
+        scanForDevices();
     }
 
     public boolean hasEnabledUnassignedSlot() {
@@ -293,6 +364,7 @@ public class ControllerManager {
         if (slotIndex < 0 || slotIndex >= 4) return;
         slotAssignments.remove(slotIndex);
         saveAssignments();
+        scanForDevices();
     }
 
     /**
@@ -301,20 +373,7 @@ public class ControllerManager {
      * @return The player slot index (0-3), or -1 if the device is not assigned.
      */
     public int getSlotForDevice(int deviceId) {
-        InputDevice device = inputManager.getInputDevice(deviceId);
-        String deviceIdentifier = getDeviceIdentifier(device);
-        if (deviceIdentifier == null) return -1;
-
-        // Correctly loop through the sparse array to find the key for our value.
-        for (int i = 0; i < slotAssignments.size(); i++) {
-            int key = slotAssignments.keyAt(i);
-            String value = slotAssignments.valueAt(i);
-            if (deviceIdentifier.equals(value)) {
-                return key; // Return the key (the slot index), not the internal index!
-            }
-        }
-
-        return -1; // Not found
+        return runtimeSlotMap.get(deviceId, -1);
     }
 
 
@@ -324,17 +383,12 @@ public class ControllerManager {
      * @return The assigned InputDevice, or null if no device is assigned or if the device is not currently connected.
      */
     public InputDevice getAssignedDeviceForSlot(int slotIndex) {
-        String assignedIdentifier = slotAssignments.get(slotIndex);
-        if (assignedIdentifier == null) return null;
-
-        // Search our current list of connected devices for one that matches the saved identifier.
         for (InputDevice device : detectedDevices) {
-            if (assignedIdentifier.equals(getDeviceIdentifier(device))) {
-                return device; // Found it.
+            if (runtimeSlotMap.get(device.getId(), -1) == slotIndex) {
+                return device;
             }
         }
-
-        return null; // The assigned device is not currently connected.
+        return null;
     }
 
     /**
@@ -346,6 +400,7 @@ public class ControllerManager {
         if (slotIndex < 0 || slotIndex >= 4) return;
         enabledSlots[slotIndex] = isEnabled;
         saveAssignments();
+        scanForDevices();
     }
 
     public boolean isSlotEnabled(int slotIndex) {
@@ -370,24 +425,7 @@ public class ControllerManager {
     }
 
     public int getSlotForDeviceOrSibling(int deviceId) {
-        InputDevice d = inputManager.getInputDevice(deviceId);
-        if (d == null) return -1;
-
-        // 1) Exact descriptor match first (current behavior)
-        int slot = getSlotForDevice(deviceId);
-        if (slot != -1) return slot;
-
-        // 2) Group match against already-assigned devices
-        String g = makePhysicalGroupKey(d);
-        for (int i = 0; i < 4; i++) {
-            InputDevice assigned = getAssignedDeviceForSlot(i);
-            if (assigned != null) {
-                if (g.equals(makePhysicalGroupKey(assigned))) {
-                    return i;
-                }
-            }
-        }
-        return -1;
+        return getSlotForDevice(deviceId);
     }
 
     public boolean isVibrationEnabled(int slot) {
