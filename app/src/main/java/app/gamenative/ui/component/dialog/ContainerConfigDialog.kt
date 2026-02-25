@@ -254,6 +254,7 @@ fun ContainerConfigScreen(
     var showManifestDownloadDialog by remember { mutableStateOf(false) }
     var manifestDownloadProgress by remember { mutableStateOf(-1f) }
     var manifestDownloadLabel by remember { mutableStateOf("") }
+    var manifestDownloadStage by remember { mutableStateOf("") }
     var versionsLoaded by remember { mutableStateOf(false) }
     val showCustomResolutionDialogRef = remember { mutableStateOf(false) }
     var showCustomResolutionDialog by showCustomResolutionDialogRef
@@ -301,7 +302,9 @@ fun ContainerConfigScreen(
     val installedLists = availability?.installed
 
     val isBionicVariant = config.containerVariant.equals(Container.BIONIC, ignoreCase = true)
-    val manifestDownloadMessage = if (manifestDownloadLabel.isNotEmpty()) {
+    val manifestDownloadMessage = if (manifestDownloadStage.isNotEmpty() && manifestDownloadLabel.isNotEmpty()) {
+        "$manifestDownloadStage $manifestDownloadLabel…"
+    } else if (manifestDownloadLabel.isNotEmpty()) {
         stringResource(R.string.manifest_downloading_item, manifestDownloadLabel)
     } else {
         stringResource(R.string.downloading)
@@ -433,6 +436,11 @@ fun ContainerConfigScreen(
                             manifestDownloadProgress = clamped
                         }
                     },
+                    onStage = { stage ->
+                        installScope.launch(Dispatchers.Main.immediate) {
+                            manifestDownloadStage = stage
+                        }
+                    },
                 )
                 if (result.success) {
                     refreshInstalledLists()
@@ -444,6 +452,7 @@ fun ContainerConfigScreen(
                 showManifestDownloadDialog = false
                 manifestDownloadProgress = -1f
                 manifestDownloadLabel = ""
+                manifestDownloadStage = ""
             }
         }
     }

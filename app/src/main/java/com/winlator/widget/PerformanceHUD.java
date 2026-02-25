@@ -4,6 +4,7 @@ import android.app.ActivityManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.os.BatteryManager;
 import android.os.Handler;
 import android.os.Looper;
@@ -14,6 +15,7 @@ import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewConfiguration;
+import android.view.ViewGroup;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -32,6 +34,11 @@ import java.io.RandomAccessFile;
 import java.util.Locale;
 
 public class PerformanceHUD extends FrameLayout {
+    private static final String PREFS_NAME = "performance_hud_prefs";
+    private static final String PREF_X = "hud_x";
+    private static final String PREF_Y = "hud_y";
+    private static final String PREF_HAS_POSITION = "hud_has_position";
+
     private final TextView tvFPS, tvGPU, tvCPU, tvRAM, tvPower, tvBattery;
     private final TextView tvCPUTemp, tvGPUTemp, tvBatteryTemp;
     private final LinearLayout container;
@@ -39,17 +46,19 @@ public class PerformanceHUD extends FrameLayout {
     private final Handler handler = new Handler(Looper.getMainLooper());
     private boolean isVertical = false;
     private final GestureDetector gestureDetector;
+    private boolean isTracking = false;
     private boolean isDragging = false;
     private float dX, dY;
     private int touchSlop;
     private float startX, startY;
+    private boolean restoredPosition = false;
 
     // For GLRenderer-based FPS tracking
     private long lastFPSUpdateTimeMs = 0;
 
-    // For process-level CPU tracking
-    private long lastProcCpuTime = 0;
-    private long lastWallTime = 0;
+    // For per-core CPU tracking
+    private long[] lastCoreTotals;
+    private long[] lastCoreIdles;
     private int numCpuCores = 0;
 
     private final Runnable fpsUpdateRunnable = new Runnable() {
@@ -161,6 +170,8 @@ public class PerformanceHUD extends FrameLayout {
 
         numCpuCores = Runtime.getRuntime().availableProcessors();
         if (numCpuCores < 1) numCpuCores = 1;
+        lastCoreTotals = new long[numCpuCores];
+        lastCoreIdles = new long[numCpuCores];
 
         touchSlop = ViewConfiguration.get(context).getScaledTouchSlop();
 
@@ -176,44 +187,71 @@ public class PerformanceHUD extends FrameLayout {
         handler.post(metricsUpdateRunnable);
     }
 
+    @Override
+    protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
+        super.onLayout(changed, left, top, right, bottom);
+        if (!restoredPosition) {
+            restoredPosition = true;
+            restorePosition();
+        }
+    }
+
+    private void savePosition() {
+        SharedPreferences prefs = getContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        prefs.edit()
+            .putFloat(PREF_X, getX())
+            .putFloat(PREF_Y, getY())
+            .putBoolean(PREF_HAS_POSITION, true)
+            .apply();
+    }
+
+    private void restorePosition() {
+        SharedPreferences prefs = getContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        if (prefs.getBoolean(PREF_HAS_POSITION, false)) {
+            float savedX = prefs.getFloat(PREF_X, 0f);
+            float savedY = prefs.getFloat(PREF_Y, 0f);
+            // Clamp to screen bounds
+            View parent = (View) getParent();
+            if (parent != null) {
+                savedX = Math.max(0, Math.min(savedX, parent.getWidth() - getWidth()));
+                savedY = Math.max(0, Math.min(savedY, parent.getHeight() - getHeight()));
+            }
+            setX(savedX);
+            setY(savedY);
+        }
+    }
+
     /**
      * Handles touch events dispatched directly from the XServerScreen pointerInteropFilter.
-     * Returns true if the event was consumed (touch is within HUD bounds).
+     * Returns true if the event was consumed (touch is within HUD bounds or part of an active HUD gesture).
      */
     public boolean handleTouchEvent(MotionEvent event) {
-        // Check if the touch is within this view's bounds
         float touchX = event.getRawX();
         float touchY = event.getRawY();
 
         int[] location = new int[2];
-        getLocationOnScreen(location);
+        container.getLocationOnScreen(location);
         float left = location[0];
         float top = location[1];
-        float right = left + getWidth();
-        float bottom = top + getHeight();
+        float right = left + container.getWidth();
+        float bottom = top + container.getHeight();
 
-        // For ACTION_DOWN, check bounds strictly; for MOVE/UP during drag, allow anywhere
-        if (event.getAction() == MotionEvent.ACTION_DOWN) {
-            if (touchX < left || touchX > right || touchY < top || touchY > bottom) {
-                return false;
-            }
-        } else if (!isDragging && event.getAction() == MotionEvent.ACTION_MOVE) {
-            // Not yet dragging and not within bounds — ignore
-            if (touchX < left || touchX > right || touchY < top || touchY > bottom) {
-                return false;
-            }
-        }
+        boolean inBounds = touchX >= left && touchX <= right && touchY >= top && touchY <= bottom;
 
-        gestureDetector.onTouchEvent(event);
         switch (event.getAction()) {
             case MotionEvent.ACTION_DOWN:
+                if (!inBounds) return false;
+                isTracking = true;
                 isDragging = false;
                 startX = event.getRawX();
                 startY = event.getRawY();
                 dX = getX() - event.getRawX();
                 dY = getY() - event.getRawY();
+                gestureDetector.onTouchEvent(event);
                 return true;
             case MotionEvent.ACTION_MOVE:
+                if (!isTracking) return false;
+                gestureDetector.onTouchEvent(event);
                 float distanceX = Math.abs(event.getRawX() - startX);
                 float distanceY = Math.abs(event.getRawY() - startY);
                 if (isDragging || distanceX > touchSlop || distanceY > touchSlop) {
@@ -224,9 +262,14 @@ public class PerformanceHUD extends FrameLayout {
                 return true;
             case MotionEvent.ACTION_UP:
             case MotionEvent.ACTION_CANCEL:
-                boolean wasDragging = isDragging;
+                if (!isTracking) return false;
+                gestureDetector.onTouchEvent(event);
+                if (isDragging) {
+                    savePosition();
+                }
                 isDragging = false;
-                return true; // Always consume UP if we handled DOWN
+                isTracking = false;
+                return true;
         }
         return false;
     }
@@ -284,7 +327,7 @@ public class PerformanceHUD extends FrameLayout {
             }
         }
 
-        tvCPU.setText(String.format(Locale.ENGLISH, "CPU: %d%%", getProcessCpuUsage()));
+        tvCPU.setText(String.format(Locale.ENGLISH, "CPU: %d%%", getMaxCoreCpuUsage()));
         tvCPUTemp.setText(String.format(Locale.ENGLISH, "(%d°C)", getCpuTemp()));
         tvGPU.setText(String.format(Locale.ENGLISH, "GPU: %d%%", getGpuUsage()));
         tvGPUTemp.setText(String.format(Locale.ENGLISH, "(%d°C)", getGpuTemp()));
@@ -318,55 +361,61 @@ public class PerformanceHUD extends FrameLayout {
     }
 
     /**
-     * Gets CPU usage for the current app process (pid) and all its child threads/processes.
-     * Reads /proc/self/stat for utime+stime (process CPU ticks) and computes percentage
-     * relative to wall-clock time and number of CPU cores.
+     * Reads /proc/stat per-core lines (cpu0, cpu1, ...) and returns the highest
+     * single-core usage percentage since the last call.
      */
-    private int getProcessCpuUsage() {
-        try (BufferedReader reader = new BufferedReader(new FileReader("/proc/self/stat"))) {
-            String line = reader.readLine();
-            if (line == null) return 0;
+    private int getMaxCoreCpuUsage() {
+        int maxUsage = 0;
+        try (BufferedReader reader = new BufferedReader(new FileReader("/proc/stat"))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                if (!line.startsWith("cpu")) continue;
+                // Skip the aggregate "cpu " line (has a space after "cpu")
+                if (line.startsWith("cpu ")) continue;
 
-            // /proc/self/stat format: pid (comm) state ppid ... field14=utime field15=stime field16=cutime field17=cstime
-            // We need to skip past the (comm) which may contain spaces
-            int commEnd = line.lastIndexOf(')');
-            if (commEnd < 0) return 0;
-            String afterComm = line.substring(commEnd + 2); // skip ") "
-            String[] parts = afterComm.split("\\s+");
-            // parts[0]=state, parts[1]=ppid, ... parts[11]=utime(field14), parts[12]=stime(field15)
-            // parts[13]=cutime(field16), parts[14]=cstime(field17) — child process times
-            if (parts.length < 15) return 0;
+                // Parse "cpuN user nice system idle iowait irq softirq steal ..."
+                String[] parts = line.trim().split("\\s+");
+                if (parts.length < 5) continue;
 
-            long utime = Long.parseLong(parts[11]);   // user mode ticks
-            long stime = Long.parseLong(parts[12]);    // kernel mode ticks
-            long cutime = Long.parseLong(parts[13]);   // children user ticks
-            long cstime = Long.parseLong(parts[14]);   // children kernel ticks
-            long procCpuTime = utime + stime + cutime + cstime;
+                // Extract core index from "cpuN"
+                int coreIndex;
+                try {
+                    coreIndex = Integer.parseInt(parts[0].substring(3));
+                } catch (NumberFormatException e) {
+                    continue;
+                }
+                if (coreIndex >= numCpuCores) continue;
 
-            long nowMs = System.currentTimeMillis();
+                long user = Long.parseLong(parts[1]);
+                long nice = Long.parseLong(parts[2]);
+                long system = Long.parseLong(parts[3]);
+                long idle = Long.parseLong(parts[4]);
+                long iowait = parts.length > 5 ? Long.parseLong(parts[5]) : 0;
+                long irq = parts.length > 6 ? Long.parseLong(parts[6]) : 0;
+                long softirq = parts.length > 7 ? Long.parseLong(parts[7]) : 0;
+                long steal = parts.length > 8 ? Long.parseLong(parts[8]) : 0;
 
-            if (lastProcCpuTime == 0) {
-                lastProcCpuTime = procCpuTime;
-                lastWallTime = nowMs;
-                return 0;
+                long totalTime = user + nice + system + idle + iowait + irq + softirq + steal;
+                long idleTime = idle + iowait;
+
+                long prevTotal = lastCoreTotals[coreIndex];
+                long prevIdle = lastCoreIdles[coreIndex];
+                lastCoreTotals[coreIndex] = totalTime;
+                lastCoreIdles[coreIndex] = idleTime;
+
+                if (prevTotal == 0) continue; // first reading, skip
+
+                long totalDiff = totalTime - prevTotal;
+                long idleDiff = idleTime - prevIdle;
+
+                if (totalDiff <= 0) continue;
+
+                int usage = (int) ((totalDiff - idleDiff) * 100 / totalDiff);
+                usage = Math.max(0, Math.min(100, usage));
+                if (usage > maxUsage) maxUsage = usage;
             }
-
-            long cpuDiff = procCpuTime - lastProcCpuTime;
-            long wallDiffMs = nowMs - lastWallTime;
-            lastProcCpuTime = procCpuTime;
-            lastWallTime = nowMs;
-
-            if (wallDiffMs <= 0) return 0;
-
-            // Clock ticks per second (usually 100 on Linux/Android)
-            long ticksPerSec = 100; // sysconf(_SC_CLK_TCK) is typically 100
-
-            // CPU% = (cpuDiff / ticksPerSec) / (wallDiffMs / 1000) * 100 / numCores
-            // Simplified: cpuDiff * 1000 * 100 / (ticksPerSec * wallDiffMs * numCores)
-            int usage = (int) (cpuDiff * 1000 / (ticksPerSec * wallDiffMs / 100));
-            return Math.max(0, Math.min(100, usage));
         } catch (Exception e) {}
-        return 0;
+        return maxUsage;
     }
 
     private int getGpuUsage() {

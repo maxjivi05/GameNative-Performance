@@ -24,10 +24,12 @@ object ManifestInstaller {
         context: Context,
         entry: ManifestEntry,
         onProgress: (Float) -> Unit = {},
+        onStage: (String) -> Unit = {},
     ): ManifestInstallResult = withContext(Dispatchers.IO) {
         var destFile: File? = null
         try {
             destFile = File(context.cacheDir, entry.url.substringAfterLast("/"))
+            onStage("Downloading")
             SteamService.fetchFile(entry.url, destFile, onProgress)
             val uri = Uri.fromFile(destFile)
             val name = AdrenotoolsManager(context).installDriver(uri)
@@ -65,13 +67,14 @@ object ManifestInstaller {
         isDriver: Boolean,
         contentType: ContentProfile.ContentType? = null,
         onProgress: (Float) -> Unit = {},
+        onStage: (String) -> Unit = {},
     ): ManifestInstallResult {
         return if (isDriver) {
-            downloadAndInstallDriver(context, entry, onProgress)
+            downloadAndInstallDriver(context, entry, onProgress, onStage)
         } else {
             val type = contentType
                 ?: throw IllegalArgumentException("contentType must be provided when installing manifest content")
-            downloadAndInstallContent(context, entry, type, onProgress)
+            downloadAndInstallContent(context, entry, type, onProgress, onStage)
         }
     }
 
@@ -80,14 +83,17 @@ object ManifestInstaller {
         entry: ManifestEntry,
         expectedType: ContentProfile.ContentType,
         onProgress: (Float) -> Unit = {},
+        onStage: (String) -> Unit = {},
     ): ManifestInstallResult = withContext(Dispatchers.IO) {
         var destFile: File? = null
         try {
             destFile = File(context.cacheDir, entry.url.substringAfterLast("/"))
+            onStage("Downloading")
             SteamService.fetchFile(entry.url, destFile, onProgress)
             val uri = Uri.fromFile(destFile)
             val mgr = ContentsManager(context)
 
+            onStage("Validating")
             val (profile, fail, error) = extractContent(mgr, uri)
             if (profile == null) {
                 return@withContext ManifestInstallResult(
@@ -96,6 +102,7 @@ object ManifestInstaller {
                 )
             }
 
+            onStage("Installing")
             val installed = finishInstall(mgr, profile)
             if (!installed) {
                 return@withContext ManifestInstallResult(

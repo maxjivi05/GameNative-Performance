@@ -591,7 +591,11 @@ fun XServerScreen(
                             if (performanceHUD == null) {
                                 performanceHUD = PerformanceHUD(context)
                                 performanceHUD?.let { hud ->
-                                    targetLayout?.addView(hud)
+                                    val lp = FrameLayout.LayoutParams(
+                                        FrameLayout.LayoutParams.WRAP_CONTENT,
+                                        FrameLayout.LayoutParams.WRAP_CONTENT
+                                    )
+                                    targetLayout?.addView(hud, lp)
                                     hud.bringToFront()
                                 }
                             } else {

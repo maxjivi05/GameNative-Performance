@@ -1162,7 +1162,8 @@ fun preLaunchApp(
             setLoadingProgress(0f)
             ManifestInstaller.installManifestEntry(
                 context, request.entry, request.isDriver, request.contentType,
-            ) { progress -> setLoadingProgress(progress) }
+                onProgress = { progress -> setLoadingProgress(progress) },
+            )
         }
 
         val loadingMessage = if (container.containerVariant.equals(Container.GLIBC)) {

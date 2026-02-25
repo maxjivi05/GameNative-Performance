@@ -242,26 +242,33 @@ private fun formatRelativeTime(isoDate: String): String {
 // Used to match installed profiles to the exact release asset.
 private fun assetUniqueKey(fileName: String): String = fileName.removeSuffix(".wcp")
 
-// Checks whether an asset is installed by matching its unique key against
-// installed profile verNames. Uses bidirectional contains to handle cases
-// where ContentsManager abbreviates the verName.
+// Exact match: the installed verName must correspond to this specific asset key.
+// Handles optional prefix (e.g. "GN-proton-10.0-arm64ec-2" matches "proton-10.0-arm64ec-2").
+// Matching is strict: only exact equality or a prefix- dash-boundary match where the
+// shorter string is the FULL family+build key, not a partial substring.
+private fun assetKeyMatchesExact(verName: String, key: String): Boolean {
+    val v = verName.lowercase()
+    val k = key.lowercase()
+    if (v == k) return true
+    // Handle prefixed verNames like "GN-proton-10.0-arm64ec-2" matching key "proton-10.0-arm64ec-2"
+    // The shorter one must match at a dash boundary of the longer one, AND their
+    // wineFamily must be the same (prevents "proton-10.0-arm64ec" matching "proton-10.0-arm64ec-4")
+    if (v.endsWith("-$k") || k.endsWith("-$v")) {
+        return wineFamily(v) == wineFamily(k)
+    }
+    return false
+}
+
 private fun isAssetInstalled(assetFileName: String, profiles: List<ContentProfile>): Boolean {
     val key = assetUniqueKey(assetFileName)
-    return profiles.any { prof ->
-        prof.verName.equals(key, ignoreCase = true) ||
-        prof.verName.contains(key, ignoreCase = true) ||
-        key.contains(prof.verName, ignoreCase = true)
-    }
+    return profiles.any { prof -> assetKeyMatchesExact(prof.verName, key) }
 }
 
 private fun findInstalledProfile(assetFileName: String, profiles: List<ContentProfile>): ContentProfile? {
     val key = assetUniqueKey(assetFileName)
-    return profiles.find { prof ->
-        prof.verName.equals(key, ignoreCase = true) ||
-        prof.verName.contains(key, ignoreCase = true) ||
-        key.contains(prof.verName, ignoreCase = true)
-    }
+    return profiles.find { prof -> assetKeyMatchesExact(prof.verName, key) }
 }
+
 
 private const val XNICK_REPO_URL = "https://github.com/Xnick417x/Winlator-Bionic-Nightly-wcp"
 private const val XNICK_API_URL  =
@@ -1335,10 +1342,17 @@ private data class WineReleaseItem(
     val releaseDate: String = ""
 )
 
-// Detect wine vs proton family from filename for upgrade-grouping
+// Extract version-specific family from filename for upgrade-grouping.
+// e.g. "proton-10.0-arm64ec-2.wcp" -> "proton-10.0-arm64ec"
+//      "wine-9.0-arm64ec.wcp"       -> "wine-9.0-arm64ec"
 private fun wineFamily(fileName: String): String {
-    val lower = fileName.lowercase()
-    return if (lower.contains("proton")) "proton" else "wine"
+    val base = fileName.removeSuffix(".wcp")
+    // Strip trailing "-N" segment if it's purely numeric (build number)
+    val lastDash = base.lastIndexOf('-')
+    if (lastDash > 0 && base.substring(lastDash + 1).all { it.isDigit() }) {
+        return base.substring(0, lastDash)
+    }
+    return base
 }
 
 @Composable
@@ -1374,7 +1388,7 @@ private fun WineProtonDetailScreen(onBack: () -> Unit) {
                 // 1. GameNative proton-wine GitHub releases (with dates)
                 val gnProtonItems = try {
                     val req = Request.Builder()
-                        .url("https://api.github.com/repos/GameNative/proton-wine/releases?per_page=50")
+                        .url("https://api.github.com/repos/GameNative/proton-wine/releases?per_page=100")
                         .header("Accept", "application/vnd.github.v3+json").build()
                     Net.http.newCall(req).execute().use { resp ->
                         if (!resp.isSuccessful) return@use emptyList()
@@ -1412,9 +1426,11 @@ private fun WineProtonDetailScreen(onBack: () -> Unit) {
                     }
                 } catch (e: Exception) { Timber.e(e, "Nick GameNative fetch error"); emptyList() }
 
-                // 3. Merge, deduplicate by fileName, sort newest first
+                // 3. Merge, deduplicate by download URL (same file from same release),
+                // but keep entries with same fileName but different dates (different uploads).
+                // Sort newest first.
                 val combined = (gnProtonItems + nickGameNativeItems)
-                    .distinctBy { it.fileName }
+                    .distinctBy { it.url ?: "${it.fileName}|${it.releaseDate}" }
                     .sortedWith { a, b ->
                         if (a.releaseDate.isNotEmpty() && b.releaseDate.isNotEmpty())
                             b.releaseDate.compareTo(a.releaseDate)
@@ -1600,8 +1616,11 @@ private fun WineProtonDetailScreen(onBack: () -> Unit) {
                 }
                 else -> {
                     // ── Installed section ─────────────────────────────────────
-                    val matchedInstalled = installedProfiles.filter { prof ->
-                        wineReleases.any { isAssetInstalled(it.fileName, listOf(prof)) }
+                    // Match each installed profile to its exact release item (by fileName)
+                    // so we can show the correct release date.
+                    val matchedInstalled = installedProfiles.mapNotNull { prof ->
+                        val release = wineReleases.find { isAssetInstalled(it.fileName, listOf(prof)) }
+                        if (release != null) prof to release else null
                     }
                     val unmatchedInstalled = installedProfiles.filter { prof ->
                         wineReleases.none { isAssetInstalled(it.fileName, listOf(prof)) }
@@ -1612,22 +1631,8 @@ private fun WineProtonDetailScreen(onBack: () -> Unit) {
                         Spacer(Modifier.height(8.dp))
 
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            matchedInstalled.sortedByDescending { prof ->
-                                wineReleases.find { isAssetInstalled(it.fileName, listOf(prof)) }?.releaseDate ?: ""
-                            }.forEach { prof ->
-                                val matchedRelease = wineReleases.find { isAssetInstalled(it.fileName, listOf(prof)) }
-                                // Check for newer version in same family
-                                val family = matchedRelease?.let { wineFamily(it.fileName) } ?: wineFamily(prof.verName)
-                                val newerRelease = wineReleases
-                                    .filter { wineFamily(it.fileName) == family }
-                                    .firstOrNull { candidate ->
-                                        matchedRelease != null &&
-                                        candidate.releaseDate.isNotEmpty() &&
-                                        matchedRelease.releaseDate.isNotEmpty() &&
-                                        candidate.releaseDate > matchedRelease.releaseDate &&
-                                        !isAssetInstalled(candidate.fileName, installedProfiles)
-                                    }
-
+                            matchedInstalled.sortedByDescending { (_, rel) -> rel.releaseDate }
+                                .forEach { (prof, matchedRelease) ->
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -1640,7 +1645,7 @@ private fun WineProtonDetailScreen(onBack: () -> Unit) {
                                 ) {
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(prof.verName, fontWeight = FontWeight.SemiBold)
-                                        if (matchedRelease?.releaseDate?.isNotEmpty() == true) {
+                                        if (matchedRelease.releaseDate.isNotEmpty()) {
                                             Text(
                                                 "Released ${formatRelativeTime(matchedRelease.releaseDate)}",
                                                 style = MaterialTheme.typography.bodySmall,
@@ -1648,22 +1653,13 @@ private fun WineProtonDetailScreen(onBack: () -> Unit) {
                                             )
                                         }
                                     }
-                                    if (newerRelease != null) {
-                                        TextButton(
-                                            onClick = { if (!isBusy) upgradeInstall(prof, newerRelease) },
-                                            enabled = !isBusy,
-                                            colors = ButtonDefaults.textButtonColors(
-                                                contentColor = MaterialTheme.colorScheme.primary,
-                                            ),
-                                        ) { Text("Upgrade") }
-                                    }
                                     IconButton(onClick = { deleteTarget = prof }) {
                                         Icon(Icons.Default.Delete, "Uninstall", tint = MaterialTheme.colorScheme.error)
                                     }
                                 }
                             }
 
-                            // Unmatched installed (custom/local)
+                            // Unmatched installed (custom/local imports)
                             unmatchedInstalled.forEach { prof ->
                                 Row(
                                     modifier = Modifier
@@ -1693,6 +1689,18 @@ private fun WineProtonDetailScreen(onBack: () -> Unit) {
                     }
 
                     // ── Available section ─────────────────────────────────────
+                    // Show ALL releases. Installed ones that have a newer version
+                    // of the same family get an "Upgrade" button. Non-installed get "Install".
+                    // Exact-installed items without a newer version are skipped (already in Installed).
+                    val installedFamilyDates = matchedInstalled.associate { (_, rel) ->
+                        wineFamily(rel.fileName) to rel.releaseDate
+                    }
+                    val installedFamilyProfiles = matchedInstalled.associate { (prof, rel) ->
+                        wineFamily(rel.fileName) to prof
+                    }
+
+                    // Available = all releases except the exact ones already installed
+                    // (those appear in the Installed section above)
                     val available = wineReleases.filter { item ->
                         !isAssetInstalled(item.fileName, installedProfiles)
                     }
@@ -1702,6 +1710,15 @@ private fun WineProtonDetailScreen(onBack: () -> Unit) {
                         Spacer(Modifier.height(8.dp))
                         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             available.forEach { item ->
+                                val itemFamily = wineFamily(item.fileName)
+                                val installedDate = installedFamilyDates[itemFamily]
+                                // This is an upgrade if same family is installed and this release is newer
+                                val isUpgrade = installedDate != null &&
+                                    item.releaseDate.isNotEmpty() &&
+                                    installedDate.isNotEmpty() &&
+                                    item.releaseDate > installedDate
+                                val oldProfile = if (isUpgrade) installedFamilyProfiles[itemFamily] else null
+
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -1722,10 +1739,20 @@ private fun WineProtonDetailScreen(onBack: () -> Unit) {
                                             )
                                         }
                                     }
-                                    TextButton(
-                                        onClick = { if (!isBusy) downloadAndInstall(item) },
-                                        enabled = !isBusy,
-                                    ) { Text("Install") }
+                                    if (isUpgrade && oldProfile != null) {
+                                        TextButton(
+                                            onClick = { if (!isBusy) upgradeInstall(oldProfile, item) },
+                                            enabled = !isBusy,
+                                            colors = ButtonDefaults.textButtonColors(
+                                                contentColor = MaterialTheme.colorScheme.primary,
+                                            ),
+                                        ) { Text("Upgrade") }
+                                    } else {
+                                        TextButton(
+                                            onClick = { if (!isBusy) downloadAndInstall(item) },
+                                            enabled = !isBusy,
+                                        ) { Text("Install") }
+                                    }
                                 }
                             }
                         }

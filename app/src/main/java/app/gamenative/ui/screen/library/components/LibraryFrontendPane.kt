@@ -70,7 +70,14 @@ import java.io.File
 import android.hardware.input.InputManager
 import android.content.Context
 import android.view.InputDevice
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.winlator.inputcontrols.ExternalController
 
 private enum class FrontendTab(val label: String) {
@@ -169,6 +176,138 @@ private fun ControllerBadge(
 }
 
 @Composable
+private fun FrontendInstallDialog(
+    item: LibraryItem,
+    controllerType: ControllerType,
+    onInstall: () -> Unit,
+    onCustomPath: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var focusedButton by remember { mutableIntStateOf(0) } // 0=Install, 1=Custom Path
+
+    // Controller input for dialog
+    DisposableEffect(Unit) {
+        val keyListener: (AndroidEvent.KeyEvent) -> Boolean = { event ->
+            if (event.event.action == KeyEvent.ACTION_DOWN) {
+                when (event.event.keyCode) {
+                    KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_UP -> {
+                        focusedButton = 0; true
+                    }
+                    KeyEvent.KEYCODE_DPAD_RIGHT, KeyEvent.KEYCODE_DPAD_DOWN -> {
+                        focusedButton = 1; true
+                    }
+                    KeyEvent.KEYCODE_BUTTON_A -> {
+                        if (focusedButton == 0) onInstall() else onCustomPath()
+                        true
+                    }
+                    KeyEvent.KEYCODE_BUTTON_B -> { onDismiss(); true }
+                    else -> false
+                }
+            } else false
+        }
+        val motionListener: (AndroidEvent.MotionEvent) -> Boolean = { motionEvent ->
+            val event = motionEvent.event
+            if (event is android.view.MotionEvent) {
+                val axisX = event.getAxisValue(android.view.MotionEvent.AXIS_X)
+                if (axisX < -0.5f) { focusedButton = 0; true }
+                else if (axisX > 0.5f) { focusedButton = 1; true }
+                else false
+            } else false
+        }
+        PluviaApp.events.on<AndroidEvent.KeyEvent, Boolean>(keyListener)
+        PluviaApp.events.on<AndroidEvent.MotionEvent, Boolean>(motionListener)
+        onDispose {
+            PluviaApp.events.off<AndroidEvent.KeyEvent, Boolean>(keyListener)
+            PluviaApp.events.off<AndroidEvent.MotionEvent, Boolean>(motionListener)
+        }
+    }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Surface(
+            shape = RoundedCornerShape(24.dp),
+            color = Color(0xFF1A1A2E),
+            tonalElevation = 8.dp,
+            modifier = Modifier.width(340.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = item.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = "This game is not installed",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.White.copy(alpha = 0.6f)
+                )
+                Spacer(Modifier.height(20.dp))
+
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    val installBorder = if (focusedButton == 0) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null
+                    val customBorder = if (focusedButton == 1) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null
+
+                    Button(
+                        onClick = onInstall,
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp),
+                        border = installBorder,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary
+                        )
+                    ) {
+                        Text("Install", fontWeight = FontWeight.SemiBold)
+                    }
+                    OutlinedButton(
+                        onClick = onCustomPath,
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp),
+                        border = customBorder ?: BorderStroke(1.dp, Color.White.copy(alpha = 0.3f)),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = Color.White
+                        )
+                    ) {
+                        Text("Custom Path", fontWeight = FontWeight.SemiBold)
+                    }
+                }
+
+                if (controllerType != ControllerType.NONE) {
+                    Spacer(Modifier.height(12.dp))
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Spacer(Modifier.weight(1f))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            ControllerBadge("A", controllerType)
+                            Text("Select", color = Color.White.copy(alpha = 0.7f), fontSize = 11.sp, modifier = Modifier.padding(start = 4.dp))
+                        }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            ControllerBadge("B", controllerType)
+                            Text("Cancel", color = Color.White.copy(alpha = 0.7f), fontSize = 11.sp, modifier = Modifier.padding(start = 4.dp))
+                        }
+                        Spacer(Modifier.weight(1f))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 internal fun LibraryFrontendPane(
     state: LibraryState,
     onNavigate: (String) -> Unit,
@@ -190,6 +329,18 @@ internal fun LibraryFrontendPane(
     val focusManager = LocalFocusManager.current
 
     var connectedControllerType by remember { mutableStateOf(ControllerType.NONE) }
+    var installDialogItem by remember { mutableStateOf<LibraryItem?>(null) }
+    var storefrontHeaderOffsetY by remember { mutableFloatStateOf(0f) }
+
+    // Helper: handle game click — if uninstalled on a storefront tab, show install dialog
+    val handleGameClick: (LibraryItem) -> Unit = { item ->
+        val isLibraryTab = tabs[selectedTabIdx] == FrontendTab.LIBRARY
+        if (!isLibraryTab && !item.isInstalled) {
+            installDialogItem = item
+        } else {
+            onClickPlay(item.appId, false)
+        }
+    }
 
     // Detect connected controller
     LaunchedEffect(Unit) {
@@ -306,7 +457,7 @@ internal fun LibraryFrontendPane(
                         }
                         KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_BUTTON_X -> { // X (PS) / A (Xbox) or Square (PS) / X (Xbox)
                             if (event.event.keyCode == KeyEvent.KEYCODE_BUTTON_A) {
-                                focusedItem?.let { onClickPlay(it.appId, false) }
+                                focusedItem?.let { handleGameClick(it) }
                                 true
                             } else {
                                 focusedItem?.let { onEdit(it) }
@@ -370,6 +521,7 @@ internal fun LibraryFrontendPane(
 
     LaunchedEffect(selectedTabIdx) {
         pagerState.scrollToPage(0)
+        storefrontHeaderOffsetY = 0f // Reset header visibility on tab switch
     }
 
     Box(modifier = Modifier.fillMaxSize().background(Color(0xFF0A0A0A))) {
@@ -403,13 +555,21 @@ internal fun LibraryFrontendPane(
                 )
         )
 
-        // HEADER
+        // HEADER — slides up/down on storefront tabs when scrolling
+        val isLibraryTabHeader = tabs[selectedTabIdx] == FrontendTab.LIBRARY
+        val isStorefrontTab = !isLibraryTabHeader && !isCustomTab
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 24.dp, vertical = 16.dp)
                 .align(Alignment.TopCenter)
-                .zIndex(2f),
+                .zIndex(2f)
+                .graphicsLayer {
+                    if (isStorefrontTab) {
+                        translationY = storefrontHeaderOffsetY
+                        alpha = ((storefrontHeaderOffsetY + 200f) / 200f).coerceIn(0f, 1f)
+                    }
+                },
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Top Left Source Icon
@@ -586,65 +746,160 @@ internal fun LibraryFrontendPane(
             }
         }
 
-        // MAIN CONTENT: Pager
+        // MAIN CONTENT: Library tab uses HorizontalPager, Storefront tabs use 4-column grid
+        val isLibraryTab = tabs[selectedTabIdx] == FrontendTab.LIBRARY
         val configuration = LocalConfiguration.current
         val screenWidth = configuration.screenWidthDp.dp
-        val pageWidth = 150.dp
-        val horizontalPadding = (screenWidth - pageWidth) / 2
 
-        HorizontalPager(
-            state = pagerState,
-            pageSize = PageSize.Fixed(pageWidth),
-            modifier = Modifier.fillMaxWidth().height(220.dp).align(Alignment.Center),
-            contentPadding = PaddingValues(horizontal = horizontalPadding),
-            pageSpacing = 0.dp,
-            verticalAlignment = Alignment.CenterVertically
-        ) { page ->
-            val isFocused = page == pagerState.currentPage
-            val scale by animateFloatAsState(
-                targetValue = if (isFocused) 1.15f else 0.85f,
-                animationSpec = tween(300),
-                label = "cardScale"
-            )
+        if (isLibraryTab || isCustomTab) {
+            // Library / Custom: Horizontal pager carousel
+            val pageWidth = 150.dp
+            val horizontalPadding = (screenWidth - pageWidth) / 2
 
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                if (isCustomTab && page == tabItems.size) {
-                    Box(
-                        modifier = Modifier
-                            .scale(scale)
-                            .width(130.dp)
-                            .height(150.dp)
-                            .shadow(if (isFocused) 16.dp else 4.dp, RoundedCornerShape(16.dp), spotColor = Color.Black)
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(Color.White.copy(alpha = 0.05f))
-                            .border(BorderStroke(2.dp, Color.White.copy(alpha = 0.2f)), RoundedCornerShape(16.dp))
-                            .clickable { onAddCustomGame() },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(32.dp), tint = Color.White)
-                            Text("Add Game", color = Color.White, style = MaterialTheme.typography.labelSmall)
+            HorizontalPager(
+                state = pagerState,
+                pageSize = PageSize.Fixed(pageWidth),
+                modifier = Modifier.fillMaxWidth().height(220.dp).align(Alignment.Center),
+                contentPadding = PaddingValues(horizontal = horizontalPadding),
+                pageSpacing = 0.dp,
+                verticalAlignment = Alignment.CenterVertically
+            ) { page ->
+                val isFocused = page == pagerState.currentPage
+                val scale by animateFloatAsState(
+                    targetValue = if (isFocused) 1.15f else 0.85f,
+                    animationSpec = tween(300),
+                    label = "cardScale"
+                )
+
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (isCustomTab && page == tabItems.size) {
+                        Box(
+                            modifier = Modifier
+                                .scale(scale)
+                                .width(130.dp)
+                                .height(150.dp)
+                                .shadow(if (isFocused) 16.dp else 4.dp, RoundedCornerShape(16.dp), spotColor = Color.Black)
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(Color.White.copy(alpha = 0.05f))
+                                .border(BorderStroke(2.dp, Color.White.copy(alpha = 0.2f)), RoundedCornerShape(16.dp))
+                                .clickable { onAddCustomGame() },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(32.dp), tint = Color.White)
+                                Text("Add Game", color = Color.White, style = MaterialTheme.typography.labelSmall)
+                            }
+                        }
+                    } else if (page < tabItems.size) {
+                        val item = tabItems[page]
+                        val artUrl = rememberFrontendArtUrl(item, isHero = false)
+
+                        Box(
+                            modifier = Modifier
+                                .scale(scale)
+                                .width(130.dp)
+                                .height(150.dp)
+                                .shadow(if (isFocused) 24.dp else 8.dp, RoundedCornerShape(16.dp), ambientColor = Color.Black, spotColor = Color.Black)
+                                .clip(RoundedCornerShape(16.dp))
+                                .clickable { handleGameClick(item) }
+                                .border(
+                                    if (isFocused) BorderStroke(3.dp, MaterialTheme.colorScheme.primary)
+                                    else BorderStroke(1.dp, Color.White.copy(alpha = 0.15f)),
+                                    RoundedCornerShape(16.dp)
+                                )
+                        ) {
+                            if (artUrl.isNotEmpty()) {
+                                CoilImage(
+                                    modifier = Modifier.fillMaxSize(),
+                                    imageModel = { artUrl },
+                                    imageOptions = ImageOptions(contentScale = ContentScale.Crop),
+                                    failure = {
+                                        Box(Modifier.fillMaxSize().background(Color.DarkGray), contentAlignment = Alignment.Center) {
+                                            Text(item.name.take(1), fontSize = 24.sp, color = Color.White)
+                                        }
+                                    }
+                                )
+                            } else {
+                                Box(Modifier.fillMaxSize().background(Color.DarkGray), contentAlignment = Alignment.Center) {
+                                    Text(item.name.take(1), fontSize = 24.sp, color = Color.White)
+                                }
+                            }
+
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .align(Alignment.BottomCenter)
+                                    .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(0.9f))))
+                                    .padding(8.dp)
+                            ) {
+                                Text(
+                                    item.name,
+                                    color = Color.White,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 10.sp
+                                )
+                            }
                         }
                     }
-                } else if (page < tabItems.size) {
-                    val item = tabItems[page]
-                    val artUrl = rememberFrontendArtUrl(item, isHero = false)
+                }
+            }
+        } else {
+            // Storefront tabs (Steam, Epic, GOG, Amazon): 4-column vertical grid
+            val gridState = rememberLazyGridState()
 
+            // Track scroll direction for header auto-hide
+            var headerVisible by remember { mutableStateOf(true) }
+            var previousScrollOffset by remember { mutableIntStateOf(0) }
+            var previousFirstVisibleItem by remember { mutableIntStateOf(0) }
+
+            LaunchedEffect(gridState.firstVisibleItemIndex, gridState.firstVisibleItemScrollOffset) {
+                val currentFirst = gridState.firstVisibleItemIndex
+                val currentOffset = gridState.firstVisibleItemScrollOffset
+                val scrollingDown = currentFirst > previousFirstVisibleItem ||
+                    (currentFirst == previousFirstVisibleItem && currentOffset > previousScrollOffset + 10)
+                val scrollingUp = currentFirst < previousFirstVisibleItem ||
+                    (currentFirst == previousFirstVisibleItem && currentOffset < previousScrollOffset - 10)
+                if (scrollingDown && headerVisible) headerVisible = false
+                if (scrollingUp && !headerVisible) headerVisible = true
+                if (currentFirst == 0 && currentOffset == 0) headerVisible = true
+                previousFirstVisibleItem = currentFirst
+                previousScrollOffset = currentOffset
+            }
+
+            // Animate header offset
+            val headerOffsetY by animateFloatAsState(
+                targetValue = if (headerVisible) 0f else -200f,
+                animationSpec = tween(250),
+                label = "headerOffset"
+            )
+
+            // Apply header visibility via graphicsLayer on the header Row
+            // We do this by wrapping the grid to fill the space and overlaying the header
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(4),
+                state = gridState,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+                contentPadding = PaddingValues(top = 80.dp, bottom = 24.dp)
+            ) {
+                items(items = tabItems, key = { it.appId }) { item ->
+                    val artUrl = rememberFrontendArtUrl(item, isHero = false)
                     Box(
                         modifier = Modifier
-                            .scale(scale)
-                            .width(130.dp)
-                            .height(150.dp)
-                            .shadow(if (isFocused) 24.dp else 8.dp, RoundedCornerShape(16.dp), ambientColor = Color.Black, spotColor = Color.Black)
-                            .clip(RoundedCornerShape(16.dp))
-                            .clickable { onClickPlay(item.appId, false) }
+                            .aspectRatio(1.25f) // landscape-ish, ~50% shorter than 0.67
+                            .clip(RoundedCornerShape(10.dp))
+                            .clickable { handleGameClick(item) }
                             .border(
-                                if (isFocused) BorderStroke(3.dp, MaterialTheme.colorScheme.primary) 
-                                else BorderStroke(1.dp, Color.White.copy(alpha = 0.15f)),
-                                RoundedCornerShape(16.dp)
+                                BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)),
+                                RoundedCornerShape(10.dp)
                             )
                     ) {
                         if (artUrl.isNotEmpty()) {
@@ -653,40 +908,59 @@ internal fun LibraryFrontendPane(
                                 imageModel = { artUrl },
                                 imageOptions = ImageOptions(contentScale = ContentScale.Crop),
                                 failure = {
-                                    Box(Modifier.fillMaxSize().background(Color.DarkGray), contentAlignment = Alignment.Center) {
-                                        Text(item.name.take(1), fontSize = 24.sp, color = Color.White)
+                                    Box(Modifier.fillMaxSize().background(Color(0xFF2A2A3E)), contentAlignment = Alignment.Center) {
+                                        Text(item.name.take(1), fontSize = 18.sp, color = Color.White, fontWeight = FontWeight.Bold)
                                     }
                                 }
                             )
                         } else {
-                            Box(Modifier.fillMaxSize().background(Color.DarkGray), contentAlignment = Alignment.Center) {
-                                Text(item.name.take(1), fontSize = 24.sp, color = Color.White)
+                            Box(Modifier.fillMaxSize().background(Color(0xFF2A2A3E)), contentAlignment = Alignment.Center) {
+                                Text(item.name.take(1), fontSize = 18.sp, color = Color.White, fontWeight = FontWeight.Bold)
                             }
                         }
 
+                        // Gradient overlay with game name
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .align(Alignment.BottomCenter)
-                                .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(0.9f))))
-                                .padding(8.dp)
+                                .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(0.85f))))
+                                .padding(horizontal = 6.dp, vertical = 4.dp)
                         ) {
                             Text(
                                 item.name,
                                 color = Color.White,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 10.sp
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 9.sp,
+                                lineHeight = 11.sp
+                            )
+                        }
+
+                        // Install status indicator
+                        if (!item.isInstalled) {
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .padding(4.dp)
+                                    .size(7.dp)
+                                    .background(Color.White.copy(alpha = 0.4f), CircleShape)
                             )
                         }
                     }
                 }
             }
+
+            // Re-show header state for the HEADER Row above (we'll use graphicsLayer)
+            // Store headerOffsetY in a key that the header can read
+            SideEffect {
+                storefrontHeaderOffsetY = headerOffsetY
+            }
         }
 
-        // FOOTER
-        if (focusedItem != null) {
+        // FOOTER — only show on Library/Custom tabs (storefront tabs have no play time)
+        if (focusedItem != null && (isLibraryTab || isCustomTab)) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -739,6 +1013,25 @@ internal fun LibraryFrontendPane(
                     }
                 }
             }
+        }
+
+        // Install dialog for uninstalled games on storefront tabs
+        if (installDialogItem != null) {
+            FrontendInstallDialog(
+                item = installDialogItem!!,
+                controllerType = connectedControllerType,
+                onInstall = {
+                    val item = installDialogItem!!
+                    installDialogItem = null
+                    onClickPlay(item.appId, false)
+                },
+                onCustomPath = {
+                    val item = installDialogItem!!
+                    installDialogItem = null
+                    onEdit(item)
+                },
+                onDismiss = { installDialogItem = null }
+            )
         }
     }
 }
