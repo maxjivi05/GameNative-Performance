@@ -360,24 +360,53 @@ public class PerformanceHUD extends FrameLayout {
         return 0;
     }
 
+    // Aggregate CPU fallback tracking
+    private long lastAggregateCpuTotal = 0;
+    private long lastAggregateCpuIdle = 0;
+
     /**
      * Reads /proc/stat per-core lines (cpu0, cpu1, ...) and returns the highest
      * single-core usage percentage since the last call.
+     * Falls back to aggregate CPU line, then to frequency-based estimation.
      */
     private int getMaxCoreCpuUsage() {
         int maxUsage = 0;
+        int aggregateUsage = 0;
+        boolean gotPerCore = false;
+
         try (BufferedReader reader = new BufferedReader(new FileReader("/proc/stat"))) {
             String line;
             while ((line = reader.readLine()) != null) {
                 if (!line.startsWith("cpu")) continue;
-                // Skip the aggregate "cpu " line (has a space after "cpu")
-                if (line.startsWith("cpu ")) continue;
 
-                // Parse "cpuN user nice system idle iowait irq softirq steal ..."
                 String[] parts = line.trim().split("\\s+");
                 if (parts.length < 5) continue;
 
-                // Extract core index from "cpuN"
+                // Aggregate "cpu " line — use as fallback
+                if (line.startsWith("cpu ") && !line.startsWith("cpu0")) {
+                    long user = Long.parseLong(parts[1]);
+                    long nice = Long.parseLong(parts[2]);
+                    long system = Long.parseLong(parts[3]);
+                    long idle = Long.parseLong(parts[4]);
+                    long iowait = parts.length > 5 ? Long.parseLong(parts[5]) : 0;
+                    long irq = parts.length > 6 ? Long.parseLong(parts[6]) : 0;
+                    long softirq = parts.length > 7 ? Long.parseLong(parts[7]) : 0;
+                    long steal = parts.length > 8 ? Long.parseLong(parts[8]) : 0;
+                    long totalTime = user + nice + system + idle + iowait + irq + softirq + steal;
+                    long idleTime = idle + iowait;
+                    if (lastAggregateCpuTotal > 0) {
+                        long totalDiff = totalTime - lastAggregateCpuTotal;
+                        long idleDiff = idleTime - lastAggregateCpuIdle;
+                        if (totalDiff > 0) {
+                            aggregateUsage = Math.max(0, Math.min(100, (int) ((totalDiff - idleDiff) * 100 / totalDiff)));
+                        }
+                    }
+                    lastAggregateCpuTotal = totalTime;
+                    lastAggregateCpuIdle = idleTime;
+                    continue;
+                }
+
+                // Per-core "cpuN" lines
                 int coreIndex;
                 try {
                     coreIndex = Integer.parseInt(parts[0].substring(3));
@@ -403,7 +432,7 @@ public class PerformanceHUD extends FrameLayout {
                 lastCoreTotals[coreIndex] = totalTime;
                 lastCoreIdles[coreIndex] = idleTime;
 
-                if (prevTotal == 0) continue; // first reading, skip
+                if (prevTotal == 0) continue;
 
                 long totalDiff = totalTime - prevTotal;
                 long idleDiff = idleTime - prevIdle;
@@ -413,9 +442,48 @@ public class PerformanceHUD extends FrameLayout {
                 int usage = (int) ((totalDiff - idleDiff) * 100 / totalDiff);
                 usage = Math.max(0, Math.min(100, usage));
                 if (usage > maxUsage) maxUsage = usage;
+                gotPerCore = true;
             }
         } catch (Exception e) {}
+
+        // If per-core data worked, use it
+        if (gotPerCore && maxUsage > 0) return maxUsage;
+
+        // Fallback 1: aggregate CPU usage
+        if (aggregateUsage > 0) return aggregateUsage;
+
+        // Fallback 2: frequency-based estimation (cur_freq / max_freq for hottest core)
+        return getFrequencyBasedCpuUsage();
+    }
+
+    /**
+     * Estimates CPU usage by reading current vs max frequency for each core.
+     * Returns the highest core's (cur_freq / cpuinfo_max_freq) as a percentage.
+     * This works even when /proc/stat is restricted by hideprocfs on Android.
+     */
+    private int getFrequencyBasedCpuUsage() {
+        int maxUsage = 0;
+        for (int i = 0; i < numCpuCores; i++) {
+            try {
+                String base = "/sys/devices/system/cpu/cpu" + i + "/cpufreq/";
+                long curFreq = readLongFromFile(base + "scaling_cur_freq");
+                long maxFreq = readLongFromFile(base + "cpuinfo_max_freq");
+                if (maxFreq > 0 && curFreq > 0) {
+                    int usage = (int) (curFreq * 100 / maxFreq);
+                    usage = Math.max(0, Math.min(100, usage));
+                    if (usage > maxUsage) maxUsage = usage;
+                }
+            } catch (Exception e) {}
+        }
         return maxUsage;
+    }
+
+    private long readLongFromFile(String path) {
+        try (BufferedReader reader = new BufferedReader(new FileReader(path))) {
+            return Long.parseLong(reader.readLine().trim());
+        } catch (Exception e) {
+            return -1;
+        }
     }
 
     private int getGpuUsage() {

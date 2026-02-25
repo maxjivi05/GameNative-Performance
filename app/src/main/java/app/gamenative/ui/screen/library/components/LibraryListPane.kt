@@ -204,11 +204,12 @@ internal fun LibraryListPane(
                     onAddCustomGame = onAddCustomGame,
                     onViewChanged = onViewChanged,
                     onModalBottomSheet = onModalBottomSheet,
-                                    onNavigateRoute = onNavigateRoute,
-                                    onEdit = onEdit,
-                                    onSearchQuery = onSearchQuery,
-                                    onFocusChanged = onFocusChanged,
-                                )
+                    onNavigateRoute = onNavigateRoute,
+                    onEdit = onEdit,
+                    onSearchQuery = onSearchQuery,
+                    onFocusChanged = onFocusChanged,
+                    onRefresh = onRefresh,
+                )
                             } else {                Column(
                     modifier = Modifier
                         .fillMaxSize()

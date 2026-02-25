@@ -24,6 +24,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -78,6 +79,8 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import com.winlator.inputcontrols.ExternalController
 
 private enum class FrontendTab(val label: String) {
@@ -128,6 +131,35 @@ private fun rememberFrontendArtUrl(item: LibraryItem, isHero: Boolean = false): 
                 }
             }
             else -> item.clientIconUrl.ifEmpty { item.iconHash }
+        }
+    }
+}
+
+/**
+ * Fallback for when the main artwork is empty or fails to load.
+ * Tries the game's icon URL (same as list view uses), then falls back to a letter.
+ */
+@Composable
+private fun FrontendFallbackIcon(
+    item: LibraryItem,
+    bgColor: Color = Color(0xFF2A2A3E),
+    letterSize: androidx.compose.ui.unit.TextUnit = 18.sp,
+) {
+    val iconUrl = item.clientIconUrl
+    if (iconUrl.isNotEmpty()) {
+        CoilImage(
+            modifier = Modifier.fillMaxSize().background(bgColor),
+            imageModel = { iconUrl },
+            imageOptions = ImageOptions(contentScale = ContentScale.Fit),
+            failure = {
+                Box(Modifier.fillMaxSize().background(bgColor), contentAlignment = Alignment.Center) {
+                    Text(item.name.take(1), fontSize = letterSize, color = Color.White, fontWeight = FontWeight.Bold)
+                }
+            }
+        )
+    } else {
+        Box(Modifier.fillMaxSize().background(bgColor), contentAlignment = Alignment.Center) {
+            Text(item.name.take(1), fontSize = letterSize, color = Color.White, fontWeight = FontWeight.Bold)
         }
     }
 }
@@ -307,6 +339,7 @@ private fun FrontendInstallDialog(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun LibraryFrontendPane(
     state: LibraryState,
@@ -319,6 +352,7 @@ internal fun LibraryFrontendPane(
     onEdit: (LibraryItem) -> Unit,
     onSearchQuery: (String) -> Unit,
     onFocusChanged: (LibraryItem?) -> Unit = {},
+    onRefresh: () -> Unit = {},
 ) {
     val context = LocalContext.current
     var selectedTabIdx by remember { mutableIntStateOf(0) }
@@ -372,30 +406,25 @@ internal fun LibraryFrontendPane(
         }
     }
 
-    val tabItems: List<LibraryItem> = remember(selectedTabIdx, state.appInfoList, state.searchQuery) {
+    val tabItems: List<LibraryItem> = remember(
+        selectedTabIdx, state.appInfoList, state.searchQuery,
+        state.steamItems, state.gogItems, state.epicItems, state.amazonItems, state.customItems
+    ) {
         if (state.searchQuery.isNotEmpty()) {
-            // When searching, show all matches regardless of source/installed status
-            state.appInfoList
+            // When searching, combine all full source lists and filter
+            (state.steamItems + state.gogItems + state.epicItems + state.amazonItems + state.customItems)
+                .filter { it.name.contains(state.searchQuery, ignoreCase = true) }
+                .sortedBy { it.name.lowercase() }
         } else {
             when (tabs[selectedTabIdx]) {
                 FrontendTab.LIBRARY -> state.appInfoList
                     .filter { it.isInstalled }
                     .sortedByDescending { it.lastPlayed }
-                FrontendTab.STEAM -> state.appInfoList
-                    .filter { it.gameSource == GameSource.STEAM }
-                    .sortedBy { it.name.lowercase() }
-                FrontendTab.EPIC -> state.appInfoList
-                    .filter { it.gameSource == GameSource.EPIC }
-                    .sortedBy { it.name.lowercase() }
-                FrontendTab.GOG -> state.appInfoList
-                    .filter { it.gameSource == GameSource.GOG }
-                    .sortedBy { it.name.lowercase() }
-                FrontendTab.AMAZON -> state.appInfoList
-                    .filter { it.gameSource == GameSource.AMAZON }
-                    .sortedBy { it.name.lowercase() }
-                FrontendTab.CUSTOM -> state.appInfoList
-                    .filter { it.gameSource == GameSource.CUSTOM_GAME }
-                    .sortedBy { it.name.lowercase() }
+                FrontendTab.STEAM -> state.steamItems
+                FrontendTab.EPIC -> state.epicItems
+                FrontendTab.GOG -> state.gogItems
+                FrontendTab.AMAZON -> state.amazonItems
+                FrontendTab.CUSTOM -> state.customItems
             }
         }
     }
@@ -470,6 +499,10 @@ internal fun LibraryFrontendPane(
                         }
                         KeyEvent.KEYCODE_BUTTON_B -> { // Circle (PS) / B (Xbox)
                             onViewChanged(PaneType.LIST)
+                            true
+                        }
+                        KeyEvent.KEYCODE_BUTTON_R2 -> { // R2 — refresh game list
+                            onRefresh()
                             true
                         }
                         else -> false
@@ -816,16 +849,10 @@ internal fun LibraryFrontendPane(
                                     modifier = Modifier.fillMaxSize(),
                                     imageModel = { artUrl },
                                     imageOptions = ImageOptions(contentScale = ContentScale.Crop),
-                                    failure = {
-                                        Box(Modifier.fillMaxSize().background(Color.DarkGray), contentAlignment = Alignment.Center) {
-                                            Text(item.name.take(1), fontSize = 24.sp, color = Color.White)
-                                        }
-                                    }
+                                    failure = { FrontendFallbackIcon(item, bgColor = Color.DarkGray, letterSize = 24.sp) }
                                 )
                             } else {
-                                Box(Modifier.fillMaxSize().background(Color.DarkGray), contentAlignment = Alignment.Center) {
-                                    Text(item.name.take(1), fontSize = 24.sp, color = Color.White)
-                                }
+                                FrontendFallbackIcon(item, bgColor = Color.DarkGray, letterSize = 24.sp)
                             }
 
                             Box(
@@ -878,75 +905,77 @@ internal fun LibraryFrontendPane(
                 label = "headerOffset"
             )
 
-            // Apply header visibility via graphicsLayer on the header Row
-            // We do this by wrapping the grid to fill the space and overlaying the header
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(4),
-                state = gridState,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-                contentPadding = PaddingValues(top = 80.dp, bottom = 24.dp)
-            ) {
-                items(items = tabItems, key = { it.appId }) { item ->
-                    val artUrl = rememberFrontendArtUrl(item, isHero = false)
-                    Box(
-                        modifier = Modifier
-                            .aspectRatio(1.25f) // landscape-ish, ~50% shorter than 0.67
-                            .clip(RoundedCornerShape(10.dp))
-                            .clickable { handleGameClick(item) }
-                            .border(
-                                BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)),
-                                RoundedCornerShape(10.dp)
-                            )
-                    ) {
-                        if (artUrl.isNotEmpty()) {
-                            CoilImage(
-                                modifier = Modifier.fillMaxSize(),
-                                imageModel = { artUrl },
-                                imageOptions = ImageOptions(contentScale = ContentScale.Crop),
-                                failure = {
-                                    Box(Modifier.fillMaxSize().background(Color(0xFF2A2A3E)), contentAlignment = Alignment.Center) {
-                                        Text(item.name.take(1), fontSize = 18.sp, color = Color.White, fontWeight = FontWeight.Bold)
-                                    }
-                                }
-                            )
-                        } else {
-                            Box(Modifier.fillMaxSize().background(Color(0xFF2A2A3E)), contentAlignment = Alignment.Center) {
-                                Text(item.name.take(1), fontSize = 18.sp, color = Color.White, fontWeight = FontWeight.Bold)
-                            }
-                        }
+            // Pull-to-refresh wrapping the storefront grid
+            val pullToRefreshState = rememberPullToRefreshState()
 
-                        // Gradient overlay with game name
+            PullToRefreshBox(
+                isRefreshing = state.isRefreshing,
+                onRefresh = onRefresh,
+                state = pullToRefreshState,
+                modifier = Modifier.fillMaxSize()
+            ) {
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(4),
+                    state = gridState,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    contentPadding = PaddingValues(top = 80.dp, bottom = 24.dp)
+                ) {
+                    items(items = tabItems, key = { it.appId }) { item ->
+                        val artUrl = rememberFrontendArtUrl(item, isHero = false)
                         Box(
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .align(Alignment.BottomCenter)
-                                .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(0.85f))))
-                                .padding(horizontal = 6.dp, vertical = 4.dp)
+                                .aspectRatio(1.25f)
+                                .clip(RoundedCornerShape(10.dp))
+                                .clickable { handleGameClick(item) }
+                                .border(
+                                    BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)),
+                                    RoundedCornerShape(10.dp)
+                                )
                         ) {
-                            Text(
-                                item.name,
-                                color = Color.White,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 9.sp,
-                                lineHeight = 11.sp
-                            )
-                        }
+                            if (artUrl.isNotEmpty()) {
+                                CoilImage(
+                                    modifier = Modifier.fillMaxSize(),
+                                    imageModel = { artUrl },
+                                    imageOptions = ImageOptions(contentScale = ContentScale.Crop),
+                                    failure = { FrontendFallbackIcon(item) }
+                                )
+                            } else {
+                                FrontendFallbackIcon(item)
+                            }
 
-                        // Install status indicator
-                        if (!item.isInstalled) {
+                            // Gradient overlay with game name
                             Box(
                                 modifier = Modifier
-                                    .align(Alignment.TopEnd)
-                                    .padding(4.dp)
-                                    .size(7.dp)
-                                    .background(Color.White.copy(alpha = 0.4f), CircleShape)
-                            )
+                                    .fillMaxWidth()
+                                    .align(Alignment.BottomCenter)
+                                    .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(0.85f))))
+                                    .padding(horizontal = 6.dp, vertical = 4.dp)
+                            ) {
+                                Text(
+                                    item.name,
+                                    color = Color.White,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 9.sp,
+                                    lineHeight = 11.sp
+                                )
+                            }
+
+                            // Install status indicator
+                            if (!item.isInstalled) {
+                                Box(
+                                    modifier = Modifier
+                                        .align(Alignment.TopEnd)
+                                        .padding(4.dp)
+                                        .size(7.dp)
+                                        .background(Color.White.copy(alpha = 0.4f), CircleShape)
+                                )
+                            }
                         }
                     }
                 }

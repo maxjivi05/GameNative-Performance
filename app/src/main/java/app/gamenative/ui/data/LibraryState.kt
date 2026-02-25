@@ -41,6 +41,13 @@ data class LibraryState(
     // Live installed count computed from the full combined list (before pagination)
     val totalInstalledCount: Int = 0,
 
+    // Full per-source lists (unpaginated) for storefront tabs
+    val steamItems: List<LibraryItem> = emptyList(),
+    val gogItems: List<LibraryItem> = emptyList(),
+    val epicItems: List<LibraryItem> = emptyList(),
+    val amazonItems: List<LibraryItem> = emptyList(),
+    val customItems: List<LibraryItem> = emptyList(),
+
     // Current library layout
     val libraryLayout: app.gamenative.ui.enums.PaneType = app.gamenative.PrefManager.libraryLayout,
 )

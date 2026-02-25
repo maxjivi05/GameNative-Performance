@@ -593,6 +593,18 @@ class LibraryViewModel @Inject constructor(
             // Fetch compatibility for current page games
             fetchCompatibilityForPage(pagedList.map { it.name })
 
+            // Build full per-source lists (sorted A-Z) for storefront tabs
+            val fullSteamItems = steamEntries.map { it.item.copy(isInstalled = it.isInstalled) }
+                .sortedBy { it.name.lowercase() }
+            val fullGogItems = gogEntries.map { it.item.copy(isInstalled = it.isInstalled) }
+                .sortedBy { it.name.lowercase() }
+            val fullEpicItems = epicEntries.map { it.item.copy(isInstalled = it.isInstalled) }
+                .sortedBy { it.name.lowercase() }
+            val fullAmazonItems = amazonEntries.map { it.item.copy(isInstalled = it.isInstalled) }
+                .sortedBy { it.name.lowercase() }
+            val fullCustomItems = customEntries.map { it.item.copy(isInstalled = it.isInstalled) }
+                .sortedBy { it.name.lowercase() }
+
             _state.update {
                 it.copy(
                     appInfoList = pagedList,
@@ -600,6 +612,11 @@ class LibraryViewModel @Inject constructor(
                     lastPaginationPage = lastPageInCurrentFilter + 1,
                     totalAppsInFilter = totalFound,
                     totalInstalledCount = totalInstalledCount,
+                    steamItems = fullSteamItems,
+                    gogItems = fullGogItems,
+                    epicItems = fullEpicItems,
+                    amazonItems = fullAmazonItems,
+                    customItems = fullCustomItems,
                     isLoading = false, // Loading complete
                 )
             }
