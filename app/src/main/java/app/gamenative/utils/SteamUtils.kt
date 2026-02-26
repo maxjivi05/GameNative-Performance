@@ -340,8 +340,14 @@ object SteamUtils {
         }
         
         val exeCommandLine = container.execArgs
-        val iniFile = File(container.getRootDir(), ".wine/drive_c/Program Files (x86)/Steam/steamclient_loader_x64.ini")
-        iniFile.parentFile?.mkdirs()
+        
+        val steamPath = File(container.getRootDir(), ".wine/drive_c/Program Files (x86)/Steam")
+        steamPath.mkdirs()
+        
+        val iniFiles = listOf(
+            File(steamPath, "steamclient_loader_x64.ini"),
+            File(steamPath, "ColdClientLoader.ini")
+        )
 
         // Only include DllsToInjectFolder if unpackFiles is enabled
         val injectionSection = if (container.isUnpackFiles) {
@@ -357,8 +363,7 @@ object SteamUtils {
             """
         }
 
-        iniFile.writeText(
-            """
+        val iniContent = """
                 [SteamClient]
 
                 Exe=$exePath
@@ -371,8 +376,9 @@ object SteamUtils {
                 SteamClient64Dll=steamclient64.dll
 
                 $injectionSection
-            """.trimIndent(),
-        )
+            """.trimIndent()
+
+        iniFiles.forEach { it.writeText(iniContent) }
     }
 
     fun autoLoginUserChanges(imageFs: ImageFs) {

@@ -723,6 +723,9 @@ public class InputControlsView extends View {
                      binding == Binding.GAMEPAD_DPAD_DOWN || binding == Binding.GAMEPAD_DPAD_LEFT) {
                 state.dpad[binding.ordinal() - Binding.GAMEPAD_DPAD_UP.ordinal()] = isActionDown;
             }
+
+            // Immediately poke shared memory to update the controller state in-game
+            if (winHandler != null) winHandler.pokeSharedMemory();
         }
         else {
             if (binding == Binding.MOUSE_MOVE_LEFT || binding == Binding.MOUSE_MOVE_RIGHT) {

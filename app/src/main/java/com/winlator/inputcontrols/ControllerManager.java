@@ -77,6 +77,24 @@ public class ControllerManager {
         this.preferences = PreferenceManager.getDefaultSharedPreferences(this.context);
         this.inputManager = (InputManager) this.context.getSystemService(Context.INPUT_SERVICE);
 
+        // Listen for device changes
+        this.inputManager.registerInputDeviceListener(new InputManager.InputDeviceListener() {
+            @Override
+            public void onInputDeviceAdded(int deviceId) {
+                scanForDevices();
+            }
+
+            @Override
+            public void onInputDeviceRemoved(int deviceId) {
+                scanForDevices();
+            }
+
+            @Override
+            public void onInputDeviceChanged(int deviceId) {
+                scanForDevices();
+            }
+        }, null);
+
         // On startup, we load saved settings and scan for connected devices.
         loadAssignments();
         scanForDevices();

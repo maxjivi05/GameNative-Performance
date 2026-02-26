@@ -323,6 +323,23 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
 
         envVars.put("LD_PRELOAD", ld_preload);
 
+        String nativeLibDir = context.getApplicationInfo().nativeLibraryDir;
+        String box64LdPreload = "";
+        String hookImplPath = nativeLibDir + "/libhook_impl.so";
+        String redirectHookPath = nativeLibDir + "/libfile_redirect_hook.so";
+
+        if (new File(hookImplPath).exists()) box64LdPreload += hookImplPath;
+        if (new File(redirectHookPath).exists()) {
+            if (!box64LdPreload.isEmpty()) box64LdPreload += ":";
+            box64LdPreload += redirectHookPath;
+        }
+
+        if (!box64LdPreload.isEmpty()) {
+            envVars.put("BOX64_LD_PRELOAD", box64LdPreload);
+            String currentBox64LibPath = envVars.get("BOX64_LD_LIBRARY_PATH");
+            envVars.put("BOX64_LD_LIBRARY_PATH", nativeLibDir + (currentBox64LibPath != null && !currentBox64LibPath.isEmpty() ? ":" + currentBox64LibPath : ""));
+        }
+
         envVars.put("EVSHIM_SHM_NAME", "controller-shm0");
 
         // Check for specific shared memory libraries

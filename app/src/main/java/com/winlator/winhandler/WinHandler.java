@@ -144,6 +144,7 @@ public class WinHandler {
     private final short[] lastLow  = new short[MAX_PLAYERS];
     private final short[] lastHigh = new short[MAX_PLAYERS];
     private Thread rumblePollerThread;
+    private java.util.concurrent.ScheduledExecutorService inputPollerExecutor;
 
     // --- Turbo (autofire) ----------------------------------------------------
     private static final int BUTTON_COUNT = 15; // length of sdlButtons
@@ -229,6 +230,10 @@ public class WinHandler {
         running = true;
         startSendThread();
 
+        // Start input polling loop (120Hz)
+        inputPollerExecutor = Executors.newSingleThreadScheduledExecutor();
+        inputPollerExecutor.scheduleAtFixedRate(this::pokeSharedMemory, 0, 1000 / 120, TimeUnit.MILLISECONDS);
+
         Executors.newSingleThreadExecutor().execute(() -> {
             try {
                 socket = new DatagramSocket(null);
@@ -257,6 +262,11 @@ public class WinHandler {
 
     public void stop() {
         running = false;
+
+        if (inputPollerExecutor != null) {
+            inputPollerExecutor.shutdown();
+            inputPollerExecutor = null;
+        }
 
         if (socket != null) {
             socket.close();
@@ -349,28 +359,37 @@ public class WinHandler {
             lastSentGY = gyroY;
         }
     }
+    public void verifyAssignedControllers() {
+        ensureP1Controller();
+        for (int i = 0; i < extraControllers.length; i++) {
+            ExternalController ctrl = extraControllers[i];
+            if (ctrl != null) {
+                InputDevice dev = controllerManager.getAssignedDeviceForSlot(i + 1);
+                if (dev == null || dev.getId() != ctrl.getDeviceId()) {
+                    extraControllers[i] = null;
+                }
+            } else {
+                InputDevice dev = controllerManager.getAssignedDeviceForSlot(i + 1);
+                if (dev != null) {
+                    extraControllers[i] = ExternalController.getController(dev.getId());
+                }
+            }
+        }
+    }
+
     /** Force current values into SHM immediately. Safe to call anytime. */
     public void pokeSharedMemory() {
         if (gamepadBuffer == null) return;
 
-        final ControlsProfile profile = getInputControlsView().getProfile();
-        final boolean useVirtual = profile != null && profile.isVirtualGamepad();
+        verifyAssignedControllers();
+        updateMergedState(0);
+        writeStateToMappedBuffer(mergedStates[0], gamepadBuffer, true, 0);
 
-        if (useVirtual) {
-            GamepadState s = profile.getGamepadState();
-            if (s != null) {
-                lastVirtualState = s;
-                hasVirtualState = true;
-                writeStateToMappedBuffer(s, gamepadBuffer, true, 0);
+        for (int i = 0; i < extraGamepadBuffers.length; i++) {
+            if (extraGamepadBuffers[i] != null) {
+                updateMergedState(i + 1);
+                writeStateToMappedBuffer(mergedStates[i + 1], extraGamepadBuffers[i], false, i + 1);
             }
-            return;
-        }
-
-        ensureP1Controller();
-        if (mergedStates[0] != null) {
-            writeStateToMappedBuffer(mergedStates[0], gamepadBuffer, true, 0);
-        } else if (hasVirtualState && lastVirtualState != null) {
-            writeStateToMappedBuffer(lastVirtualState, gamepadBuffer, true, 0);
         }
     }
 
@@ -456,7 +475,7 @@ public class WinHandler {
         if (slot == 0) {
             com.winlator.widget.InputControlsView icv = getInputControlsView();
             ControlsProfile profile = icv != null ? icv.getProfile() : null;
-            if (profile != null && profile.isVirtualGamepad()) {
+            if (profile != null) {
                 merged.merge(profile.getGamepadState());
             }
         }
@@ -1013,17 +1032,28 @@ public class WinHandler {
     }
 
     public void ensureP1Controller() {
-        // If a virtual profile is active, do not resurrect a physical fallback.
         final ControlsProfile profile = getInputControlsView().getProfile();
-        if (profile != null && profile.isVirtualGamepad()) {
+        
+        // If touch controls are active, we might want to prioritize them or allow merging.
+        // For now, let's allow merging unless virtualExclusiveP1 is set.
+        if (virtualExclusiveP1 && profile != null && profile.isVirtualGamepad()) {
             currentController = null;
             return;
         }
 
-        if (currentController != null) return;
-        InputDevice p1 = controllerManager.getAssignedDeviceForSlot(0);
-        if (p1 != null) currentController = ExternalController.getController(p1.getId());
-        if (currentController == null) currentController = ExternalController.getController(0);
+        // Verify if current controller is still connected and assigned to P1
+        if (currentController != null) {
+            InputDevice dev = controllerManager.getAssignedDeviceForSlot(0);
+            if (dev == null || dev.getId() != currentController.getDeviceId()) {
+                currentController = null;
+            }
+        }
+
+        if (currentController == null) {
+            InputDevice p1 = controllerManager.getAssignedDeviceForSlot(0);
+            if (p1 != null) currentController = ExternalController.getController(p1.getId());
+            if (currentController == null) currentController = ExternalController.getController(0);
+        }
     }
 
     public void clearIgnoredDevices() {
