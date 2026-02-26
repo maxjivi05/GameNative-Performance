@@ -57,6 +57,16 @@ public class ControllerManager {
 
     public static final String PREF_VIBRATE_SLOT_PREFIX = "vibrate_slot_";
 
+    public interface OnControllerDetectedListener {
+        void onControllerDetected(InputDevice device);
+    }
+
+    private OnControllerDetectedListener onControllerDetectedListener;
+
+    public void setOnControllerDetectedListener(OnControllerDetectedListener listener) {
+        this.onControllerDetectedListener = listener;
+    }
+
 
     /**
      * Initializes the manager. This must be called once from the main application context.
@@ -148,18 +158,11 @@ public class ControllerManager {
             }
         }
 
-        // Pass 2: Auto-assign unassigned groups to remaining ENABLED slots
-        for (List<InputDevice> group : physicalControllers) {
-            if (group.isEmpty() || runtimeSlotMap.indexOfKey(group.get(0).getId()) >= 0) {
-                continue;
-            }
-            for (int s = 0; s < 4; s++) {
-                if (!slotTaken[s] && enabledSlots[s]) {
-                    for (InputDevice dev : group) {
-                        runtimeSlotMap.put(dev.getId(), s);
-                    }
-                    slotTaken[s] = true;
-                    break;
+        // Trigger listener for any unassigned physical groups
+        if (onControllerDetectedListener != null) {
+            for (List<InputDevice> group : physicalControllers) {
+                if (!group.isEmpty() && runtimeSlotMap.get(group.get(0).getId(), -1) == -1) {
+                    onControllerDetectedListener.onControllerDetected(group.get(0));
                 }
             }
         }

@@ -56,14 +56,17 @@ public class ControllerAssignmentDialog {
     // ---------- Impl ---------------------------------------------------------
 
     private ControllerAssignmentDialog(Activity activity, int initialPlayerCount, WinHandler winHandler) {
-        boolean dark = PreferenceManager.getDefaultSharedPreferences(activity)
-                .getBoolean("dark_mode", false);
-
-        ContextThemeWrapper themed =
-                new ContextThemeWrapper(activity, dark ? R.style.ContentDialog : R.style.AppTheme);
+        // Force dark theme for consistency with the rest of the app
+        ContextThemeWrapper themed = new ContextThemeWrapper(activity, R.style.ContentDialog);
 
         this.dialog = new ContentDialog(themed, R.layout.controller_assignment_dialog);
         this.dialog.setTitle(R.string.controller_manager);
+
+        // Set consistent background color
+        View contentView = this.dialog.getContentView();
+        if (contentView != null) {
+            contentView.setBackgroundColor(0xFF1A1A2E);
+        }
 
         this.controllerManager = ControllerManager.getInstance();
         this.initialPlayerCount = initialPlayerCount;
@@ -74,10 +77,8 @@ public class ControllerAssignmentDialog {
 
         restartRequiredView = dialog.getContentView().findViewById(R.id.TVRestartRequired);
 
-        if (dark) {
-            View root = dialog.getContentView();
-            if (root instanceof ViewGroup) setTextColorForDialog((ViewGroup) root, 0xFFFFFFFF);
-        }
+        View root = dialog.getContentView();
+        if (root instanceof ViewGroup) setTextColorForDialog((ViewGroup) root, 0xFFFFFFFF);
 
         populateView();
         setupListeners();
@@ -223,7 +224,7 @@ public class ControllerAssignmentDialog {
             View child = viewGroup.getChildAt(i);
             if (child instanceof ViewGroup) {
                 setTextColorForDialog((ViewGroup) child, color);
-            } else if (child instanceof TextView) {
+            } else if (child instanceof TextView || child instanceof Button) {
                 ((TextView) child).setTextColor(color);
             }
         }

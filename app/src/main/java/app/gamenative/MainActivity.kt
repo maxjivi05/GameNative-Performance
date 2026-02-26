@@ -159,6 +159,12 @@ class MainActivity : ComponentActivity() {
 
         // Initialize the controller management system
         ControllerManager.getInstance().init(getApplicationContext());
+        ControllerManager.getInstance().setOnControllerDetectedListener { device ->
+            runOnUiThread {
+                val winHandler = PluviaApp.xServerView?.getxServer()?.winHandler
+                com.winlator.contentdialog.ControllerAssignmentDialog.show(this, winHandler)
+            }
+        }
 
         ContainerUtils.setContainerDefaults(applicationContext)
 
