@@ -84,7 +84,7 @@ public class ControllerManager {
         int[] deviceIds = inputManager.getInputDeviceIds();
         
         SparseArray<List<InputDevice>> byControllerNumber = new SparseArray<>();
-        List<InputDevice> noControllerNumber = new ArrayList<>();
+        java.util.Map<String, List<InputDevice>> byDescriptor = new java.util.HashMap<>();
 
         for (int deviceId : deviceIds) {
             InputDevice device = inputManager.getInputDevice(deviceId);
@@ -99,7 +99,13 @@ public class ControllerManager {
                     }
                     group.add(device);
                 } else {
-                    noControllerNumber.add(device);
+                    String desc = device.getDescriptor();
+                    List<InputDevice> group = byDescriptor.get(desc);
+                    if (group == null) {
+                        group = new ArrayList<>();
+                        byDescriptor.put(desc, group);
+                    }
+                    group.add(device);
                 }
             }
         }
@@ -108,15 +114,16 @@ public class ControllerManager {
         for (int i = 0; i < byControllerNumber.size(); i++) {
             physicalControllers.add(byControllerNumber.valueAt(i));
         }
-        
-        java.util.Map<String, List<InputDevice>> noNumGroups = new java.util.HashMap<>();
-        for (InputDevice d : noControllerNumber) {
-            String key = "unique_" + d.getId();
-            List<InputDevice> group = new ArrayList<>();
-            group.add(d);
-            noNumGroups.put(key, group);
-        }
-        physicalControllers.addAll(noNumGroups.values());
+        physicalControllers.addAll(byDescriptor.values());
+
+        // Sort groups by the minimum deviceId in each group to maintain a predictable order (usually connection order)
+        java.util.Collections.sort(physicalControllers, (a, b) -> {
+            int minA = Integer.MAX_VALUE;
+            for (InputDevice d : a) minA = Math.min(minA, d.getId());
+            int minB = Integer.MAX_VALUE;
+            for (InputDevice d : b) minB = Math.min(minB, d.getId());
+            return Integer.compare(minA, minB);
+        });
 
         boolean[] slotTaken = new boolean[4];
 
@@ -293,12 +300,7 @@ public class ControllerManager {
      */
     public static String getDeviceIdentifier(InputDevice device) {
         if (device == null) return null;
-        // The descriptor is the most reliable unique ID for a device.
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-            return device.getDescriptor();
-        }
-        // Fallback for older Android versions
-        return "vendor_" + device.getVendorId() + "_product_" + device.getProductId();
+        return device.getDescriptor();
     }
 
     /**

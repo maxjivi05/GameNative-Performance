@@ -508,6 +508,9 @@ public class InputControlsView extends View {
 
 
         if (!editMode && profile != null) {
+            // ONLY handle if assigned to Slot 0 (P1)
+            if (com.winlator.inputcontrols.ControllerManager.getInstance().getSlotForDevice(event.getDeviceId()) != 0) return false;
+
             // Retrieve the associated controller for this event
             ExternalController controller = profile.getController(event.getDeviceId());
 
@@ -534,8 +537,8 @@ public class InputControlsView extends View {
                 // Process joystick inputs for mouse movement and other bindings
                 processJoystickInput(controller);
 
-                // Return true to indicate the motion event was handled
-                return true;
+                // Return false to allow fallthrough to WinHandler for Slot 0
+                return false;
             }
         }
 
@@ -664,6 +667,9 @@ public class InputControlsView extends View {
 
     public boolean onKeyEvent(KeyEvent event) {
         if (profile != null && event.getRepeatCount() == 0) {
+            // ONLY handle if assigned to Slot 0 (P1)
+            if (com.winlator.inputcontrols.ControllerManager.getInstance().getSlotForDevice(event.getDeviceId()) != 0) return false;
+
             ExternalController controller = profile.getController(event.getDeviceId());
             if (controller != null) {
                 ExternalControllerBinding controllerBinding = controller.getControllerBinding(event.getKeyCode());
@@ -676,7 +682,7 @@ public class InputControlsView extends View {
                     else if (action == KeyEvent.ACTION_UP) {
                         handleInputEvent(controllerBinding.getBinding(), false);
                     }
-                    return true;
+                    return false;
                 }
             }
         }
@@ -716,13 +722,6 @@ public class InputControlsView extends View {
             else if (binding == Binding.GAMEPAD_DPAD_UP || binding == Binding.GAMEPAD_DPAD_RIGHT ||
                      binding == Binding.GAMEPAD_DPAD_DOWN || binding == Binding.GAMEPAD_DPAD_LEFT) {
                 state.dpad[binding.ordinal() - Binding.GAMEPAD_DPAD_UP.ordinal()] = isActionDown;
-            }
-
-            if (winHandler != null) {
-                ExternalController controller = winHandler.getCurrentController();
-                if (controller != null) controller.state.copy(state);
-                winHandler.sendGamepadState();
-                winHandler.sendVirtualGamepadState(state);
             }
         }
         else {

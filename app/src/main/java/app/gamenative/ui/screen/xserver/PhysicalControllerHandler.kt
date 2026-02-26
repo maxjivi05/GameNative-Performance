@@ -13,6 +13,7 @@ import com.winlator.inputcontrols.GamepadState
 import com.winlator.math.Mathf
 import com.winlator.winhandler.WinHandler
 import com.winlator.xserver.XServer
+import com.winlator.inputcontrols.ControllerManager
 import java.util.Timer
 import java.util.TimerTask
 
@@ -28,6 +29,7 @@ class PhysicalControllerHandler(
     private val TAG = "gncontrol"
     private val mouseMoveOffset = PointF(0f, 0f)
     private var mouseMoveTimer: Timer? = null
+    private val controllerManager = ControllerManager.getInstance()
 
     fun setProfile(profile: ControlsProfile?) {
         this.profile = profile
@@ -56,6 +58,9 @@ class PhysicalControllerHandler(
      */
     fun onKeyEvent(event: KeyEvent): Boolean {
         if (profile != null && event.repeatCount == 0) {
+            // ONLY handle if assigned to Slot 0 (P1) or if virtual is active
+            if (controllerManager.getSlotForDevice(event.deviceId) != 0) return false
+
             val controller = profile?.getController(event.deviceId)
             if (controller != null) {
                 val controllerBinding = controller.getControllerBinding(event.keyCode)
@@ -65,7 +70,8 @@ class PhysicalControllerHandler(
                     } else if (event.action == KeyEvent.ACTION_UP) {
                         handleInputEvent(controllerBinding.binding, false)
                     }
-                    return true
+                    // Return false to allow fallthrough to WinHandler for raw button state
+                    return false
                 }
             }
         }
@@ -78,6 +84,9 @@ class PhysicalControllerHandler(
      */
     fun onGenericMotionEvent(event: MotionEvent): Boolean {
         if (profile != null) {
+            // ONLY handle if assigned to Slot 0 (P1)
+            if (controllerManager.getSlotForDevice(event.deviceId) != 0) return false
+
             val controller = profile?.getController(event.deviceId)
             if (controller != null && controller.updateStateFromMotionEvent(event)) {
                 // Process trigger buttons (L2/R2)
@@ -99,7 +108,8 @@ class PhysicalControllerHandler(
 
                 // Process analog stick input
                 processJoystickInput(controller)
-                return true
+                // Return false to allow fallthrough to WinHandler for raw axis state
+                return false
             }
         }
         return false
@@ -221,15 +231,6 @@ class PhysicalControllerHandler(
                         }
                         else -> {}
                     }
-                }
-
-                if (winHandler != null) {
-                    val controller = winHandler.currentController
-                    if (controller != null) {
-                        controller.state.copy(state)
-                    }
-                    winHandler.sendGamepadState()
-                    winHandler.sendVirtualGamepadState(state)
                 }
             }
         } else {

@@ -357,18 +357,16 @@ class SteamAppScreen : BaseAppScreen() {
             return pendingUpdateVerifyOperations[gameId]
         }
 
-        private val customPathPickerRequests = mutableStateMapOf<Int, Boolean>()
-
         fun requestCustomPathPicker(gameId: Int) {
-            customPathPickerRequests[gameId] = true
+            BaseAppScreen.requestCustomPathPicker("STEAM_$gameId")
         }
 
         fun clearCustomPathPickerRequest(gameId: Int) {
-            customPathPickerRequests.remove(gameId)
+            BaseAppScreen.clearCustomPathPickerRequest("STEAM_$gameId")
         }
 
         fun shouldShowCustomPathPicker(gameId: Int): Boolean {
-            return customPathPickerRequests[gameId] == true
+            return BaseAppScreen.shouldShowCustomPathPicker("STEAM_$gameId")
         }
     }
     @Composable

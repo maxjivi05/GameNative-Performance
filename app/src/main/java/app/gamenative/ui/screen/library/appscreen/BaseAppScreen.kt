@@ -75,6 +75,20 @@ abstract class BaseAppScreen {
         fun getInstallDialogState(appId: String): app.gamenative.ui.component.dialog.state.MessageDialogState? {
             return installDialogStates[appId]
         }
+
+        private val customPathPickerRequests = mutableStateMapOf<String, Boolean>()
+
+        fun requestCustomPathPicker(appId: String) {
+            customPathPickerRequests[appId] = true
+        }
+
+        fun clearCustomPathPickerRequest(appId: String) {
+            customPathPickerRequests.remove(appId)
+        }
+
+        fun shouldShowCustomPathPicker(appId: String): Boolean {
+            return customPathPickerRequests[appId] == true
+        }
     }
 
     /**

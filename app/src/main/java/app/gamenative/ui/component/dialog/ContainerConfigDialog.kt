@@ -76,6 +76,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.tooling.preview.Preview
 import app.gamenative.R
+import androidx.compose.foundation.layout.ime
 import app.gamenative.ui.component.dialog.state.MessageDialogState
 import app.gamenative.ui.component.settings.SettingsCPUList
 import app.gamenative.ui.component.settings.SettingsCenteredLabel
@@ -1239,7 +1240,12 @@ fun ContainerConfigContent(
             stringResource(R.string.container_config_tab_advanced)
         )
 
-        DisposableEffect(isFrontend, tabs.size) {
+        val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
+        val density = androidx.compose.ui.platform.LocalDensity.current
+        val isImeVisible = androidx.compose.foundation.layout.WindowInsets.ime.getBottom(density) > 0
+        val coroutineScope = rememberCoroutineScope()
+
+        DisposableEffect(isFrontend, tabs.size, isImeVisible) {
             val keyListener: (AndroidEvent.KeyEvent) -> Boolean = { event ->
                 if (isFrontend && event.event.action == KeyEvent.ACTION_DOWN) {
                     when (event.event.keyCode) {
@@ -1250,6 +1256,23 @@ fun ContainerConfigContent(
                         KeyEvent.KEYCODE_BUTTON_R1 -> {
                             selectedTab = if (selectedTab < tabs.size - 1) selectedTab + 1 else 0
                             true
+                        }
+                        KeyEvent.KEYCODE_BUTTON_A -> {
+                            coroutineScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                                try {
+                                    android.app.Instrumentation().sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_DPAD_CENTER)
+                                } catch (e: Exception) {}
+                            }
+                            true
+                        }
+                        KeyEvent.KEYCODE_BUTTON_B -> {
+                            if (isImeVisible) {
+                                focusManager.clearFocus()
+                                true
+                            } else {
+                                onDismissCheck()
+                                true
+                            }
                         }
                         else -> false
                     }

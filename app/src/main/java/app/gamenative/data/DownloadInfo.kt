@@ -181,6 +181,27 @@ data class DownloadInfo(
         }
     }
 
+    fun getRecentSpeedBytesPerSec(windowSeconds: Int = 10): Double {
+        if (!isActive || speedSamples.size < 2) return 0.0
+
+        val now = System.currentTimeMillis()
+        val cutoff = now - (windowSeconds * 1000L)
+        
+        // Find samples within the recent window
+        val recentSamples = speedSamples.filter { it.timeMs >= cutoff }
+        if (recentSamples.size < 2) return 0.0
+
+        val first = recentSamples.first()
+        val last = recentSamples.last()
+        val elapsedMs = last.timeMs - first.timeMs
+        if (elapsedMs <= 0L) return 0.0
+
+        val bytesDelta = last.bytes - first.bytes
+        if (bytesDelta <= 0L) return 0.0
+
+        return bytesDelta.toDouble() / (elapsedMs.toDouble() / 1000.0)
+    }
+
     /**
      * Returns an ETA in milliseconds based on recent download speed, or null if
      * there is not enough information yet (e.g. just started) or download is inactive.

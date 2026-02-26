@@ -112,6 +112,8 @@ fun HomeLibraryScreen(
         }
     }
 
+    val isAnyDialogOpen = editedLibraryItem != null || state.modalBottomSheet
+
     LibraryScreenContent(
         state = state,
         listState = viewModel.listState,
@@ -133,6 +135,7 @@ fun HomeLibraryScreen(
         onAddCustomGameFolder = viewModel::addCustomGameFolder,
         onFocusChanged = { if (isFrontend) focusedFrontendItem = it },
         isOffline = isOffline,
+        isAnyDialogOpen = isAnyDialogOpen,
     )
 
     if (editedLibraryItem != null) {
@@ -177,6 +180,7 @@ private fun LibraryScreenContent(
     onAddCustomGameFolder: (String) -> Unit,
     onFocusChanged: (LibraryItem?) -> Unit = {},
     isOffline: Boolean = false,
+    isAnyDialogOpen: Boolean = false,
 ) {
     val context = LocalContext.current
     var selectedAppId by remember { mutableStateOf<String?>(null) }
@@ -299,6 +303,7 @@ private fun LibraryScreenContent(
                 onAddCustomGame = onAddCustomGameClick,
                 onFocusChanged = onFocusChanged,
                 isOffline = isOffline,
+                isAnyDialogOpen = isAnyDialogOpen,
             )
         } else {
             LibraryDetailPane(

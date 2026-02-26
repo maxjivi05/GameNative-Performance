@@ -117,6 +117,7 @@ internal fun LibraryListPane(
     onAddCustomGame: () -> Unit = {},
     onFocusChanged: (LibraryItem?) -> Unit = {},
     isOffline: Boolean = false,
+    isAnyDialogOpen: Boolean = false,
 ) {
     val context = LocalContext.current
     val snackBarHost = remember { SnackbarHostState() }
@@ -209,6 +210,7 @@ internal fun LibraryListPane(
                     onSearchQuery = onSearchQuery,
                     onFocusChanged = onFocusChanged,
                     onRefresh = onRefresh,
+                    isAnyDialogOpen = isAnyDialogOpen,
                 )
                             } else {                Column(
                     modifier = Modifier
