@@ -1,5 +1,6 @@
 package app.gamenative
 
+import android.hardware.input.InputManager
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
@@ -9,6 +10,8 @@ import android.content.res.Configuration
 import android.graphics.Color.TRANSPARENT
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.view.KeyEvent
 import android.view.MotionEvent
@@ -55,7 +58,28 @@ import okio.Path.Companion.toOkioPath
 import timber.log.Timber
 
 @AndroidEntryPoint
-class MainActivity : ComponentActivity() {
+class MainActivity : ComponentActivity(), InputManager.InputDeviceListener {
+
+    private val inputDeviceListenerHandler = Handler(Looper.getMainLooper())
+
+    override fun onInputDeviceAdded(deviceId: Int) {
+        val device = android.view.InputDevice.getDevice(deviceId)
+        if (device != null && !device.isVirtual && ControllerManager.isGameController(device)) {
+            Timber.d("Controller detected: ${device.name}")
+            // Delay slightly to ensure device is fully initialized by the system
+            inputDeviceListenerHandler.postDelayed({
+                val winHandler = PluviaApp.xServerView?.getxServer()?.winHandler
+                com.winlator.contentdialog.ControllerAssignmentDialog.show(this, winHandler)
+            }, 500)
+        }
+    }
+
+    override fun onInputDeviceRemoved(deviceId: Int) {
+        // Optional: refresh assignments when a controller is removed
+        ControllerManager.getInstance().scanForDevices()
+    }
+
+    override fun onInputDeviceChanged(deviceId: Int) {}
 
     companion object {
         private var totalIndex = 0
@@ -159,12 +183,8 @@ class MainActivity : ComponentActivity() {
 
         // Initialize the controller management system
         ControllerManager.getInstance().init(getApplicationContext());
-        ControllerManager.getInstance().setOnControllerDetectedListener { device ->
-            runOnUiThread {
-                val winHandler = PluviaApp.xServerView?.getxServer()?.winHandler
-                com.winlator.contentdialog.ControllerAssignmentDialog.show(this, winHandler)
-            }
-        }
+        val im = getSystemService(Context.INPUT_SERVICE) as InputManager
+        im.registerInputDeviceListener(this, inputDeviceListenerHandler)
 
         ContainerUtils.setContainerDefaults(applicationContext)
 
@@ -264,6 +284,9 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
+
+        val im = getSystemService(Context.INPUT_SERVICE) as InputManager
+        im.unregisterInputDeviceListener(this)
 
         PluviaApp.events.emit(AndroidEvent.ActivityDestroyed)
 

@@ -56,17 +56,8 @@ public class ControllerAssignmentDialog {
     // ---------- Impl ---------------------------------------------------------
 
     private ControllerAssignmentDialog(Activity activity, int initialPlayerCount, WinHandler winHandler) {
-        // Force dark theme for consistency with the rest of the app
-        ContextThemeWrapper themed = new ContextThemeWrapper(activity, R.style.ContentDialog);
-
-        this.dialog = new ContentDialog(themed, R.layout.controller_assignment_dialog);
+        this.dialog = new ContentDialog(activity, R.layout.controller_assignment_dialog);
         this.dialog.setTitle(R.string.controller_manager);
-
-        // Set consistent background color
-        View contentView = this.dialog.getContentView();
-        if (contentView != null) {
-            contentView.setBackgroundColor(0xFF1A1A2E);
-        }
 
         this.controllerManager = ControllerManager.getInstance();
         this.initialPlayerCount = initialPlayerCount;
@@ -77,8 +68,12 @@ public class ControllerAssignmentDialog {
 
         restartRequiredView = dialog.getContentView().findViewById(R.id.TVRestartRequired);
 
+        // Apply theme colors safely
         View root = dialog.getContentView();
-        if (root instanceof ViewGroup) setTextColorForDialog((ViewGroup) root, 0xFFFFFFFF);
+        if (root != null) {
+            root.setBackgroundColor(0xFF1A1A2E);
+            if (root instanceof ViewGroup) setTextColorForDialog((ViewGroup) root, 0xFFFFFFFF);
+        }
 
         populateView();
         setupListeners();
