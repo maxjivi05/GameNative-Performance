@@ -2560,16 +2560,7 @@ private fun getSteamlessTarget(
 
 private fun cleanupProcesses() {
     try {
-        val cmds = arrayOf(
-            "pkill -9 wineserver",
-            "pkill -9 box64",
-            "pkill -9 box86",
-            "pkill -9 libpulseaudio.so",
-            "pkill -9 -f winhandler.exe"
-        )
-        for (cmd in cmds) {
-            Runtime.getRuntime().exec(cmd).waitFor()
-        }
+        com.winlator.core.ProcessHelper.killAllSubProcesses()
     } catch (e: Exception) {
         Timber.e(e, "Failed to kill processes")
     }

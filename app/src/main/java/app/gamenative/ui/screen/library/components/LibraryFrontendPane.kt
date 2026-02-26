@@ -58,6 +58,9 @@ import app.gamenative.PluviaApp
 import app.gamenative.R
 import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
+import app.gamenative.data.SteamApp
+import app.gamenative.enums.AppType
+import app.gamenative.ui.enums.AppFilter
 import app.gamenative.events.AndroidEvent
 import app.gamenative.ui.component.AnimatedWavyBackground
 import app.gamenative.ui.data.LibraryState
@@ -80,6 +83,8 @@ import android.view.InputDevice
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.window.Dialog
@@ -525,7 +530,17 @@ internal fun LibraryFrontendPane(
     var connectedControllerType by remember { mutableStateOf(ControllerType.NONE) }
     var installDialogItem by remember { mutableStateOf<LibraryItem?>(null) }
     var downloadingDialogItem by remember { mutableStateOf<LibraryItem?>(null) }
-    var storefrontHeaderOffsetY by remember { mutableFloatStateOf(0f) }
+
+    // Header auto-hide logic hoisted to top level
+    var headerVisible by remember { mutableStateOf(true) }
+    var previousScrollOffset by remember { mutableIntStateOf(0) }
+    var previousFirstVisibleItem by remember { mutableIntStateOf(0) }
+
+    val headerOffsetY by animateFloatAsState(
+        targetValue = if (headerVisible) 0f else -200f,
+        animationSpec = tween(250),
+        label = "headerOffset"
+    )
 
     val scope = rememberCoroutineScope()
 
@@ -656,8 +671,11 @@ internal fun LibraryFrontendPane(
 
     val tabItems: List<LibraryItem> = remember(
         selectedTabIdx, state.appInfoList, state.searchQuery,
-        state.steamItems, state.gogItems, state.epicItems, state.amazonItems, state.customItems
+        state.steamItems, state.gogItems, state.epicItems, state.amazonItems, state.customItems,
+        state.appInfoSortType
     ) {
+        val currentFilter = AppFilter.getAppType(state.appInfoSortType)
+        
         if (state.searchQuery.isNotEmpty()) {
             // When searching, combine all full source lists and filter
             (state.steamItems + state.gogItems + state.epicItems + state.amazonItems + state.customItems)
@@ -668,11 +686,15 @@ internal fun LibraryFrontendPane(
                 FrontendTab.LIBRARY -> state.appInfoList
                     .filter { it.isInstalled }
                     .sortedByDescending { it.lastPlayed }
-                FrontendTab.STEAM -> state.steamItems
-                FrontendTab.EPIC -> state.epicItems
-                FrontendTab.GOG -> state.gogItems
-                FrontendTab.AMAZON -> state.amazonItems
-                FrontendTab.CUSTOM -> state.customItems
+                FrontendTab.STEAM -> state.steamItems.filter { item ->
+                    // Steam items have accurate types in steamApps list
+                    val steamApp = state.steamApps.find { it.id == item.appId.split("_").last().toInt() }
+                    steamApp?.let { currentFilter.contains(it.type) } ?: true
+                }
+                FrontendTab.EPIC -> state.epicItems.filter { currentFilter.contains(AppType.game) }
+                FrontendTab.GOG -> state.gogItems.filter { currentFilter.contains(AppType.game) }
+                FrontendTab.AMAZON -> state.amazonItems.filter { currentFilter.contains(AppType.game) }
+                FrontendTab.CUSTOM -> state.customItems.filter { currentFilter.contains(AppType.game) }
             }
         }
     }
@@ -1080,7 +1102,7 @@ internal fun LibraryFrontendPane(
         rightStickX = 0f
         rightStickY = 0f
         isHeaderFocused = false
-        storefrontHeaderOffsetY = 0f // Reset header visibility on tab switch
+        headerVisible = true // Reset header visibility on tab switch
     }
 
     Box(modifier = Modifier.fillMaxSize().background(Color(0xFF0A0A0A))) {
@@ -1117,6 +1139,13 @@ internal fun LibraryFrontendPane(
         // HEADER — slides up/down on storefront tabs when scrolling
         val isLibraryTabHeader = tabs[selectedTabIdx] == FrontendTab.LIBRARY
         val isStorefrontTab = !isLibraryTabHeader && !isCustomTab
+        
+        val headerTextShadow = Shadow(
+            color = Color.Black.copy(alpha = 0.8f),
+            offset = Offset(2f, 2f),
+            blurRadius = 8f
+        )
+
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1125,14 +1154,14 @@ internal fun LibraryFrontendPane(
                 .zIndex(2f)
                 .graphicsLayer {
                     if (isStorefrontTab) {
-                        translationY = storefrontHeaderOffsetY
-                        alpha = ((storefrontHeaderOffsetY + 200f) / 200f).coerceIn(0f, 1f)
+                        translationY = headerOffsetY
+                        alpha = ((headerOffsetY + 200f) / 200f).coerceIn(0f, 1f)
                     }
                 },
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.Top
         ) {
             // Top Left Source Icon
-            Box(modifier = Modifier.width(110.dp)) {
+            Box(modifier = Modifier.width(110.dp).padding(top = 6.dp)) {
                 focusedItem?.let { item ->
                     val iconModifier = Modifier.size(32.dp).alpha(0.8f)
                     when (item.gameSource) {
@@ -1146,7 +1175,15 @@ internal fun LibraryFrontendPane(
             }
 
             // Centered Box for Tabs + Search
-            Box(modifier = Modifier.weight(1f).padding(top = 4.dp), contentAlignment = Alignment.Center) {
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .background(
+                        Color.Black.copy(alpha = 0.5f),
+                        RoundedCornerShape(24.dp)
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     // Search Section
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1156,7 +1193,7 @@ internal fun LibraryFrontendPane(
                             exit = fadeOut()
                         ) {
                             Surface(
-                                color = Color.White.copy(alpha = 0.1f),
+                                color = Color.Black.copy(alpha = 0.3f),
                                 shape = RoundedCornerShape(20.dp),
                                 modifier = Modifier
                                     .width(200.dp)
@@ -1170,7 +1207,11 @@ internal fun LibraryFrontendPane(
                                     BasicTextField(
                                         value = state.searchQuery,
                                         onValueChange = { onSearchQuery(it) },
-                                        textStyle = TextStyle(color = Color.White, fontSize = 14.sp),
+                                        textStyle = TextStyle(
+                                            color = Color.White, 
+                                            fontSize = 14.sp,
+                                            shadow = headerTextShadow
+                                        ),
                                         cursorBrush = SolidColor(Color.White),
                                         modifier = Modifier
                                             .weight(1f)
@@ -1180,7 +1221,12 @@ internal fun LibraryFrontendPane(
                                         keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() }),
                                         decorationBox = { innerTextField ->
                                             if (state.searchQuery.isEmpty()) {
-                                                Text("Search games...", color = Color.White.copy(alpha = 0.5f), fontSize = 14.sp)
+                                                Text(
+                                                    "Search games...", 
+                                                    color = Color.White.copy(alpha = 0.5f), 
+                                                    fontSize = 14.sp,
+                                                    style = TextStyle(shadow = headerTextShadow)
+                                                )
                                             }
                                             innerTextField()
                                         }
@@ -1217,7 +1263,12 @@ internal fun LibraryFrontendPane(
                                         else Modifier
                                     )
                             ) {
-                                Icon(Icons.Default.Search, "Search", tint = Color.White, modifier = Modifier.size(24.dp))
+                                Icon(
+                                    imageVector = Icons.Default.Search, 
+                                    contentDescription = "Search", 
+                                    tint = Color.White, 
+                                    modifier = Modifier.size(24.dp)
+                                )
                             }
                         }
                     }
@@ -1248,7 +1299,8 @@ internal fun LibraryFrontendPane(
                                             text = tab.label,
                                             fontSize = 16.sp,
                                             fontWeight = if (selectedTabIdx == index) FontWeight.Bold else FontWeight.Normal,
-                                            color = if (selectedTabIdx == index) Color.White else Color.White.copy(alpha = 0.6f)
+                                            color = if (selectedTabIdx == index) Color.White else Color.White.copy(alpha = 0.6f),
+                                            style = TextStyle(shadow = headerTextShadow)
                                         )
                                     }
                                 )
@@ -1282,10 +1334,34 @@ internal fun LibraryFrontendPane(
             }
 
             // Top Right Icons
-            Column(
+            Row(
                 modifier = Modifier.width(110.dp), 
-                horizontalAlignment = Alignment.End
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.Top
             ) {
+                if (focusedItem != null) {
+                    val isGameMenuFocused = isHeaderFocused && headerFocusIndex == 2
+                    Surface(
+                        onClick = { 
+                            isHeaderFocused = true
+                            headerFocusIndex = 2
+                            onEdit(focusedItem) 
+                        },
+                        color = Color.Black.copy(alpha = 0.3f),
+                        shape = CircleShape,
+                        modifier = Modifier.size(44.dp)
+                            .then(
+                                if (isGameMenuFocused) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, CircleShape)
+                                else Modifier
+                            )
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(Icons.Default.SportsEsports, "Game Menu", tint = Color.White, modifier = Modifier.size(24.dp))
+                        }
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                }
+
                 val isSettingsFocused = isHeaderFocused && headerFocusIndex == 1
                 Surface(
                     onClick = { 
@@ -1293,7 +1369,7 @@ internal fun LibraryFrontendPane(
                         headerFocusIndex = 1
                         onNavigateRoute("settings") 
                     },
-                    color = Color.White.copy(alpha = 0.1f),
+                    color = Color.Black.copy(alpha = 0.2f),
                     shape = CircleShape,
                     modifier = Modifier.size(44.dp)
                         .then(
@@ -1303,29 +1379,6 @@ internal fun LibraryFrontendPane(
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(Icons.Default.Settings, "Settings", tint = Color.White, modifier = Modifier.size(24.dp))
-                    }
-                }
-
-                if (focusedItem != null) {
-                    val isGameMenuFocused = isHeaderFocused && headerFocusIndex == 2
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Surface(
-                        onClick = { 
-                            isHeaderFocused = true
-                            headerFocusIndex = 2
-                            onEdit(focusedItem) 
-                        },
-                        color = Color.White.copy(alpha = 0.15f),
-                        shape = CircleShape,
-                        modifier = Modifier.size(44.dp)
-                            .then(
-                                if (isGameMenuFocused) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, CircleShape)
-                                else Modifier
-                            )
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(Icons.Default.SettingsSuggest, "Game Menu", tint = Color.White, modifier = Modifier.size(24.dp))
-                        }
                     }
                 }
             }
@@ -1344,7 +1397,7 @@ internal fun LibraryFrontendPane(
             HorizontalPager(
                 state = pagerState,
                 pageSize = PageSize.Fixed(pageWidth),
-                modifier = Modifier.fillMaxWidth().height(220.dp).align(Alignment.Center),
+                modifier = Modifier.fillMaxWidth().height(260.dp).align(Alignment.TopCenter).padding(top = 100.dp),
                 contentPadding = PaddingValues(horizontal = horizontalPadding),
                 pageSpacing = 0.dp,
                 verticalAlignment = Alignment.CenterVertically
@@ -1365,7 +1418,7 @@ internal fun LibraryFrontendPane(
                             modifier = Modifier
                                 .scale(scale)
                                 .width(130.dp)
-                                .height(150.dp)
+                                .height(188.dp)
                                 .shadow(if (isFocused) 16.dp else 4.dp, RoundedCornerShape(16.dp), spotColor = Color.Black)
                                 .clip(RoundedCornerShape(16.dp))
                                 .background(Color.White.copy(alpha = 0.05f))
@@ -1386,7 +1439,7 @@ internal fun LibraryFrontendPane(
                             modifier = Modifier
                                 .scale(scale)
                                 .width(130.dp)
-                                .height(150.dp)
+                                .height(188.dp)
                                 .shadow(if (isFocused) 24.dp else 8.dp, RoundedCornerShape(16.dp), ambientColor = Color.Black, spotColor = Color.Black)
                                 .clip(RoundedCornerShape(16.dp))
                                 .clickable { handleGameClick(item) }
@@ -1434,7 +1487,7 @@ internal fun LibraryFrontendPane(
                     val isAuth = checkAuthStatus(context, tabs[selectedTabIdx])
         
                     if (!isAuth) {
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Box(modifier = Modifier.fillMaxSize().padding(top = 100.dp), contentAlignment = Alignment.TopCenter) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(
                                     text = "Not Signed In",
@@ -1461,11 +1514,7 @@ internal fun LibraryFrontendPane(
                             }
                         }
                     } else {
-                        // Track scroll direction for header auto-hide
-                        var headerVisible by remember { mutableStateOf(true) }
-                        var previousScrollOffset by remember { mutableIntStateOf(0) }
-                        var previousFirstVisibleItem by remember { mutableIntStateOf(0) }
-        
+                        // Use hoisted header auto-hide logic
                         LaunchedEffect(gridState.firstVisibleItemIndex, gridState.firstVisibleItemScrollOffset) {
                             val currentFirst = gridState.firstVisibleItemIndex
                             val currentOffset = gridState.firstVisibleItemScrollOffset
@@ -1479,13 +1528,6 @@ internal fun LibraryFrontendPane(
                             previousFirstVisibleItem = currentFirst
                             previousScrollOffset = currentOffset
                         }
-        
-                        // Animate header offset
-                        val headerOffsetY by animateFloatAsState(
-                            targetValue = if (headerVisible) 0f else -200f,
-                            animationSpec = tween(250),
-                            label = "headerOffset"
-                        )
         
                         // Pull-to-refresh wrapping the storefront grid
                         val pullToRefreshState = rememberPullToRefreshState()
@@ -1504,7 +1546,7 @@ internal fun LibraryFrontendPane(
                                     .padding(horizontal = 16.dp),
                                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                                 verticalArrangement = Arrangement.spacedBy(10.dp),
-                                contentPadding = PaddingValues(top = 80.dp, bottom = 24.dp)
+                                contentPadding = PaddingValues(top = 100.dp, bottom = 24.dp)
                             ) {
                                 items(count = tabItems.size, key = { tabItems[it].appId }) { index ->
                                     val item = tabItems[index]
@@ -1517,7 +1559,7 @@ internal fun LibraryFrontendPane(
                                     )
                                     Box(
                                         modifier = Modifier
-                                            .aspectRatio(1.25f)
+                                            .aspectRatio(1.43f)
                                             .scale(focusScale)
                                             .clip(RoundedCornerShape(10.dp))
                                             .clickable { handleGameClick(item) }
@@ -1570,12 +1612,6 @@ internal fun LibraryFrontendPane(
                                     }
                                 }
                             }
-                        }
-        
-                        // Re-show header state for the HEADER Row above (we'll use graphicsLayer)
-                        // Store headerOffsetY in a key that the header can read
-                        SideEffect {
-                            storefrontHeaderOffsetY = headerOffsetY
                         }
                     }
                 }

@@ -14,6 +14,7 @@ import app.gamenative.data.GOGGame
 import app.gamenative.data.EpicGame
 import app.gamenative.data.AmazonGame
 import app.gamenative.data.GameSource
+import app.gamenative.enums.AppType
 import app.gamenative.db.dao.SteamAppDao
 import app.gamenative.db.dao.GOGGameDao
 import app.gamenative.db.dao.EpicGameDao
@@ -417,6 +418,7 @@ class LibraryViewModel @Inject constructor(
             // Filter GOG games
             val filteredGOGGames = gogGameList
                 .asSequence()
+                .filter { currentFilter.contains(AppType.game) } // GOG items are games
                 .filter { game ->
                     if (currentState.searchQuery.isNotEmpty()) {
                         game.title.contains(currentState.searchQuery, ignoreCase = true)
@@ -455,6 +457,7 @@ class LibraryViewModel @Inject constructor(
             // Filter Epic games
             val filteredEpicGames = epicGameList
                 .asSequence()
+                .filter { currentFilter.contains(AppType.game) } // Epic items are games
                 .filter { game ->
                     if (currentState.searchQuery.isNotEmpty()) {
                         game.title.contains(currentState.searchQuery, ignoreCase = true)
@@ -493,6 +496,7 @@ class LibraryViewModel @Inject constructor(
             // Filter Amazon games
             val filteredAmazonGames = amazonGameList
                 .asSequence()
+                .filter { currentFilter.contains(AppType.game) } // Amazon items are games
                 .filter { game ->
                     if (currentState.searchQuery.isNotEmpty()) {
                         game.title.contains(currentState.searchQuery, ignoreCase = true)
@@ -613,6 +617,7 @@ class LibraryViewModel @Inject constructor(
                     totalAppsInFilter = totalFound,
                     totalInstalledCount = totalInstalledCount,
                     steamItems = fullSteamItems,
+                    steamApps = filteredSteamApps,
                     gogItems = fullGogItems,
                     epicItems = fullEpicItems,
                     amazonItems = fullAmazonItems,

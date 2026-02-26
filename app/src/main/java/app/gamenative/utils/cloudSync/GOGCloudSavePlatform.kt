@@ -53,6 +53,7 @@ internal object GOGCloudSavePlatform : CloudSavePlatform {
         gameId: Int,
         isOffline: Boolean,
         prefixToPath: (String) -> String,
+        callbacks: CloudSaveCallbacks,
     ) {
         Timber.tag("GOG").i("[Cloud Saves] GOG Game detected for $appId — uploading cloud saves after close")
         try {

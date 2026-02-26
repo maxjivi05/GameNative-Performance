@@ -2251,7 +2251,12 @@ class SteamService : Service(), IChallengeUrlChanged {
             }
         }
 
-        suspend fun closeApp(appId: Int, isOffline: Boolean, prefixToPath: (String) -> String) = withContext(Dispatchers.IO) {
+        suspend fun closeApp(
+            appId: Int,
+            isOffline: Boolean,
+            prefixToPath: (String) -> String,
+            onProgress: ((message: String, progress: Float) -> Unit)? = null,
+        ) = withContext(Dispatchers.IO) {
             async {
                 if (isOffline || !isConnected) {
                     return@async
@@ -2274,6 +2279,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                                         steamCloud = steamCloud,
                                         parentScope = this,
                                         prefixToPath = prefixToPath,
+                                        onProgress = onProgress,
                                     ).await()
 
                                     steamCloud.signalAppExitSyncDone(

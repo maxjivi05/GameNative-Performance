@@ -211,7 +211,16 @@ internal object SteamCloudSavePlatform : CloudSavePlatform {
         gameId: Int,
         isOffline: Boolean,
         prefixToPath: (String) -> String,
+        callbacks: CloudSaveCallbacks,
     ) {
-        SteamService.closeApp(gameId, isOffline, prefixToPath).await()
+        SteamService.closeApp(
+            appId = gameId,
+            isOffline = isOffline,
+            prefixToPath = prefixToPath,
+            onProgress = { message, progress ->
+                callbacks.setLoadingMessage(message)
+                callbacks.setLoadingProgress(if (progress < 0) -1f else progress)
+            }
+        ).await()
     }
 }

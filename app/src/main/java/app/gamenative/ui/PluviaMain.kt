@@ -857,6 +857,12 @@ fun PluviaMain(
             message = state.loadingDialogMessage,
         )
 
+        LoadingDialog(
+            visible = state.isExiting,
+            progress = state.exitingProgress,
+            message = state.exitingMessage,
+        )
+
         MessageDialog(
             visible = msgDialogState.visible,
             onDismissRequest = onDismissRequest,
@@ -1192,10 +1198,7 @@ fun preLaunchApp(
 
         // Kill all potential lingering wine processes from Android side
         try {
-            Runtime.getRuntime().exec("pkill -9 wineserver").waitFor()
-            Runtime.getRuntime().exec("pkill -9 box64").waitFor()
-            Runtime.getRuntime().exec("pkill -9 box86").waitFor()
-            Runtime.getRuntime().exec("pkill -9 libpulseaudio.so").waitFor()
+            com.winlator.core.ProcessHelper.killAllSubProcesses()
             delay(300)
         } catch (e: Exception) {}
 

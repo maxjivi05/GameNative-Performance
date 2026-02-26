@@ -63,6 +63,8 @@ suspend fun uploadCloudSaves(
     gameId: Int,
     isOffline: Boolean,
     prefixToPath: (String) -> String,
+    setLoadingMessage: (String) -> Unit,
+    setLoadingProgress: (Float) -> Unit,
 ) {
     val container = try {
         ContainerUtils.getContainer(context, appId)
@@ -70,8 +72,10 @@ suspend fun uploadCloudSaves(
         Timber.tag("CloudSavePlatforms").e(e, "uploadCloudSaves: container not found for appId=$appId")
         return
     }
+    val callbacks = CloudSaveCallbacks(setLoadingMessage, setLoadingProgress)
     val platforms = getCloudSyncPlatforms(container)
     for (platform in platforms) {
-        platform.upload(context, appId, gameId, isOffline, prefixToPath)
+        setLoadingMessage(platform.getLoadingMessage(context, container))
+        platform.upload(context, appId, gameId, isOffline, prefixToPath, callbacks)
     }
 }

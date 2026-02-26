@@ -43,6 +43,13 @@ public abstract class ProcessHelper {
         }
     }
 
+    public static void killAllSubProcesses() {
+        List<ProcessInfo> subProcesses = listSubProcesses();
+        for (ProcessInfo subProcess : subProcesses) {
+            Process.sendSignal(subProcess.pid, SIGKILL);
+        }
+    }
+
     public static void pauseAllWineProcesses() {
         for (String process : listRunningWineProcesses()) {
             suspendProcess(Integer.parseInt(process));

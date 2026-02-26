@@ -3,6 +3,7 @@ package app.gamenative.ui.data
 import app.gamenative.PrefManager
 import app.gamenative.data.GameCompatibilityStatus
 import app.gamenative.data.LibraryItem
+import app.gamenative.data.SteamApp
 import app.gamenative.ui.enums.AppFilter
 import java.util.EnumSet
 
@@ -43,6 +44,7 @@ data class LibraryState(
 
     // Full per-source lists (unpaginated) for storefront tabs
     val steamItems: List<LibraryItem> = emptyList(),
+    val steamApps: List<SteamApp> = emptyList(),
     val gogItems: List<LibraryItem> = emptyList(),
     val epicItems: List<LibraryItem> = emptyList(),
     val amazonItems: List<LibraryItem> = emptyList(),

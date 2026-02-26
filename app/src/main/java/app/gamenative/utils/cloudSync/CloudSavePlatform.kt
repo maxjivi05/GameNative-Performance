@@ -34,6 +34,7 @@ interface CloudSavePlatform {
         gameId: Int,
         isOffline: Boolean,
         prefixToPath: (String) -> String,
+        callbacks: CloudSaveCallbacks,
     ) {
         // Default: no-op (platforms that support post-exit upload override this).
     }
