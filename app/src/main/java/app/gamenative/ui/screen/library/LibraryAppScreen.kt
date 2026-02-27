@@ -237,6 +237,7 @@ internal fun AppScreenContent(
     onDeleteDownloadClick: () -> Unit,
     onUpdateClick: () -> Unit,
     onCustomPathClick: (() -> Unit)? = null,
+    onDLCSelectClick: (() -> Unit)? = null,
     onBack: () -> Unit = {},
     vararg optionsMenu: AppMenuOption,
 ) {
@@ -421,7 +422,7 @@ internal fun AppScreenContent(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(24.dp)
+                .padding(16.dp)
         ) {
             // Action buttons
             Row(
@@ -441,7 +442,7 @@ internal fun AppScreenContent(
                         onClick = onPauseResumeClick,
                         shape = RoundedCornerShape(16.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                        contentPadding = PaddingValues(16.dp)
+                        contentPadding = PaddingValues(12.dp)
                     ) {
                         Text(
                             text = if (isDownloading) stringResource(R.string.pause_download)
@@ -456,7 +457,7 @@ internal fun AppScreenContent(
                         shape = RoundedCornerShape(16.dp),
                         border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary),
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary),
-                        contentPadding = PaddingValues(16.dp)
+                        contentPadding = PaddingValues(12.dp)
                     ) {
                         Text(
                             text = if (isInstalled) stringResource(R.string.uninstall) else stringResource(R.string.delete_app),
@@ -483,7 +484,7 @@ internal fun AppScreenContent(
                         },
                         shape = RoundedCornerShape(16.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                        contentPadding = PaddingValues(16.dp)
+                        contentPadding = PaddingValues(12.dp)
                     ) {
                         val text = when {
                             isInstalled -> stringResource(R.string.run_app)
@@ -497,6 +498,24 @@ internal fun AppScreenContent(
                         )
                     }
 
+                    // DLC Selection button (only for non-installed games)
+                    if (!isInstalled && onDLCSelectClick != null) {
+                        OutlinedButton(
+                            enabled = installEnabled,
+                            modifier = Modifier.weight(1f),
+                            onClick = onDLCSelectClick,
+                            shape = RoundedCornerShape(16.dp),
+                            border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary),
+                            contentPadding = PaddingValues(12.dp)
+                        ) {
+                            Text(
+                                text = "DLC",
+                                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
+                            )
+                        }
+                    }
+
                     // Custom Path button (only for non-installed games)
                     if (!isInstalled && onCustomPathClick != null) {
                         OutlinedButton(
@@ -506,10 +525,10 @@ internal fun AppScreenContent(
                             shape = RoundedCornerShape(16.dp),
                             border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary),
                             colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary),
-                            contentPadding = PaddingValues(16.dp)
+                            contentPadding = PaddingValues(12.dp)
                         ) {
                             Text(
-                                text = "Custom Path",
+                                text = "Custom",
                                 style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
                             )
                         }
@@ -525,7 +544,7 @@ internal fun AppScreenContent(
                             shape = RoundedCornerShape(16.dp),
                             border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary),
                             colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary),
-                            contentPadding = PaddingValues(16.dp)
+                            contentPadding = PaddingValues(12.dp)
                         ) {
                             Text(
                                 text = stringResource(R.string.uninstall),
@@ -965,4 +984,5 @@ private fun Preview_AppScreen() {
         }
     }
 }
+
 

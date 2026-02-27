@@ -174,6 +174,17 @@ class EpicService : Service() {
             return getInstance()?.activeDownloads?.keys?.firstOrNull()
         }
 
+        fun getAllDownloads(): Map<Int, DownloadInfo> {
+            return getInstance()?.activeDownloads ?: emptyMap()
+        }
+
+        fun clearCompletedDownloads() {
+            getInstance()?.let { instance ->
+                val toRemove = instance.activeDownloads.filterValues { !it.isActive() }.keys
+                toRemove.forEach { instance.activeDownloads.remove(it) }
+            }
+        }
+
         fun getDownloadInfo(appId: Int): DownloadInfo? {
             return getInstance()?.activeDownloads?.get(appId)
         }
@@ -247,7 +258,6 @@ class EpicService : Service() {
             return if (downloadInfo != null) {
                 Timber.tag("EPIC").i("Cancelling download for Epic game: $appId")
                 downloadInfo.cancel()
-                instance.activeDownloads.remove(appId)
                 Timber.tag("EPIC").d("Download cancelled for Epic game: $appId")
                 true
             } else {
@@ -415,7 +425,6 @@ class EpicService : Service() {
                         ).show()
                     }
                 } finally {
-                    instance.activeDownloads.remove(appId)
                     Timber.d("[Download] Finished for game $gameId, progress: ${downloadInfo.getProgress()}, active: ${downloadInfo.isActive()}")
                 }
             }

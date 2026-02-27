@@ -124,6 +124,13 @@ class LibraryViewModel @Inject constructor(
             }
         }
 
+        viewModelScope.launch(Dispatchers.IO) {
+            while (true) {
+                updateActiveDownloads()
+                delay(1000)
+            }
+        }
+
         // Collect GOG games
         viewModelScope.launch(Dispatchers.IO) {
             gogGameDao.getAll().collect { games ->
@@ -608,6 +615,8 @@ class LibraryViewModel @Inject constructor(
                 .sortedBy { it.name.lowercase() }
             val fullCustomItems = customEntries.map { it.item.copy(isInstalled = it.isInstalled) }
                 .sortedBy { it.name.lowercase() }
+            
+            val fullStoreItems = (fullSteamItems + fullGogItems + fullEpicItems + fullAmazonItems).sortedBy { it.name.lowercase() }
 
             _state.update {
                 it.copy(
@@ -616,6 +625,7 @@ class LibraryViewModel @Inject constructor(
                     lastPaginationPage = lastPageInCurrentFilter + 1,
                     totalAppsInFilter = totalFound,
                     totalInstalledCount = totalInstalledCount,
+                    storeItems = fullStoreItems,
                     steamItems = fullSteamItems,
                     steamApps = filteredSteamApps,
                     gogItems = fullGogItems,
@@ -729,5 +739,116 @@ class LibraryViewModel @Inject constructor(
             Timber.tag("LibraryViewModel").d("Updated state with ${compatibilityMap.size} compatibility entries, total: ${mergedMap.size}")
             currentState.copy(compatibilityMap = mergedMap)
         }
+    }
+
+    private fun updateActiveDownloads() {
+        val allDownloads = DownloadService.getAllDownloads()
+        val currentState = _state.value
+        val items = allDownloads.map { (fullId, info) ->
+            // Try to find the item in storeItems to get name and artUrl
+            val storeItem = currentState.storeItems.find { it.appId == fullId }
+            val name = storeItem?.name ?: "Unknown App ($fullId)"
+            val artUrl = if (fullId.startsWith("STEAM_")) {
+                val bareId = fullId.removePrefix("STEAM_")
+                "https://shared.steamstatic.com/store_item_assets/steam/apps/${bareId}/library_600x900.jpg"
+            } else {
+                storeItem?.iconHash ?: ""
+            }
+            
+            app.gamenative.ui.data.DownloadItemState(
+                appId = fullId,
+                name = name,
+                artUrl = artUrl,
+                downloadedBytes = info.getBytesDownloaded(),
+                totalBytes = info.getTotalExpectedBytes(),
+                speed = info.getRecentSpeedBytesPerSec().toLong(),
+                isPaused = !info.isActive(),
+                isCompleted = info.getProgress() >= 1f,
+                progress = info.getProgress()
+            )
+        }
+        
+        // Sort active downloads: active first, then paused, then completed
+        val sortedItems = items.sortedWith(
+            compareBy<app.gamenative.ui.data.DownloadItemState> { it.isCompleted }
+                .thenBy { it.isPaused }
+                .thenBy { it.name }
+        )
+        
+        _state.update { it.copy(activeDownloads = sortedItems) }
+    }
+
+    fun pauseDownload(appId: String) {
+        val allDownloads = DownloadService.getAllDownloads()
+        val info = allDownloads.find { it.first == appId }?.second
+        info?.setActive(false)
+        updateActiveDownloads()
+    }
+
+    fun resumeDownload(appId: String) {
+        // Simple resume by setting active or re-triggering via service might be needed.
+        // For now, let's just emit active state or let the specific service handle resume.
+        // Often, services require calling downloadApp again to resume.
+        if (appId.startsWith("STEAM_")) {
+            SteamService.downloadApp(appId.removePrefix("STEAM_").toInt())
+        } else if (appId.startsWith("EPIC_")) {
+            val bareId = appId.removePrefix("EPIC_").toInt()
+            val game = _state.value.epicItems.find { it.appId == appId }?.name
+            if (game != null) {
+                viewModelScope.launch {
+                    app.gamenative.service.epic.EpicService.downloadGame(context, bareId, emptyList(), app.gamenative.service.epic.EpicConstants.getGameInstallPath(context, game))
+                }
+            }
+        } else if (appId.startsWith("GOG_")) {
+            val bareId = appId.removePrefix("GOG_")
+            val game = _state.value.gogItems.find { it.appId == appId }?.name
+            if (game != null) {
+                viewModelScope.launch {
+                    app.gamenative.service.gog.GOGService.downloadGame(context, bareId, app.gamenative.service.gog.GOGConstants.getGameInstallPath(game))
+                }
+            }
+        } else if (appId.startsWith("AMAZON_")) {
+            val bareId = appId.removePrefix("AMAZON_")
+            val game = _state.value.amazonItems.find { it.appId == appId }?.name
+            if (game != null) {
+                viewModelScope.launch {
+                    AmazonService.downloadGame(context, bareId, app.gamenative.service.amazon.AmazonConstants.getGameInstallPath(context, game))
+                }
+            }
+        }
+        updateActiveDownloads()
+    }
+
+    fun stopAllDownloads() {
+        val allDownloads = DownloadService.getAllDownloads()
+        allDownloads.forEach { (appId, info) ->
+            info.setActive(false)
+        }
+        updateActiveDownloads()
+    }
+
+    fun cancelDownload(appId: String) {
+        if (appId.startsWith("STEAM_")) {
+            val info = SteamService.getAppDownloadInfo(appId.removePrefix("STEAM_").toInt())
+            info?.cancel()
+        } else if (appId.startsWith("EPIC_")) {
+            val info = app.gamenative.service.epic.EpicService.getDownloadInfo(appId.removePrefix("EPIC_").toInt())
+            info?.cancel()
+        } else if (appId.startsWith("GOG_")) {
+            val info = app.gamenative.service.gog.GOGService.getDownloadInfo(appId.removePrefix("GOG_"))
+            info?.cancel()
+        } else if (appId.startsWith("AMAZON_")) {
+            val info = AmazonService.getDownloadInfo(appId.removePrefix("AMAZON_"))
+            info?.cancel()
+        }
+        updateActiveDownloads()
+    }
+
+    fun clearCompletedDownloads() {
+        SteamService.clearCompletedDownloads()
+        app.gamenative.service.epic.EpicService.clearCompletedDownloads()
+        app.gamenative.service.gog.GOGService.clearCompletedDownloads()
+        AmazonService.clearCompletedDownloads()
+        updateActiveDownloads()
     }
 }

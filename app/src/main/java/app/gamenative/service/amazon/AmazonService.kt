@@ -266,6 +266,17 @@ class AmazonService : Service() {
         // ── Download management ───────────────────────────────────────────────
 
         /** Returns the active [DownloadInfo] for [productId], or null if not downloading. */
+        fun getAllDownloads(): Map<String, DownloadInfo> {
+            return getInstance()?.activeDownloads ?: emptyMap()
+        }
+
+        fun clearCompletedDownloads() {
+            getInstance()?.let { instance ->
+                val toRemove = instance.activeDownloads.filterValues { !it.isActive() }.keys
+                toRemove.forEach { instance.activeDownloads.remove(it) }
+            }
+        }
+
         fun getDownloadInfo(productId: String): DownloadInfo? =
             getInstance()?.activeDownloads?.get(productId)
 
@@ -349,7 +360,6 @@ class AmazonService : Service() {
                     Timber.tag("Amazon").e(e, "Download exception for $productId")
                     downloadInfo.setActive(false)
                 } finally {
-                    instance.activeDownloads.remove(productId)
                     PluviaApp.events.emitJava(
                         AndroidEvent.DownloadStatusChanged(productId.hashCode(), false)
                     )
@@ -372,7 +382,6 @@ class AmazonService : Service() {
             }
             Timber.tag("Amazon").i("Cancelling download for $productId")
             downloadInfo.cancel()
-            instance.activeDownloads.remove(productId)
             return true
         }
 

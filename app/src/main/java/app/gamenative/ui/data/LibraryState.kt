@@ -7,6 +7,18 @@ import app.gamenative.data.SteamApp
 import app.gamenative.ui.enums.AppFilter
 import java.util.EnumSet
 
+data class DownloadItemState(
+    val appId: String,
+    val name: String,
+    val artUrl: String,
+    val downloadedBytes: Long,
+    val totalBytes: Long,
+    val speed: Long,
+    val isPaused: Boolean,
+    val isCompleted: Boolean,
+    val progress: Float
+)
+
 data class LibraryState(
     val appInfoSortType: EnumSet<AppFilter> = PrefManager.libraryFilter,
     val appInfoList: List<LibraryItem> = emptyList(),
@@ -43,6 +55,8 @@ data class LibraryState(
     val totalInstalledCount: Int = 0,
 
     // Full per-source lists (unpaginated) for storefront tabs
+    val storeItems: List<LibraryItem> = emptyList(),
+    val activeDownloads: List<DownloadItemState> = emptyList(),
     val steamItems: List<LibraryItem> = emptyList(),
     val steamApps: List<SteamApp> = emptyList(),
     val gogItems: List<LibraryItem> = emptyList(),

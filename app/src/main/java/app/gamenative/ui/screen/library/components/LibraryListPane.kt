@@ -211,6 +211,8 @@ internal fun LibraryListPane(
                     onFocusChanged = onFocusChanged,
                     onRefresh = onRefresh,
                     isAnyDialogOpen = isAnyDialogOpen,
+                    onPauseDownload = {},
+                    onCancelDownload = {}
                 )
                             } else {                Column(
                     modifier = Modifier

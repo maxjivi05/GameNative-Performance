@@ -300,11 +300,20 @@ class SteamService : Service(), IChallengeUrlChanged {
             PluviaApp.events.emit(AndroidEvent.DownloadStatusChanged(appId, false))
         }
 
-        private fun removeDownloadJob(appId: Int) {
-            val removed = downloadJobs.remove(appId)
-            if (removed != null) {
+        private fun removeDownloadJob(appId: Int, forceRemove: Boolean = false) {
+            if (forceRemove) {
+                val removed = downloadJobs.remove(appId)
+                if (removed != null) {
+                    notifyDownloadStopped(appId)
+                }
+            } else {
                 notifyDownloadStopped(appId)
             }
+        }
+
+        fun clearCompletedDownloads() {
+            val toRemove = downloadJobs.filterValues { !it.isActive() }.keys
+            toRemove.forEach { removeDownloadJob(it, forceRemove = true) }
         }
 
         /** Returns true if there is an incomplete download on disk (in-progress marker or actively downloading). */
@@ -520,6 +529,10 @@ class SteamService : Service(), IChallengeUrlChanged {
 
         fun getInstalledDlcDepotsOf(appId: Int): List<Int>? {
             return getInstalledApp(appId)?.dlcDepots
+        }
+
+        fun getAllDownloads(): Map<Int, DownloadInfo> {
+            return downloadJobs
         }
 
         fun getAppDownloadInfo(appId: Int): DownloadInfo? {

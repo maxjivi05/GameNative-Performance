@@ -94,6 +94,14 @@ object PrefManager {
     fun setFloat(key: String, value: Float): Unit =
         setPref(floatPreferencesKey(key), value)
 
+    fun getControlsOpacity(): Float =
+        getPref(floatPreferencesKey("controls_opacity"), 1.0f)
+
+    @JvmStatic
+    fun setControlsOpacity(opacity: Float) {
+        setPref(floatPreferencesKey("controls_opacity"), opacity)
+    }
+
     @Suppress("SameParameterValue")
     private fun <T> getPref(key: Preferences.Key<T>, defaultValue: T): T = runBlocking {
         dataStore.data.first()[key] ?: defaultValue

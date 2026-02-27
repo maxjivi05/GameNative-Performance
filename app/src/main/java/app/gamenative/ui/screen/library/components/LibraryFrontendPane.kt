@@ -101,11 +101,12 @@ import kotlin.math.sign
 
 private enum class FrontendTab(val label: String) {
     LIBRARY("Library"),
+    STORE("Store"),
+    DOWNLOADS("Downloads"),
     STEAM("Steam"),
     EPIC("Epic"),
     GOG("GOG"),
     AMAZON("Amazon"),
-    CUSTOM("Custom"),
 }
 
 private enum class ControllerType {
@@ -114,6 +115,7 @@ private enum class ControllerType {
 
 private fun checkAuthStatus(context: Context, tab: FrontendTab): Boolean {
     return when (tab) {
+        FrontendTab.STORE -> true
         FrontendTab.STEAM -> SteamService.isLoggedIn
         FrontendTab.EPIC -> EpicAuthManager.hasStoredCredentials(context)
         FrontendTab.GOG -> GOGAuthManager.hasStoredCredentials(context)
@@ -250,13 +252,17 @@ private fun FrontendDownloadDialog(
     item: LibraryItem,
     controllerType: ControllerType,
     onPlay: () -> Unit,
+    onPause: () -> Unit,
+    onCancel: () -> Unit,
+    onGoToDownloads: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     val context = LocalContext.current
     var progress by remember { mutableFloatStateOf(0f) }
     var speed by remember { mutableStateOf("0 B/s") }
     var isInstalled by remember { mutableStateOf(false) }
-    var focusedButton by remember { mutableIntStateOf(1) } // 0=Play, 1=OK
+    var isPaused by remember { mutableStateOf(false) }
+    var focusedButton by remember { mutableIntStateOf(1) } // 0=Play, 1=OK, 2=Pause, 3=Cancel
 
     // Monitor progress and install status
     LaunchedEffect(item.appId) {
@@ -271,6 +277,7 @@ private fun FrontendDownloadDialog(
 
             progress = info?.getProgress() ?: 0f
             speed = formatSpeed(info?.getRecentSpeedBytesPerSec() ?: 0.0)
+            isPaused = info?.isActive() == false
 
             isInstalled = when (item.gameSource) {
                 app.gamenative.data.GameSource.STEAM -> app.gamenative.service.SteamService.isAppInstalled(gameId)
@@ -294,15 +301,18 @@ private fun FrontendDownloadDialog(
             if (event.event.action == KeyEvent.ACTION_DOWN) {
                 when (event.event.keyCode) {
                     KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_UP -> {
-                        focusedButton = 0; true
+                        focusedButton = (focusedButton - 1 + 4) % 4; true
                     }
                     KeyEvent.KEYCODE_DPAD_RIGHT, KeyEvent.KEYCODE_DPAD_DOWN -> {
-                        focusedButton = 1; true
+                        focusedButton = (focusedButton + 1) % 4; true
                     }
                     KeyEvent.KEYCODE_BUTTON_A -> {
-                        if (focusedButton == 0) {
-                            if (isInstalled) onPlay()
-                        } else onDismiss()
+                        when (focusedButton) {
+                            0 -> if (isInstalled) onPlay()
+                            1 -> onGoToDownloads()
+                            2 -> onPause()
+                            3 -> onCancel()
+                        }
                         true
                     }
                     KeyEvent.KEYCODE_BUTTON_B -> { onDismiss(); true }
@@ -340,6 +350,27 @@ private fun FrontendDownloadDialog(
                 }
                 
                 Spacer(Modifier.height(24.dp))
+                
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)) {
+                    Button(
+                        onClick = onPause,
+                        modifier = Modifier.weight(1f),
+                        border = if (focusedButton == 2) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+                    ) {
+                        Text(if (isPaused) "Resume" else "Pause", color = Color.White)
+                    }
+                    
+                    Button(
+                        onClick = onCancel,
+                        modifier = Modifier.weight(1f),
+                        border = if (focusedButton == 3) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                    ) {
+                        Text("Cancel", color = Color.White)
+                    }
+                }
+
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Button(
                         onClick = onPlay,
@@ -355,7 +386,7 @@ private fun FrontendDownloadDialog(
                     }
                     
                     Button(
-                        onClick = onDismiss,
+                        onClick = onGoToDownloads,
                         modifier = Modifier.weight(1f),
                         border = if (focusedButton == 1) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
                         colors = ButtonDefaults.buttonColors(containerColor = Color.White.copy(alpha = 0.1f))
@@ -373,10 +404,11 @@ private fun FrontendInstallDialog(
     item: LibraryItem,
     controllerType: ControllerType,
     onInstall: () -> Unit,
+    onDLCSelect: () -> Unit,
     onCustomPath: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    var focusedButton by remember { mutableIntStateOf(0) } // 0=Install, 1=Custom Path
+    var focusedButton by remember { mutableIntStateOf(0) } // 0=Install, 1=DLC, 2=Custom
 
     // Controller input for dialog
     DisposableEffect(Unit) {
@@ -384,13 +416,17 @@ private fun FrontendInstallDialog(
             if (event.event.action == KeyEvent.ACTION_DOWN) {
                 when (event.event.keyCode) {
                     KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_UP -> {
-                        focusedButton = 0; true
+                        focusedButton = (focusedButton - 1 + 3) % 3; true
                     }
                     KeyEvent.KEYCODE_DPAD_RIGHT, KeyEvent.KEYCODE_DPAD_DOWN -> {
-                        focusedButton = 1; true
+                        focusedButton = (focusedButton + 1) % 3; true
                     }
                     KeyEvent.KEYCODE_BUTTON_A -> {
-                        if (focusedButton == 0) onInstall() else onCustomPath()
+                        when (focusedButton) {
+                            0 -> onInstall()
+                            1 -> onDLCSelect()
+                            2 -> onCustomPath()
+                        }
                         true
                     }
                     KeyEvent.KEYCODE_BUTTON_B -> { onDismiss(); true }
@@ -405,8 +441,8 @@ private fun FrontendInstallDialog(
                 val hatX = event.getAxisValue(android.view.MotionEvent.AXIS_HAT_X)
                 val x = if (abs(hatX) > 0.1f) hatX else axisX
                 
-                if (x < -0.5f) { focusedButton = 0; true }
-                else if (x > 0.5f) { focusedButton = 1; true }
+                if (x < -0.5f) { focusedButton = (focusedButton - 1 + 3) % 3; true }
+                else if (x > 0.5f) { focusedButton = (focusedButton + 1) % 3; true }
                 else false
             } else false
         }
@@ -453,7 +489,8 @@ private fun FrontendInstallDialog(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     val installBorder = if (focusedButton == 0) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null
-                    val customBorder = if (focusedButton == 1) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null
+                    val dlcBorder = if (focusedButton == 1) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null
+                    val customBorder = if (focusedButton == 2) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null
 
                     Button(
                         onClick = onInstall,
@@ -466,6 +503,19 @@ private fun FrontendInstallDialog(
                     ) {
                         Text("Install", fontWeight = FontWeight.SemiBold)
                     }
+
+                    OutlinedButton(
+                        onClick = onDLCSelect,
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp),
+                        border = dlcBorder ?: BorderStroke(1.dp, Color.White.copy(alpha = 0.3f)),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = Color.White
+                        )
+                    ) {
+                        Text("DLC", fontWeight = FontWeight.SemiBold)
+                    }
+
                     OutlinedButton(
                         onClick = onCustomPath,
                         modifier = Modifier.weight(1f),
@@ -475,7 +525,7 @@ private fun FrontendInstallDialog(
                             contentColor = Color.White
                         )
                     ) {
-                        Text("Custom Path", fontWeight = FontWeight.SemiBold)
+                        Text("Custom", fontWeight = FontWeight.SemiBold)
                     }
                 }
 
@@ -515,6 +565,8 @@ internal fun LibraryFrontendPane(
     onNavigateRoute: (String) -> Unit,
     onEdit: (LibraryItem) -> Unit,
     onSearchQuery: (String) -> Unit,
+    onPauseDownload: (String) -> Unit,
+    onCancelDownload: (String) -> Unit,
     onFocusChanged: (LibraryItem?) -> Unit = {},
     onRefresh: () -> Unit = {},
     isAnyDialogOpen: Boolean = false,
@@ -686,6 +738,7 @@ internal fun LibraryFrontendPane(
                 FrontendTab.LIBRARY -> state.appInfoList
                     .filter { it.isInstalled }
                     .sortedByDescending { it.lastPlayed }
+                FrontendTab.STORE -> state.storeItems
                 FrontendTab.STEAM -> state.steamItems.filter { item ->
                     // Steam items have accurate types in steamApps list
                     val steamApp = state.steamApps.find { it.id == item.appId.split("_").last().toInt() }
@@ -694,19 +747,22 @@ internal fun LibraryFrontendPane(
                 FrontendTab.EPIC -> state.epicItems.filter { currentFilter.contains(AppType.game) }
                 FrontendTab.GOG -> state.gogItems.filter { currentFilter.contains(AppType.game) }
                 FrontendTab.AMAZON -> state.amazonItems.filter { currentFilter.contains(AppType.game) }
-                FrontendTab.CUSTOM -> state.customItems.filter { currentFilter.contains(AppType.game) }
+                FrontendTab.DOWNLOADS -> emptyList() // Downloads tab handles its own list
             }
         }
     }
 
-    val isCustomTab = tabs[selectedTabIdx] == FrontendTab.CUSTOM
-    val isLibraryOrCustom = tabs[selectedTabIdx] == FrontendTab.LIBRARY || isCustomTab
-    val pagerCount = if (isCustomTab) tabItems.size + 1 else tabItems.size
+    val isDownloadsTab = tabs[selectedTabIdx] == FrontendTab.DOWNLOADS
+    val isLibraryTabOnly = tabs[selectedTabIdx] == FrontendTab.LIBRARY
+    val isLibraryOrDownloads = isLibraryTabOnly || isDownloadsTab
+    val pagerCount = if (isLibraryTabOnly) tabItems.size else 0
     val pagerState = rememberPagerState(pageCount = { pagerCount })
 
-    val focusedItem: LibraryItem? = remember(pagerState.currentPage, focusedGridIndex, tabItems, isLibraryOrCustom) {
-        if (isLibraryOrCustom) {
+    val focusedItem: LibraryItem? = remember(pagerState.currentPage, focusedGridIndex, tabItems, isLibraryTabOnly, isDownloadsTab) {
+        if (isLibraryTabOnly) {
             if (pagerState.currentPage < tabItems.size) tabItems[pagerState.currentPage] else null
+        } else if (isDownloadsTab) {
+            null // Downloads tab has its own focus logic
         } else {
             if (focusedGridIndex in tabItems.indices) tabItems[focusedGridIndex] else null
         }
@@ -718,12 +774,12 @@ internal fun LibraryFrontendPane(
     }
 
     // Stable Right Joystick Continuous Scroll
-    LaunchedEffect(isLibraryOrCustom) {
+    LaunchedEffect(isLibraryTabOnly, isDownloadsTab) {
         while (true) {
             val rx = currentRightStickX
             val ry = currentRightStickY
             
-            if (isLibraryOrCustom) {
+            if (isLibraryTabOnly) {
                 // Carousel: right stick X = fast page browsing
                 if (abs(rx) > 0.25f) {
                     // Quadratic curve for speed
@@ -743,8 +799,15 @@ internal fun LibraryFrontendPane(
                 } else {
                     delay(32)
                 }
+            } else if (isDownloadsTab) {
+                // Downloads list: right stick Y = scroll
+                if (abs(ry) > 0.1f) {
+                    // Smooth scroll for downloads list will be handled by its own state
+                    delay(32)
+                } else {
+                    delay(32)
+                }
             } else {
-                // Grid tabs: right stick Y = smooth pixel scroll
                 if (abs(ry) > 0.1f) {
                     // Cubic curve for ultra-smooth start
                     val scaledY = sign(ry) * (abs(ry) * abs(ry) * abs(ry))
@@ -815,7 +878,7 @@ internal fun LibraryFrontendPane(
                                 if (lx > 0) headerFocusIndex = (headerFocusIndex + 1) % (maxIdx + 1)
                                 else headerFocusIndex = (headerFocusIndex - 1 + (maxIdx + 1)) % (maxIdx + 1)
                             } else {
-                                if (isLibraryOrCustom) {
+                                if (isLibraryTabOnly) {
                                     if (lx > 0) {
                                         if (pagerState.currentPage < pagerCount - 1) {
                                             pagerState.animateScrollToPage(pagerState.currentPage + 1)
@@ -840,7 +903,7 @@ internal fun LibraryFrontendPane(
                         if (absY > 0.25f) {
                             if (ly < 0) { // UP
                                 if (!isHeaderFocused) {
-                                    if (isLibraryOrCustom) {
+                                    if (isLibraryTabOnly) {
                                         isHeaderFocused = true
                                         headerFocusIndex = 0
                                     } else {
@@ -857,7 +920,7 @@ internal fun LibraryFrontendPane(
                             } else if (ly > 0) { // DOWN
                                 if (isHeaderFocused) {
                                     isHeaderFocused = false
-                                } else if (!isLibraryOrCustom) {
+                                } else if (!isLibraryTabOnly) {
                                     val newIdx = (focusedGridIndex + 4).coerceAtMost(tabItems.size - 1)
                                     if (newIdx != focusedGridIndex) {
                                         focusedGridIndex = newIdx
@@ -885,7 +948,7 @@ internal fun LibraryFrontendPane(
     }
 
     // Controller Input Handling
-    DisposableEffect(focusedItem, selectedTabIdx, pagerCount, isSearchingLocally, isLibraryOrCustom, isHeaderFocused, headerFocusIndex, isAnyDialogOpen, installDialogItem) {
+    DisposableEffect(focusedItem, selectedTabIdx, pagerCount, isSearchingLocally, isLibraryTabOnly, isHeaderFocused, headerFocusIndex, isAnyDialogOpen, installDialogItem) {
         val keyListener: (AndroidEvent.KeyEvent) -> Boolean = { event ->
             if (isAnyDialogOpen || installDialogItem != null) false
             else if (event.event.action == android.view.KeyEvent.ACTION_DOWN) {
@@ -910,7 +973,7 @@ internal fun LibraryFrontendPane(
                                     val maxIdx = if (focusedItem != null) 2 else 1
                                     headerFocusIndex = (headerFocusIndex - 1 + (maxIdx + 1)) % (maxIdx + 1)
                                     true
-                                } else if (isLibraryOrCustom) {
+                                } else if (isLibraryTabOnly) {
                                     if (pagerState.currentPage > 0) {
                                         coroutineScope.launch { pagerState.animateScrollToPage(pagerState.currentPage - 1) }
                                         true
@@ -931,7 +994,7 @@ internal fun LibraryFrontendPane(
                                     val maxIdx = if (focusedItem != null) 2 else 1
                                     headerFocusIndex = (headerFocusIndex + 1) % (maxIdx + 1)
                                     true
-                                } else if (isLibraryOrCustom) {
+                                } else if (isLibraryTabOnly) {
                                     if (pagerState.currentPage < pagerCount - 1) {
                                         coroutineScope.launch { pagerState.animateScrollToPage(pagerState.currentPage + 1) }
                                         true
@@ -949,7 +1012,7 @@ internal fun LibraryFrontendPane(
                         KeyEvent.KEYCODE_DPAD_UP -> {
                             if (abs(currentHatY) < 0.1f) {
                                 if (!isHeaderFocused) {
-                                    if (isLibraryOrCustom) {
+                                    if (isLibraryTabOnly) {
                                         isHeaderFocused = true
                                         headerFocusIndex = 0
                                         true
@@ -973,7 +1036,7 @@ internal fun LibraryFrontendPane(
                                 if (isHeaderFocused) {
                                     isHeaderFocused = false
                                     true
-                                } else if (!isLibraryOrCustom) {
+                                } else if (!isLibraryTabOnly) {
                                     val newIdx = (focusedGridIndex + 4).coerceAtMost(tabItems.size - 1)
                                     if (newIdx != focusedGridIndex) {
                                         focusedGridIndex = newIdx
@@ -983,7 +1046,7 @@ internal fun LibraryFrontendPane(
                                 } else false
                             } else false
                         }
-                        KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_BUTTON_X -> {
+                        KeyEvent.KEYCODE_BUTTON_A -> {
                             if (isHeaderFocused) {
                                 when (headerFocusIndex) {
                                     0 -> { // Search
@@ -997,30 +1060,34 @@ internal fun LibraryFrontendPane(
                                             } catch (e: Exception) {}
                                         }
                                     }
-                                    1 -> { // Settings
-                                        onNavigateRoute("settings")
-                                    }
-                                    2 -> { // GameMenu
-                                        focusedItem?.let { onEdit(it) }
-                                    }
+                                    1 -> onNavigateRoute("settings")
+                                    2 -> focusedItem?.let { onEdit(it) }
                                 }
                                 true
                             } else {
                                 val isAuth = checkAuthStatus(context, tabs[selectedTabIdx])
                                 if (!isAuth) {
-                                    if (event.event.keyCode == KeyEvent.KEYCODE_BUTTON_A) {
-                                        onNavigateRoute("login")
-                                        true
-                                    } else false
+                                    onNavigateRoute("login")
+                                    true
                                 } else {
-                                    if (event.event.keyCode == KeyEvent.KEYCODE_BUTTON_A) {
-                                        focusedItem?.let { handleGameClick(it) }
-                                        true
-                                    } else {
-                                        focusedItem?.let { onEdit(it) }
-                                        true
-                                    }
+                                    focusedItem?.let { handleGameClick(it) }
+                                    true
                                 }
+                            }
+                        }
+                        KeyEvent.KEYCODE_BUTTON_X -> {
+                            if (isHeaderFocused) {
+                                // In header, X acts same as A for convenience
+                                when (headerFocusIndex) {
+                                    0 -> { isSearchingLocally = true; coroutineScope.launch { delay(100); searchFocusRequester.requestFocus() } }
+                                    1 -> onNavigateRoute("settings")
+                                    2 -> focusedItem?.let { onEdit(it) }
+                                }
+                                true
+                            } else {
+                                // Assign controller
+                                com.winlator.contentdialog.ControllerAssignmentDialog.show(context, null)
+                                true
                             }
                         }
                         KeyEvent.KEYCODE_BUTTON_Y -> {
@@ -1028,7 +1095,7 @@ internal fun LibraryFrontendPane(
                             true
                         }
                         KeyEvent.KEYCODE_BUTTON_B -> {
-                            onViewChanged(PaneType.LIST)
+                            // onViewChanged(PaneType.LIST) // User requested to prevent view change from Frontend View
                             true
                         }
                         KeyEvent.KEYCODE_BUTTON_R2 -> {
@@ -1138,7 +1205,7 @@ internal fun LibraryFrontendPane(
 
         // HEADER — slides up/down on storefront tabs when scrolling
         val isLibraryTabHeader = tabs[selectedTabIdx] == FrontendTab.LIBRARY
-        val isStorefrontTab = !isLibraryTabHeader && !isCustomTab
+        val isStorefrontTab = !isLibraryTabHeader && !isDownloadsTab
         
         val headerTextShadow = Shadow(
             color = Color.Black.copy(alpha = 0.8f),
@@ -1149,7 +1216,7 @@ internal fun LibraryFrontendPane(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 24.dp, vertical = 16.dp)
+                .padding(horizontal = 24.dp, vertical = 12.dp)
                 .align(Alignment.TopCenter)
                 .zIndex(2f)
                 .graphicsLayer {
@@ -1158,12 +1225,12 @@ internal fun LibraryFrontendPane(
                         alpha = ((headerOffsetY + 200f) / 200f).coerceIn(0f, 1f)
                     }
                 },
-            verticalAlignment = Alignment.Top
+            verticalAlignment = Alignment.CenterVertically
         ) {
             // Top Left Source Icon
-            Box(modifier = Modifier.width(110.dp).padding(top = 6.dp)) {
+            Box(modifier = Modifier.width(110.dp), contentAlignment = Alignment.CenterStart) {
                 focusedItem?.let { item ->
-                    val iconModifier = Modifier.size(32.dp).alpha(0.8f)
+                    val iconModifier = Modifier.size(28.dp).alpha(0.8f)
                     when (item.gameSource) {
                         GameSource.STEAM -> Icon(imageVector = Icons.Filled.Steam, contentDescription = "Steam", tint = Color.White, modifier = iconModifier)
                         GameSource.EPIC -> Icon(painterResource(R.drawable.ic_epic), "Epic", tint = Color.White, modifier = iconModifier)
@@ -1174,107 +1241,130 @@ internal fun LibraryFrontendPane(
                 }
             }
 
-            // Centered Box for Tabs + Search
-            Box(
+            // Central Pill Backdrop for Search + Tabs
+            Row(
                 modifier = Modifier
                     .weight(1f)
+                    .height(44.dp)
                     .background(
                         Color.Black.copy(alpha = 0.5f),
-                        RoundedCornerShape(24.dp)
-                    ),
-                contentAlignment = Alignment.Center
+                        CircleShape
+                    )
+                    .padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
+                // Search Section
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    // Search Section
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        AnimatedVisibility(
-                            visible = isSearchingLocally,
-                            enter = fadeIn(),
-                            exit = fadeOut()
+                    AnimatedVisibility(
+                        visible = isSearchingLocally,
+                        enter = fadeIn(),
+                        exit = fadeOut()
+                    ) {
+                        Surface(
+                            color = Color.White.copy(alpha = 0.1f),
+                            shape = RoundedCornerShape(20.dp),
+                            modifier = Modifier
+                                .width(180.dp)
+                                .height(32.dp)
+                                .padding(end = 8.dp)
                         ) {
-                            Surface(
-                                color = Color.Black.copy(alpha = 0.3f),
-                                shape = RoundedCornerShape(20.dp),
-                                modifier = Modifier
-                                    .width(200.dp)
-                                    .height(40.dp)
-                                    .padding(end = 8.dp)
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(horizontal = 12.dp)
                             ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.padding(horizontal = 12.dp)
-                                ) {
-                                    BasicTextField(
-                                        value = state.searchQuery,
-                                        onValueChange = { onSearchQuery(it) },
-                                        textStyle = TextStyle(
-                                            color = Color.White, 
-                                            fontSize = 14.sp,
-                                            shadow = headerTextShadow
-                                        ),
-                                        cursorBrush = SolidColor(Color.White),
-                                        modifier = Modifier
-                                            .weight(1f)
-                                            .focusRequester(searchFocusRequester),
-                                        singleLine = true,
-                                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                                        keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() }),
-                                        decorationBox = { innerTextField ->
-                                            if (state.searchQuery.isEmpty()) {
-                                                Text(
-                                                    "Search games...", 
-                                                    color = Color.White.copy(alpha = 0.5f), 
-                                                    fontSize = 14.sp,
-                                                    style = TextStyle(shadow = headerTextShadow)
-                                                )
-                                            }
-                                            innerTextField()
+                                BasicTextField(
+                                    value = state.searchQuery,
+                                    onValueChange = { onSearchQuery(it) },
+                                    textStyle = TextStyle(
+                                        color = Color.White, 
+                                        fontSize = 13.sp,
+                                        shadow = headerTextShadow
+                                    ),
+                                    cursorBrush = SolidColor(Color.White),
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .focusRequester(searchFocusRequester),
+                                    singleLine = true,
+                                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                                    keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() }),
+                                    decorationBox = { innerTextField ->
+                                        if (state.searchQuery.isEmpty()) {
+                                            Text(
+                                                "Search...", 
+                                                color = Color.White.copy(alpha = 0.5f), 
+                                                fontSize = 13.sp,
+                                                style = TextStyle(shadow = headerTextShadow)
+                                            )
                                         }
-                                    )
-                                    IconButton(
-                                        onClick = { 
-                                            isSearchingLocally = false
-                                            onSearchQuery("")
-                                        },
-                                        modifier = Modifier.size(20.dp)
-                                    ) {
-                                        Icon(Icons.Default.Close, null, tint = Color.White.copy(alpha = 0.7f), modifier = Modifier.size(16.dp))
+                                        innerTextField()
                                     }
-                                }
-                            }
-                        }
-
-                        if (!isSearchingLocally) {
-                            val isSearchFocused = isHeaderFocused && headerFocusIndex == 0
-                            IconButton(
-                                onClick = { 
-                                    isHeaderFocused = true
-                                    headerFocusIndex = 0
-                                    isSearchingLocally = true
-                                    coroutineScope.launch {
-                                        delay(100)
-                                        searchFocusRequester.requestFocus()
-                                    }
-                                },
-                                modifier = Modifier
-                                    .padding(end = 8.dp)
-                                    .then(
-                                        if (isSearchFocused) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, CircleShape)
-                                        else Modifier
-                                    )
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Search, 
-                                    contentDescription = "Search", 
-                                    tint = Color.White, 
-                                    modifier = Modifier.size(24.dp)
                                 )
+                                IconButton(
+                                    onClick = { 
+                                        isSearchingLocally = false
+                                        onSearchQuery("")
+                                    },
+                                    modifier = Modifier.size(16.dp)
+                                ) {
+                                    Icon(Icons.Default.Close, null, tint = Color.White.copy(alpha = 0.7f), modifier = Modifier.size(14.dp))
+                                }
                             }
                         }
                     }
 
-                    // TABS with floating badges
-                    Box(contentAlignment = Alignment.TopCenter) {
+                    if (!isSearchingLocally) {
+                        val isSearchFocused = isHeaderFocused && headerFocusIndex == 0
+                        IconButton(
+                            onClick = { 
+                                isHeaderFocused = true
+                                headerFocusIndex = 0
+                                isSearchingLocally = true
+                                coroutineScope.launch {
+                                    delay(100)
+                                    searchFocusRequester.requestFocus()
+                                }
+                            },
+                            modifier = Modifier
+                                .size(32.dp)
+                                .padding(end = 4.dp)
+                                .then(
+                                    if (isSearchFocused) Modifier.border(1.5.dp, MaterialTheme.colorScheme.primary, CircleShape)
+                                    else Modifier
+                                )
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Search, 
+                                contentDescription = "Search", 
+                                tint = Color.White, 
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+                }
+
+                // TABS
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    if (connectedControllerType != ControllerType.NONE) {
+                        ControllerBadge(
+                            button = "L1",
+                            controllerType = connectedControllerType,
+                            modifier = Modifier.padding(end = 8.dp)
+                        )
+                    }
+
+                    val configuration = LocalConfiguration.current
+                    val tabWidth = (configuration.screenWidthDp.dp - 320.dp) / 4
+
+                    Box(
+                        modifier = Modifier
+                            .width(tabWidth * 4)
+                            .height(44.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
                         ScrollableTabRow(
                             selectedTabIndex = selectedTabIdx,
                             containerColor = Color.Transparent,
@@ -1285,7 +1375,7 @@ internal fun LibraryFrontendPane(
                                     TabRowDefaults.PrimaryIndicator(
                                         modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTabIdx]),
                                         color = MaterialTheme.colorScheme.primary,
-                                        height = 3.dp
+                                        height = 2.dp
                                     )
                                 }
                             }
@@ -1297,192 +1387,170 @@ internal fun LibraryFrontendPane(
                                     text = {
                                         Text(
                                             text = tab.label,
-                                            fontSize = 16.sp,
+                                            fontSize = 14.sp,
                                             fontWeight = if (selectedTabIdx == index) FontWeight.Bold else FontWeight.Normal,
                                             color = if (selectedTabIdx == index) Color.White else Color.White.copy(alpha = 0.6f),
                                             style = TextStyle(shadow = headerTextShadow)
                                         )
-                                    }
-                                )
-                            }
-                        }
-
-                        if (connectedControllerType != ControllerType.NONE) {
-                            // Float badges above the tabs
-                            Box(modifier = Modifier.matchParentSize().padding(horizontal = 8.dp)) {
-                                ControllerBadge(
-                                    button = "L1",
-                                    controllerType = connectedControllerType,
-                                    modifier = Modifier
-                                        .align(Alignment.TopStart)
-                                        .offset(y = (-18).dp)
-                                )
-                                ControllerBadge(
-                                    button = "R1",
-                                    controllerType = connectedControllerType,
-                                    modifier = Modifier
-                                        .align(Alignment.TopEnd)
-                                        .offset(y = (-18).dp)
+                                    },
+                                    modifier = Modifier.width(tabWidth).height(44.dp)
                                 )
                             }
                         }
                     }
-                    
-                    // Spacer to offset the search button on the left for perfect tab centering
-                    Spacer(modifier = Modifier.width(48.dp))
+
+                    if (connectedControllerType != ControllerType.NONE) {
+                        ControllerBadge(
+                            button = "R1",
+                            controllerType = connectedControllerType,
+                            modifier = Modifier.padding(start = 8.dp)
+                        )
+                    }
                 }
             }
-
-            // Top Right Icons
+            
+            // Top Right Settings & Game Menu Buttons (Outside central pill)
             Row(
-                modifier = Modifier.width(110.dp), 
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.Top
+                modifier = Modifier.width(110.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.End
             ) {
                 if (focusedItem != null) {
                     val isGameMenuFocused = isHeaderFocused && headerFocusIndex == 2
-                    Surface(
+                    IconButton(
                         onClick = { 
                             isHeaderFocused = true
                             headerFocusIndex = 2
                             onEdit(focusedItem) 
                         },
-                        color = Color.Black.copy(alpha = 0.3f),
-                        shape = CircleShape,
-                        modifier = Modifier.size(44.dp)
+                        modifier = Modifier
+                            .size(48.dp)
+                            .shadow(8.dp, CircleShape)
+                            .background(Color.Black.copy(alpha = 0.6f), CircleShape)
                             .then(
                                 if (isGameMenuFocused) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, CircleShape)
                                 else Modifier
                             )
                     ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(Icons.Default.SportsEsports, "Game Menu", tint = Color.White, modifier = Modifier.size(24.dp))
-                        }
+                        Icon(Icons.Default.SportsEsports, "Game Menu", tint = Color.White, modifier = Modifier.size(28.dp))
                     }
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(12.dp))
                 }
 
                 val isSettingsFocused = isHeaderFocused && headerFocusIndex == 1
-                Surface(
+                IconButton(
                     onClick = { 
                         isHeaderFocused = true
                         headerFocusIndex = 1
                         onNavigateRoute("settings") 
                     },
-                    color = Color.Black.copy(alpha = 0.2f),
-                    shape = CircleShape,
-                    modifier = Modifier.size(44.dp)
+                    modifier = Modifier
+                        .size(48.dp)
+                        .shadow(8.dp, CircleShape)
+                        .background(Color.Black.copy(alpha = 0.6f), CircleShape)
                         .then(
                             if (isSettingsFocused) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, CircleShape)
                             else Modifier
                         )
                 ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(Icons.Default.Settings, "Settings", tint = Color.White, modifier = Modifier.size(24.dp))
-                    }
+                    Icon(Icons.Default.Settings, "Settings", tint = Color.White, modifier = Modifier.size(28.dp))
                 }
             }
         }
 
-        // MAIN CONTENT: Library tab uses HorizontalPager, Storefront tabs use 4-column grid
-        val isLibraryTab = tabs[selectedTabIdx] == FrontendTab.LIBRARY
-        val configuration = LocalConfiguration.current
-        val screenWidth = configuration.screenWidthDp.dp
-
-        if (isLibraryTab || isCustomTab) {
-            // Library / Custom: Horizontal pager carousel
-            val pageWidth = 150.dp
-            val horizontalPadding = (screenWidth - pageWidth) / 2
-
-            HorizontalPager(
-                state = pagerState,
-                pageSize = PageSize.Fixed(pageWidth),
-                modifier = Modifier.fillMaxWidth().height(260.dp).align(Alignment.TopCenter).padding(top = 100.dp),
-                contentPadding = PaddingValues(horizontal = horizontalPadding),
-                pageSpacing = 0.dp,
-                verticalAlignment = Alignment.CenterVertically
-            ) { page ->
-                val isFocused = page == pagerState.currentPage
-                val scale by animateFloatAsState(
-                    targetValue = if (isFocused) 1.15f else 0.85f,
-                    animationSpec = tween(300),
-                    label = "cardScale"
-                )
-
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (isCustomTab && page == tabItems.size) {
+                // MAIN CONTENT: Library tab uses HorizontalPager, Storefront tabs use 4-column grid, Downloads uses list
+                val isLibraryTab = tabs[selectedTabIdx] == FrontendTab.LIBRARY
+                val isDownloadsTabLocal = tabs[selectedTabIdx] == FrontendTab.DOWNLOADS
+                val configuration = LocalConfiguration.current
+                val screenWidth = configuration.screenWidthDp.dp
+        
+                if (isLibraryTab) {
+                    // Library: Horizontal pager carousel
+                    val pageWidth = 150.dp
+                    val horizontalPadding = (screenWidth - pageWidth) / 2
+        
+                    HorizontalPager(
+                        state = pagerState,
+                        pageSize = PageSize.Fixed(pageWidth),
+                        modifier = Modifier.fillMaxWidth().height(260.dp).align(Alignment.TopCenter).padding(top = 100.dp),
+                        contentPadding = PaddingValues(horizontal = horizontalPadding),
+                        pageSpacing = 0.dp,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) { page ->
+                        val isFocused = page == pagerState.currentPage
+                        val scale by animateFloatAsState(
+                            targetValue = if (isFocused) 1.15f else 0.85f,
+                            animationSpec = tween(300),
+                            label = "cardScale"
+                        )
+        
                         Box(
-                            modifier = Modifier
-                                .scale(scale)
-                                .width(130.dp)
-                                .height(188.dp)
-                                .shadow(if (isFocused) 16.dp else 4.dp, RoundedCornerShape(16.dp), spotColor = Color.Black)
-                                .clip(RoundedCornerShape(16.dp))
-                                .background(Color.White.copy(alpha = 0.05f))
-                                .border(BorderStroke(2.dp, Color.White.copy(alpha = 0.2f)), RoundedCornerShape(16.dp))
-                                .clickable { onAddCustomGame() },
+                            modifier = Modifier.fillMaxSize(),
                             contentAlignment = Alignment.Center
                         ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(32.dp), tint = Color.White)
-                                Text("Add Game", color = Color.White, style = MaterialTheme.typography.labelSmall)
-                            }
-                        }
-                    } else if (page < tabItems.size) {
-                        val item = tabItems[page]
-                        val artUrl = rememberFrontendArtUrl(item, isHero = false)
-
-                        Box(
-                            modifier = Modifier
-                                .scale(scale)
-                                .width(130.dp)
-                                .height(188.dp)
-                                .shadow(if (isFocused) 24.dp else 8.dp, RoundedCornerShape(16.dp), ambientColor = Color.Black, spotColor = Color.Black)
-                                .clip(RoundedCornerShape(16.dp))
-                                .clickable { handleGameClick(item) }
-                                .border(
-                                    if (isFocused) BorderStroke(3.dp, MaterialTheme.colorScheme.primary)
-                                    else BorderStroke(1.dp, Color.White.copy(alpha = 0.15f)),
-                                    RoundedCornerShape(16.dp)
-                                )
-                        ) {
-                            if (artUrl.isNotEmpty()) {
-                                CoilImage(
-                                    modifier = Modifier.fillMaxSize(),
-                                    imageModel = { artUrl },
-                                    imageOptions = ImageOptions(contentScale = ContentScale.Crop),
-                                    failure = { FrontendFallbackIcon(item, bgColor = Color.DarkGray, letterSize = 24.sp) }
-                                )
-                            } else {
-                                FrontendFallbackIcon(item, bgColor = Color.DarkGray, letterSize = 24.sp)
-                            }
-
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .align(Alignment.BottomCenter)
-                                    .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(0.9f))))
-                                    .padding(8.dp)
-                            ) {
-                                Text(
-                                    item.name,
-                                    color = Color.White,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 10.sp
-                                )
+                            if (page < tabItems.size) {
+                                val item = tabItems[page]
+                                val artUrl = rememberFrontendArtUrl(item, isHero = false)
+        
+                                Box(
+                                    modifier = Modifier
+                                        .scale(scale)
+                                        .width(130.dp)
+                                        .height(188.dp)
+                                        .shadow(if (isFocused) 24.dp else 8.dp, RoundedCornerShape(16.dp), ambientColor = Color.Black, spotColor = Color.Black)
+                                        .clip(RoundedCornerShape(16.dp))
+                                        .clickable { handleGameClick(item) }
+                                        .border(
+                                            if (isFocused) BorderStroke(3.dp, MaterialTheme.colorScheme.primary)
+                                            else BorderStroke(1.dp, Color.White.copy(alpha = 0.15f)),
+                                            RoundedCornerShape(16.dp)
+                                        )
+                                ) {
+                                    if (artUrl.isNotEmpty()) {
+                                        CoilImage(
+                                            modifier = Modifier.fillMaxSize(),
+                                            imageModel = { artUrl },
+                                            imageOptions = ImageOptions(contentScale = ContentScale.Crop),
+                                            failure = { FrontendFallbackIcon(item, bgColor = Color.DarkGray, letterSize = 24.sp) }
+                                        )
+                                    } else {
+                                        FrontendFallbackIcon(item, bgColor = Color.DarkGray, letterSize = 24.sp)
+                                    }
+        
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .align(Alignment.BottomCenter)
+                                            .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(0.9f))))
+                                            .padding(8.dp)
+                                    ) {
+                                        Text(
+                                            item.name,
+                                            color = Color.White,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 10.sp
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
-                }
-            }
-                } else {
-                    // Storefront tabs (Steam, Epic, GOG, Amazon): 4-column vertical grid
-                    // gridState is hoisted above for controller access
+                        } else if (isDownloadsTabLocal) {
+                            // Downloads Tab Content
+                            val viewModel: app.gamenative.ui.model.LibraryViewModel = androidx.hilt.navigation.compose.hiltViewModel()
+                            DownloadsListContent(
+                                downloads = state.activeDownloads,
+                                onPause = { appId -> viewModel.pauseDownload(appId) },
+                                onResume = { appId -> viewModel.resumeDownload(appId) },
+                                onStop = { appId -> viewModel.stopAllDownloads() },
+                                onCancel = { appId -> viewModel.cancelDownload(appId) },
+                                onClear = { viewModel.clearCompletedDownloads() },
+                                modifier = Modifier.fillMaxWidth().height(260.dp).align(Alignment.TopCenter).padding(top = 70.dp, start = 16.dp, end = 16.dp)
+                            )
+                        } else {
+                            // Storefront tabs (Steam, Epic, GOG, Amazon): 4-column vertical grid                    // gridState is hoisted above for controller access
         
                     val isAuth = checkAuthStatus(context, tabs[selectedTabIdx])
         
@@ -1616,7 +1684,7 @@ internal fun LibraryFrontendPane(
                     }
                 }
         // FOOTER — only show on Library/Custom tabs (storefront tabs have no play time)
-        if (focusedItem != null && (isLibraryTab || isCustomTab)) {
+        if (focusedItem != null && (isLibraryTab || isDownloadsTabLocal)) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1658,6 +1726,15 @@ internal fun LibraryFrontendPane(
                             ControllerBadge("A", connectedControllerType)
                             Text("Play", color = Color.White, fontSize = 12.sp, modifier = Modifier.padding(start = 4.dp))
                         }
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.clickable { 
+                                com.winlator.contentdialog.ControllerAssignmentDialog.show(context, null)
+                            }
+                        ) {
+                            ControllerBadge("X", connectedControllerType)
+                            Text("Assign", color = Color.White, fontSize = 12.sp, modifier = Modifier.padding(start = 4.dp))
+                        }
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             ControllerBadge("Y", connectedControllerType)
                             Text("Game Menu", color = Color.White, fontSize = 12.sp, modifier = Modifier.padding(start = 4.dp))
@@ -1681,6 +1758,17 @@ internal fun LibraryFrontendPane(
                     installDialogItem = null
                     handleInstallClick(item)
                 },
+                onDLCSelect = {
+                    val item = installDialogItem!!
+                    // For Steam, we can use GameManagerDialog which is already built for DLC
+                    if (item.gameSource == app.gamenative.data.GameSource.STEAM) {
+                        installDialogItem = null
+                        handleInstallClick(item) // handleInstallClick for Steam opens GameManagerDialog if not installed
+                    } else {
+                        // For others, maybe show a message or generic DLC selector if implemented
+                        android.widget.Toast.makeText(context, "DLC Selection not supported for this source yet", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                },
                 onCustomPath = {
                     frontendFolderPicker.launchPicker()
                 },
@@ -1702,8 +1790,218 @@ internal fun LibraryFrontendPane(
                         handleInstallClick(item)
                     }
                 },
+                onPause = {
+                    val item = downloadingDialogItem!!
+                    onPauseDownload(item.appId)
+                },
+                onCancel = {
+                    val item = downloadingDialogItem!!
+                    onCancelDownload(item.appId)
+                    downloadingDialogItem = null
+                },
+                onGoToDownloads = {
+                    downloadingDialogItem = null
+                    val downloadsIndex = tabs.indexOf(FrontendTab.DOWNLOADS)
+                    if (downloadsIndex != -1) {
+                        selectedTabIdx = downloadsIndex
+                    }
+                },
                 onDismiss = { downloadingDialogItem = null }
             )
         }
     }
 }
+
+@Composable
+fun DownloadsListContent(
+    downloads: List<app.gamenative.ui.data.DownloadItemState>,
+    onPause: (String) -> Unit,
+    onResume: (String) -> Unit,
+    onStop: (String) -> Unit,
+    onCancel: (String) -> Unit,
+    onClear: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var selectedAppId by remember { mutableStateOf<String?>(null) }
+
+    Box(modifier = modifier) {
+        app.gamenative.ui.component.AnimatedWavyBackground(
+            modifier = Modifier.fillMaxSize(),
+            color = Color(0xFF1E3A8A) // A sleek blue tone
+        )
+        
+        Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+            // Global Progress Info
+            val totalDownloaded = downloads.sumOf { it.downloadedBytes }
+            val totalSize = downloads.sumOf { it.totalBytes }
+            val overallSpeed = downloads.sumOf { it.speed }
+            
+            Text(
+                text = "Total: ${app.gamenative.utils.StorageUtils.formatBinarySize(totalDownloaded)} / ${app.gamenative.utils.StorageUtils.formatBinarySize(totalSize)} @ ${app.gamenative.utils.StorageUtils.formatBinarySize(overallSpeed.toLong())}/s",
+                color = Color.White.copy(alpha = 0.7f),
+                fontSize = 14.sp,
+                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            )
+            
+            // Top Action Bar
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (selectedAppId != null && downloads.any { it.appId == selectedAppId }) {
+                    val selectedItem = downloads.first { it.appId == selectedAppId }
+                    Button(
+                        onClick = {
+                            if (selectedItem.isPaused) onResume(selectedItem.appId)
+                            else onPause(selectedItem.appId)
+                        },
+                        modifier = Modifier.padding(horizontal = 4.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                    ) {
+                        Text(if (selectedItem.isPaused) "Resume" else "Pause", color = Color.White)
+                    }
+                    Button(
+                        onClick = { onStop(selectedItem.appId) },
+                        modifier = Modifier.padding(horizontal = 4.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.DarkGray)
+                    ) {
+                        Text("Stop", color = Color.White)
+                    }
+                    Button(
+                        onClick = { onCancel(selectedItem.appId); selectedAppId = null },
+                        modifier = Modifier.padding(horizontal = 4.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                    ) {
+                        Text("Cancel", color = Color.White)
+                    }
+                } else {
+                    // Global Actions
+                    val allPaused = downloads.isNotEmpty() && downloads.all { it.isPaused }
+                    Button(
+                        onClick = {
+                            if (allPaused) downloads.forEach { onResume(it.appId) }
+                            else downloads.forEach { onPause(it.appId) }
+                        },
+                        modifier = Modifier.padding(horizontal = 4.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                    ) {
+                        Text(if (allPaused) "Resume All" else "Pause All", color = Color.White)
+                    }
+                    Button(
+                        onClick = { downloads.forEach { onStop(it.appId) } },
+                        modifier = Modifier.padding(horizontal = 4.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.DarkGray)
+                    ) {
+                        Text("Stop All", color = Color.White)
+                    }
+                    Button(
+                        onClick = { downloads.forEach { onCancel(it.appId) }; selectedAppId = null },
+                        modifier = Modifier.padding(horizontal = 4.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                    ) {
+                        Text("Cancel All", color = Color.White)
+                    }
+                }
+
+                Button(
+                    onClick = { onClear(); selectedAppId = null },
+                    modifier = Modifier.padding(horizontal = 4.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Gray)
+                ) {
+                    Text("Clear Completed", color = Color.White)
+                }
+            }
+
+            // Downloads List
+            if (downloads.isEmpty()) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("No active downloads", color = Color.White.copy(alpha = 0.5f))
+                }
+            } else {
+                androidx.compose.foundation.lazy.LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    items(downloads.size) { index ->
+                        val item = downloads[index]
+                        DownloadItemRow(
+                            item = item,
+                            isSelected = item.appId == selectedAppId,
+                            onClick = { 
+                                if (selectedAppId == item.appId) selectedAppId = null 
+                                else selectedAppId = item.appId 
+                            }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun DownloadItemRow(
+    item: app.gamenative.ui.data.DownloadItemState,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.2f) else Color.Black.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
+            .border(1.dp, if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent, RoundedCornerShape(8.dp))
+            .clickable { onClick() }
+            .padding(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Art
+        val coilImageOptions = ImageOptions(contentScale = ContentScale.Crop)
+        Box(modifier = Modifier.size(60.dp, 80.dp).clip(RoundedCornerShape(4.dp)).background(Color.DarkGray)) {
+            if (item.artUrl.isNotEmpty()) {
+                CoilImage(
+                    modifier = Modifier.fillMaxSize(),
+                    imageModel = { item.artUrl },
+                    imageOptions = coilImageOptions
+                )
+            }
+        }
+        
+        Spacer(modifier = Modifier.width(12.dp))
+        
+        // Progress Info
+        Column(modifier = Modifier.weight(1f)) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text(item.name, color = Color.White, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                Text(
+                    text = if (item.isCompleted) "Completed" else if (item.isPaused) "Paused" else "${app.gamenative.utils.StorageUtils.formatBinarySize(item.speed.toLong())}/s",
+                    color = Color.White.copy(alpha = 0.7f),
+                    fontSize = 12.sp
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(4.dp))
+            
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                androidx.compose.material3.LinearProgressIndicator(
+                    progress = { item.progress },
+                    modifier = Modifier.weight(1f).height(6.dp).clip(RoundedCornerShape(3.dp)),
+                    color = MaterialTheme.colorScheme.primary,
+                    trackColor = Color.DarkGray
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("${(item.progress * 100).toInt()}%", color = Color.White, fontSize = 12.sp)
+            }
+            
+            Spacer(modifier = Modifier.height(4.dp))
+            
+            Text(
+                text = "( ${app.gamenative.utils.StorageUtils.formatBinarySize(item.downloadedBytes)} / ${app.gamenative.utils.StorageUtils.formatBinarySize(item.totalBytes)} )",
+                color = Color.White.copy(alpha = 0.5f),
+                fontSize = 12.sp
+            )
+        }
+    }
+}
+

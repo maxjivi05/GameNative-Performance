@@ -1118,4 +1118,6 @@
     <string name="amazon_verify_failed_detail">Verification found issues.\n\n%1$d / %2$d files OK\n%3$d missing\n%4$d size mismatch\n%5$d hash mismatch\n\nReinstall the game to fix corrupted files.</string>
     <string name="amazon_verify_error">Verification failed: %1$s</string>
     <string name="error_wine_not_installed">Wine/Proton package \'%1$s\' is not installed and could not be downloaded.</string>
+    <string name="osc_transparency">On-Screen Controls Transparency</string>
+    <string name="osc_transparency_description">Adjust the transparency of the on-screen controls.</string>
 </resources>

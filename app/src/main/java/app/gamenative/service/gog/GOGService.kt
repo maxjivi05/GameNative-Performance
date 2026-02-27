@@ -189,6 +189,17 @@ class GOGService : Service() {
             return getInstance()?.activeDownloads?.keys?.firstOrNull()
         }
 
+        fun getAllDownloads(): Map<String, DownloadInfo> {
+            return getInstance()?.activeDownloads ?: emptyMap()
+        }
+
+        fun clearCompletedDownloads() {
+            getInstance()?.let { instance ->
+                val toRemove = instance.activeDownloads.filterValues { !it.isActive() }.keys
+                toRemove.forEach { instance.activeDownloads.remove(it) }
+            }
+        }
+
         fun getDownloadInfo(gameId: String): DownloadInfo? {
             return getInstance()?.activeDownloads?.get(gameId)
         }
@@ -204,7 +215,6 @@ class GOGService : Service() {
             return if (downloadInfo != null) {
                 Timber.i("Cancelling download for game: $gameId")
                 downloadInfo.cancel()
-                instance.activeDownloads.remove(gameId)
                 Timber.d("Download cancelled for game: $gameId")
                 true
             } else {
@@ -363,9 +373,6 @@ class GOGService : Service() {
                         ).show()
                     }
                 } finally {
-                    // Remove from activeDownloads for both success and failure
-                    // so UI knows download is complete and to prevent stale entries
-                    instance.activeDownloads.remove(gameId)
                     Timber.d("[Download] Finished for game $gameId, progress: ${downloadInfo.getProgress()}, active: ${downloadInfo.isActive()}")
                 }
             }
