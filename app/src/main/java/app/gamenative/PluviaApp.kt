@@ -43,7 +43,7 @@ class PluviaApp : SplitCompatApplication() {
 
     override fun onCreate() {
         super.onCreate()
-
+        instance = this
         // Allows to find resource streams not closed within GameNative and JavaSteam
         if (BuildConfig.DEBUG) {
             StrictMode.setVmPolicy(
@@ -106,6 +106,9 @@ class PluviaApp : SplitCompatApplication() {
     }
 
     companion object {
+        lateinit var instance: PluviaApp
+            private set
+        
         @JvmField
         val events: EventDispatcher = EventDispatcher()
         internal var onDestinationChangedListener: NavChangedListener? = null

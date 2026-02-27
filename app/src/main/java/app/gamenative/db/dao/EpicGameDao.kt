@@ -58,6 +58,9 @@ interface EpicGameDao {
     @Query("SELECT * FROM epic_games WHERE base_game_app_name = (SELECT catalog_id FROM epic_games WHERE id = :appId)")
     fun getDLCForTitle(appId: Int): Flow<List<EpicGame>>
 
+    @Query("SELECT * FROM epic_games WHERE base_game_app_name = (SELECT catalog_id FROM epic_games WHERE id = :appId)")
+    suspend fun getDLCForTitleList(appId: Int): List<EpicGame>
+
     @Query("SELECT * FROM epic_games WHERE base_game_app_name IS NOT NULL AND is_dlc = true")
     fun getAllDlcTitles(): Flow<List<EpicGame>>
 

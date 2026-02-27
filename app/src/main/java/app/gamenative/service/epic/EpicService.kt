@@ -271,25 +271,77 @@ class EpicService : Service() {
         // ==========================================================================
 
         fun getEpicGameOf(appId: Int): EpicGame? {
-            return runBlocking(Dispatchers.IO) {
-                getInstance()?.epicManager?.getGameById(appId)
+            val instance = getInstance()
+            return if (instance != null) {
+                runBlocking(Dispatchers.IO) {
+                    instance.epicManager.getGameById(appId)
+                }
+            } else {
+                // Fallback to direct database access if service is not running
+                runBlocking(Dispatchers.IO) {
+                    try {
+                        val db = app.gamenative.db.PluviaDatabase.getInstance(PluviaApp.instance)
+                        db.epicGameDao().getById(appId)
+                    } catch (e: Exception) {
+                        Timber.e(e, "Failed to get Epic game from DB (service not running)")
+                        null
+                    }
+                }
             }
         }
 
         fun getEpicGameByAppName(appName: String): EpicGame? {
-            return runBlocking(Dispatchers.IO) {
-                getInstance()?.epicManager?.getGameByAppName(appName)
+            val instance = getInstance()
+            return if (instance != null) {
+                runBlocking(Dispatchers.IO) {
+                    instance.epicManager.getGameByAppName(appName)
+                }
+            } else {
+                runBlocking(Dispatchers.IO) {
+                    try {
+                        val db = app.gamenative.db.PluviaDatabase.getInstance(PluviaApp.instance)
+                        db.epicGameDao().getByAppName(appName)
+                    } catch (e: Exception) {
+                        Timber.e(e, "Failed to get Epic game from DB by app name (service not running)")
+                        null
+                    }
+                }
             }
         }
 
         fun getDLCForGame(appId: Int): List<EpicGame> {
-            return runBlocking(Dispatchers.IO) {
-                getInstance()?.epicManager?.getDLCForTitle(appId) ?: emptyList()
+            val instance = getInstance()
+            return if (instance != null) {
+                runBlocking(Dispatchers.IO) {
+                    instance.epicManager.getDLCForTitle(appId) ?: emptyList()
+                }
+            } else {
+                runBlocking(Dispatchers.IO) {
+                    try {
+                        val db = app.gamenative.db.PluviaDatabase.getInstance(PluviaApp.instance)
+                        db.epicGameDao().getDLCForTitleList(appId)
+                    } catch (e: Exception) {
+                        Timber.e(e, "Failed to get Epic DLC from DB (service not running)")
+                        emptyList()
+                    }
+                }
             }
         }
 
         suspend fun updateEpicGame(game: EpicGame) {
-            getInstance()?.epicManager?.updateGame(game)
+            val instance = getInstance()
+            if (instance != null) {
+                instance.epicManager.updateGame(game)
+            } else {
+                withContext(Dispatchers.IO) {
+                    try {
+                        val db = app.gamenative.db.PluviaDatabase.getInstance(PluviaApp.instance)
+                        db.epicGameDao().update(game)
+                    } catch (e: Exception) {
+                        Timber.e(e, "Failed to update Epic game in DB (service not running)")
+                    }
+                }
+            }
         }
 
 
@@ -322,7 +374,6 @@ class EpicService : Service() {
         }
 
         fun setCustomInstallPath(context: Context, appId: Int, customInstallPath: String): String {
-            val instance = getInstance()
             val game = getEpicGameOf(appId)
             val folderName = game?.title?.replace(Regex("[^a-zA-Z0-9.-]"), "_") ?: appId.toString()
 
@@ -335,7 +386,7 @@ class EpicService : Service() {
 
             runBlocking(Dispatchers.IO) {
                 getEpicGameOf(appId)?.let { epicGame ->
-                    instance?.epicManager?.updateGame(epicGame.copy(installPath = finalPath))
+                    updateEpicGame(epicGame.copy(installPath = finalPath))
                     Timber.tag("Epic").i("Updated Epic game installPath in DB to: $finalPath")
                 }
             }

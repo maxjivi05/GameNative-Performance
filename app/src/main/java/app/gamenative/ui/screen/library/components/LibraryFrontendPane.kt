@@ -462,7 +462,7 @@ private fun FrontendInstallDialog(
             shape = RoundedCornerShape(24.dp),
             color = Color(0xFF1A1A2E),
             tonalElevation = 8.dp,
-            modifier = Modifier.width(340.dp)
+            modifier = Modifier.width(420.dp)
         ) {
             Column(
                 modifier = Modifier.padding(24.dp),
@@ -632,6 +632,19 @@ internal fun LibraryFrontendPane(
                         }
                     }
                 }
+                app.gamenative.data.GameSource.AMAZON -> {
+                    val bareId = item.appId.removePrefix("AMAZON_")
+                    val installPath = app.gamenative.service.amazon.AmazonService.getInstallPath(bareId)
+                        ?: app.gamenative.service.amazon.AmazonConstants.getGameInstallPath(context, item.name)
+
+                    if (app.gamenative.ui.components.requestPermissionsForPath(context, installPath, null)) {
+                        app.gamenative.service.amazon.AmazonService.downloadGame(context, bareId, installPath)
+                    } else {
+                        withContext(Dispatchers.Main) {
+                            Toast.makeText(context, "Storage permission required", Toast.LENGTH_LONG).show()
+                        }
+                    }
+                }
                 else -> {}
             }
             withContext(Dispatchers.Main) {
@@ -652,6 +665,9 @@ internal fun LibraryFrontendPane(
                 }
                 app.gamenative.data.GameSource.GOG -> {
                     app.gamenative.service.gog.GOGService.setCustomInstallPath(context, item.gameId.toString(), path)
+                }
+                app.gamenative.data.GameSource.AMAZON -> {
+                    app.gamenative.service.amazon.AmazonService.setCustomInstallPath(context, item.appId.removePrefix("AMAZON_"), path)
                 }
                 else -> {}
             }

@@ -228,37 +228,67 @@ class GOGService : Service() {
         // ==========================================================================
 
         fun getGOGGameOf(gameId: String): GOGGame? {
-            return runBlocking(Dispatchers.IO) {
-                getInstance()?.gogManager?.getGameFromDbById(gameId)
+            val instance = getInstance()
+            return if (instance != null) {
+                runBlocking(Dispatchers.IO) {
+                    instance.gogManager.getGameFromDbById(gameId)
+                }
+            } else {
+                runBlocking(Dispatchers.IO) {
+                    try {
+                        val db = app.gamenative.db.PluviaDatabase.getInstance(PluviaApp.instance)
+                        db.gogGameDao().getById(gameId)
+                    } catch (e: Exception) {
+                        Timber.e(e, "Failed to get GOG game from DB (service not running)")
+                        null
+                    }
+                }
             }
         }
 
         suspend fun updateGOGGame(game: GOGGame) {
-            getInstance()?.gogManager?.updateGame(game)
+            val instance = getInstance()
+            if (instance != null) {
+                instance.gogManager.updateGame(game)
+            } else {
+                withContext(Dispatchers.IO) {
+                    try {
+                        val db = app.gamenative.db.PluviaDatabase.getInstance(PluviaApp.instance)
+                        db.gogGameDao().update(game)
+                    } catch (e: Exception) {
+                        Timber.e(e, "Failed to update GOG game in DB (service not running)")
+                    }
+                }
+            }
         }
 
         fun isGameInstalled(gameId: String): Boolean {
-            return runBlocking(Dispatchers.IO) {
-                val game = getInstance()?.gogManager?.getGameFromDbById(gameId)
-                if (game?.isInstalled != true) {
-                    return@runBlocking false
-                }
+            val instance = getInstance()
+            if (instance != null) {
+                return runBlocking(Dispatchers.IO) {
+                    val game = instance.gogManager.getGameFromDbById(gameId)
+                    if (game?.isInstalled != true) {
+                        return@runBlocking false
+                    }
 
-                // Verify the installation is actually valid
-                val (isValid, errorMessage) = getInstance()?.gogManager?.verifyInstallation(gameId)
-                    ?: Pair(false, "Service not available")
-                if (!isValid) {
-                    Timber.w("Game $gameId marked as installed but verification failed: $errorMessage")
+                    // Verify the installation is actually valid
+                    val (isValid, errorMessage) = instance.gogManager.verifyInstallation(gameId)
+                    if (!isValid) {
+                        Timber.w("Game $gameId marked as installed but verification failed: $errorMessage")
+                    }
+                    isValid
                 }
-                isValid
+            } else {
+                return runBlocking(Dispatchers.IO) {
+                    val game = getGOGGameOf(gameId)
+                    game?.isInstalled == true
+                }
             }
         }
 
         fun getInstallPath(gameId: String): String? {
-            return runBlocking(Dispatchers.IO) {
-                val game = getInstance()?.gogManager?.getGameFromDbById(gameId)
-                if (game != null && game.installPath.isNotEmpty()) game.installPath else null
-            }
+            val game = getGOGGameOf(gameId)
+            return if (game != null && game.installPath.isNotEmpty()) game.installPath else null
         }
 
         fun verifyInstallation(gameId: String): Pair<Boolean, String?> {
@@ -290,7 +320,6 @@ class GOGService : Service() {
         }
 
         fun setCustomInstallPath(context: Context, gameId: String, customInstallPath: String): String {
-            val instance = getInstance()
             val game = getGOGGameOf(gameId)
             val folderName = game?.title?.replace(Regex("[^a-zA-Z0-9.-]"), "_") ?: gameId
             
@@ -303,7 +332,7 @@ class GOGService : Service() {
 
             runBlocking(Dispatchers.IO) {
                 getGOGGameOf(gameId)?.let { gogGame ->
-                    instance?.gogManager?.updateGame(gogGame.copy(installPath = finalPath))
+                    updateGOGGame(gogGame.copy(installPath = finalPath))
                     Timber.tag("GOG").i("Updated GOG game installPath in DB to: $finalPath")
                 }
             }

@@ -796,7 +796,8 @@ class LibraryViewModel @Inject constructor(
             val game = _state.value.epicItems.find { it.appId == appId }?.name
             if (game != null) {
                 viewModelScope.launch {
-                    app.gamenative.service.epic.EpicService.downloadGame(context, bareId, emptyList(), app.gamenative.service.epic.EpicConstants.getGameInstallPath(context, game))
+                    val path = app.gamenative.service.epic.EpicService.getInstallPath(bareId) ?: app.gamenative.service.epic.EpicConstants.getGameInstallPath(context, game)
+                    app.gamenative.service.epic.EpicService.downloadGame(context, bareId, emptyList(), path)
                 }
             }
         } else if (appId.startsWith("GOG_")) {
@@ -804,7 +805,8 @@ class LibraryViewModel @Inject constructor(
             val game = _state.value.gogItems.find { it.appId == appId }?.name
             if (game != null) {
                 viewModelScope.launch {
-                    app.gamenative.service.gog.GOGService.downloadGame(context, bareId, app.gamenative.service.gog.GOGConstants.getGameInstallPath(game))
+                    val path = app.gamenative.service.gog.GOGService.getInstallPath(bareId) ?: app.gamenative.service.gog.GOGConstants.getGameInstallPath(game)
+                    app.gamenative.service.gog.GOGService.downloadGame(context, bareId, path)
                 }
             }
         } else if (appId.startsWith("AMAZON_")) {
@@ -812,7 +814,8 @@ class LibraryViewModel @Inject constructor(
             val game = _state.value.amazonItems.find { it.appId == appId }?.name
             if (game != null) {
                 viewModelScope.launch {
-                    AmazonService.downloadGame(context, bareId, app.gamenative.service.amazon.AmazonConstants.getGameInstallPath(context, game))
+                    val path = app.gamenative.service.amazon.AmazonService.getInstallPath(bareId) ?: app.gamenative.service.amazon.AmazonConstants.getGameInstallPath(context, game)
+                    AmazonService.downloadGame(context, bareId, path)
                 }
             }
         }

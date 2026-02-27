@@ -94,4 +94,22 @@ abstract class PluviaDatabase : RoomDatabase() {
     abstract fun amazonGameDao(): AmazonGameDao
 
     abstract fun downloadingAppInfoDao(): DownloadingAppInfoDao
+
+    companion object {
+        @Volatile
+        private var instance: PluviaDatabase? = null
+
+        fun getInstance(context: android.content.Context): PluviaDatabase {
+            return instance ?: synchronized(this) {
+                instance ?: androidx.room.Room.databaseBuilder(
+                    context.applicationContext,
+                    PluviaDatabase::class.java,
+                    DATABASE_NAME
+                )
+                .fallbackToDestructiveMigration()
+                .build()
+                .also { instance = it }
+            }
+        }
+    }
 }

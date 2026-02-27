@@ -24,6 +24,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 
@@ -232,22 +233,72 @@ class AmazonService : Service() {
          * Returns the [AmazonGame] for the given product ID, or null if not found / service not up.
          */
         suspend fun getAmazonGameOf(productId: String): AmazonGame? {
-            return withContext(Dispatchers.IO) {
-                instance?.amazonManager?.getGameById(productId)
+            val instance = getInstance()
+            return if (instance != null) {
+                withContext(Dispatchers.IO) {
+                    instance.amazonManager.getGameById(productId)
+                }
+            } else {
+                withContext(Dispatchers.IO) {
+                    try {
+                        val db = app.gamenative.db.PluviaDatabase.getInstance(PluviaApp.instance)
+                        db.amazonGameDao().getById(productId)
+                    } catch (e: Exception) {
+                        Timber.e(e, "Failed to get Amazon game from DB (service not running)")
+                        null
+                    }
+                }
             }
         }
 
         /**
          * Returns the on-disk install path for [productId], or null if not installed.
-         * Reads from the in-memory cache — no DB query, no thread blocking.
+         * Reads from the in-memory cache if available, otherwise falls back to DB.
          */
         fun getInstallPath(productId: String): String? {
-            val info = instance?.installInfoCache?.get(productId) ?: return null
-            return if (info.isInstalled && info.installPath.isNotEmpty()) info.installPath else null
+            val instance = getInstance()
+            if (instance != null) {
+                val info = instance.installInfoCache[productId]
+                if (info != null) {
+                    return if (info.isInstalled && info.installPath.isNotEmpty()) info.installPath else null
+                }
+            }
+            
+            // Fallback to direct DB access
+            return kotlinx.coroutines.runBlocking(Dispatchers.IO) {
+                val game = getAmazonGameOf(productId)
+                if (game != null && game.installPath.isNotEmpty()) game.installPath else null
+            }
         }
 
-        /** Deprecated name kept for call-site compatibility — delegates to [getInstallPath]. */
-        fun getInstalledGamePath(gameId: String): String? = getInstallPath(gameId)
+        fun setCustomInstallPath(context: Context, productId: String, customInstallPath: String): String {
+            val game = kotlinx.coroutines.runBlocking(Dispatchers.IO) { getAmazonGameOf(productId) }
+            val folderName = game?.title?.replace(Regex("[^a-zA-Z0-9.-]"), "_") ?: productId
+            
+            val customFile = File(customInstallPath)
+            val finalPath = if (customFile.name.equals(folderName, ignoreCase = true)) {
+                customFile.absolutePath
+            } else {
+                File(customInstallPath, folderName).absolutePath
+            }
+
+            runBlocking(Dispatchers.IO) {
+                try {
+                    val db = app.gamenative.db.PluviaDatabase.getInstance(PluviaApp.instance)
+                    val currentGame = db.amazonGameDao().getById(productId)
+                    if (currentGame != null) {
+                        db.amazonGameDao().insert(currentGame.copy(installPath = finalPath))
+                        Timber.tag("Amazon").i("Updated Amazon game installPath in DB to: $finalPath")
+                        
+                        // Update cache if service is running
+                        instance?.installInfoCache?.put(productId, CachedInstallInfo(currentGame.isInstalled, finalPath))
+                    }
+                } catch (e: Exception) {
+                    Timber.tag("Amazon").e(e, "Failed to update Amazon game installPath in DB")
+                }
+            }
+            return finalPath
+        }
 
         /**
          * Checks whether an installed Amazon game has a newer version available.
