@@ -68,22 +68,28 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
 
     @Override
     public void stop() {
-        // Log.d("GuestProgramLauncherComponent", "Stopping...");
+        Log.d("GuestProgramLauncherComponent", "Stopping...");
         synchronized (lock) {
             if (pid != -1) {
                 Process.killProcess(pid);
                 Log.d("GuestProgramLauncherComponent", "Stopped process " + pid);
                 pid = -1;
-                List<ProcessHelper.ProcessInfo> subProcesses = ProcessHelper.listSubProcesses();
-                for (ProcessHelper.ProcessInfo subProcess : subProcesses) {
-                    Log.d("GuestProgramLauncherComponent",
-                            "Sub-process still running: "
-                                    + subProcess.name + " | "
-                                    + subProcess.pid + " | "
-                                    + subProcess.ppid + ", stopping..."
-                    );
-                    Process.killProcess(subProcess.pid);
-                }
+            }
+            // Flush wineserver registry to disk BEFORE killing sub-processes.
+            // wineserver -k tells wineserver to save all registry hives and exit gracefully.
+            // Without this, winecfg changes made in the container are lost on exit
+            // because wineserver gets killed before it can flush to disk.
+            execShellCommand("wineserver -k");
+            // Now clean up any remaining sub-processes
+            List<ProcessHelper.ProcessInfo> subProcesses = ProcessHelper.listSubProcesses();
+            for (ProcessHelper.ProcessInfo subProcess : subProcesses) {
+                Log.d("GuestProgramLauncherComponent",
+                        "Sub-process still running: "
+                                + subProcess.name + " | "
+                                + subProcess.pid + " | "
+                                + subProcess.ppid + ", stopping..."
+                );
+                Process.killProcess(subProcess.pid);
             }
         }
     }

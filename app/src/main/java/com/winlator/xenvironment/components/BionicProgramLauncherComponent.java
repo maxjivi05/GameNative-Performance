@@ -131,14 +131,20 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
             if (pid != -1) {
                 Process.killProcess(pid);
                 Log.d("BionicProgramLauncherComponent", "Stopped process " + pid);
-                List<ProcessHelper.ProcessInfo> subProcesses = ProcessHelper.listSubProcesses();
-                for (ProcessHelper.ProcessInfo subProcess : subProcesses) {
-                    Process.killProcess(subProcess.pid);
-                }
+                pid = -1;
                 SteamService.setKeepAlive(false);
             }
             PerformanceTuner.stopRootPerformanceMode();
+            // Flush wineserver registry to disk BEFORE killing sub-processes.
+            // wineserver -k tells wineserver to save all registry hives and exit gracefully.
+            // Previously, sub-processes (including wineserver) were killed first, so
+            // wineserver -k had nothing to flush and winecfg changes were lost.
             execShellCommand("wineserver -k");
+            // Now clean up any remaining sub-processes
+            List<ProcessHelper.ProcessInfo> subProcesses = ProcessHelper.listSubProcesses();
+            for (ProcessHelper.ProcessInfo subProcess : subProcesses) {
+                Process.killProcess(subProcess.pid);
+            }
         }
     }
 

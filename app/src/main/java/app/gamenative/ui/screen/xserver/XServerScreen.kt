@@ -3156,6 +3156,10 @@ private fun setupWineSystemFiles(
         containerDataChanged = true
     }
 
+    // Always ensure windows.gaming.input is disabled - it causes crashes in some games.
+    // This covers existing containers that were created before the override was added.
+    WineUtils.ensureDisabledDllOverrides(container)
+
     WineStartMenuCreator.create(context, container)
     WineUtils.createDosdevicesSymlinks(container)
 

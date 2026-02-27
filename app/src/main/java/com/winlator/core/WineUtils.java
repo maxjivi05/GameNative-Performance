@@ -156,6 +156,8 @@ public abstract class WineUtils {
         final String[] direct3dLibs = {"d3d8", "d3d9", "d3d10", "d3d10_1", "d3d10core", "d3d11", "d3d12", "d3d12core", "ddraw", "dxgi", "wined3d"};
         final String[] xinputLibs = {"dinput", "dinput8", "xinput1_1", "xinput1_2", "xinput1_3", "xinput1_4", "xinput9_1_0", "xinputuap"};
         final String[] opengLibs = {"opengl32"};
+        // Globally disabled DLLs - windows.gaming.input causes crashes in some games
+        final String[] disabledDlls = {"windows.gaming.input"};
         final String dllOverridesKey = "Software\\Wine\\DllOverrides";
 
         boolean isMainWineVersion = WineInfo.isMainWineVersion(wineInfo.identifier());
@@ -164,6 +166,7 @@ public abstract class WineUtils {
             for (String name : direct3dLibs) registryEditor.setStringValue(dllOverridesKey, name, "native,builtin");
             for (String name : xinputLibs) registryEditor.setStringValue(dllOverridesKey, name, "builtin,native");
             if (wineInfo.isArm64EC()) for (String name : opengLibs) registryEditor.setStringValue(dllOverridesKey, name, "native,builtin");
+            for (String name : disabledDlls) registryEditor.setStringValue(dllOverridesKey, name, "");
 
             registryEditor.removeKey("Software\\Winlator\\WFM\\ContextMenu\\7-Zip");
             registryEditor.setStringValue("Software\\Winlator\\WFM\\ContextMenu\\7-Zip", "Open Archive", "Z:\\opt\\apps\\7-Zip\\7zFM.exe \"%FILE%\"");
@@ -233,6 +236,23 @@ public abstract class WineUtils {
         }
         catch (JSONException e) {
             Log.e("WineUtils", "Failed to override win component dlls: " + e);
+        }
+    }
+
+    /**
+     * Ensures globally disabled DLL overrides are set in the container's user.reg.
+     * Called on every launch to cover existing containers that predate the override.
+     */
+    public static void ensureDisabledDllOverrides(Container container) {
+        final String dllOverridesKey = "Software\\Wine\\DllOverrides";
+        final String[] disabledDlls = {"windows.gaming.input"};
+        File userRegFile = new File(container.getRootDir(), ".wine/user.reg");
+        if (!userRegFile.exists()) return;
+
+        try (WineRegistryEditor registryEditor = new WineRegistryEditor(userRegFile)) {
+            for (String name : disabledDlls) {
+                registryEditor.setStringValue(dllOverridesKey, name, "");
+            }
         }
     }
 
