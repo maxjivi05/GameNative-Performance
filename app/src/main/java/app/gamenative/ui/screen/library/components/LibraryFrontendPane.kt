@@ -570,6 +570,7 @@ internal fun LibraryFrontendPane(
     onFocusChanged: (LibraryItem?) -> Unit = {},
     onRefresh: () -> Unit = {},
     isAnyDialogOpen: Boolean = false,
+    onFrontendTabChanged: (Boolean) -> Unit = {},
 ) {
     val context = LocalContext.current
     var selectedTabIdx by remember { mutableIntStateOf(0) }
@@ -578,6 +579,11 @@ internal fun LibraryFrontendPane(
     var isSearchingLocally by remember { mutableStateOf(false) }
     val searchFocusRequester = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
+
+    // Notify parent when switching to/from Downloads tab
+    LaunchedEffect(selectedTabIdx) {
+        onFrontendTabChanged(tabs[selectedTabIdx] == FrontendTab.DOWNLOADS)
+    }
 
     var connectedControllerType by remember { mutableStateOf(ControllerType.NONE) }
     var installDialogItem by remember { mutableStateOf<LibraryItem?>(null) }
@@ -1236,7 +1242,7 @@ internal fun LibraryFrontendPane(
                 .align(Alignment.TopCenter)
                 .zIndex(2f)
                 .graphicsLayer {
-                    if (isStorefrontTab) {
+                    if (isStorefrontTab || isDownloadsTab) {
                         translationY = headerOffsetY
                         alpha = ((headerOffsetY + 200f) / 200f).coerceIn(0f, 1f)
                     }
@@ -1556,6 +1562,23 @@ internal fun LibraryFrontendPane(
                         } else if (isDownloadsTabLocal) {
                             // Downloads Tab Content
                             val viewModel: app.gamenative.ui.model.LibraryViewModel = androidx.hilt.navigation.compose.hiltViewModel()
+                            val downloadsListState = remember { androidx.compose.foundation.lazy.LazyListState() }
+
+                            // Header auto-hide for Downloads tab (same logic as storefront tabs)
+                            LaunchedEffect(downloadsListState.firstVisibleItemIndex, downloadsListState.firstVisibleItemScrollOffset) {
+                                val currentFirst = downloadsListState.firstVisibleItemIndex
+                                val currentOffset = downloadsListState.firstVisibleItemScrollOffset
+                                val scrollingDown = currentFirst > previousFirstVisibleItem ||
+                                    (currentFirst == previousFirstVisibleItem && currentOffset > previousScrollOffset + 10)
+                                val scrollingUp = currentFirst < previousFirstVisibleItem ||
+                                    (currentFirst == previousFirstVisibleItem && currentOffset < previousScrollOffset - 10)
+                                if (scrollingDown && headerVisible) headerVisible = false
+                                if (scrollingUp && !headerVisible) headerVisible = true
+                                if (currentFirst == 0 && currentOffset == 0) headerVisible = true
+                                previousFirstVisibleItem = currentFirst
+                                previousScrollOffset = currentOffset
+                            }
+
                             DownloadsListContent(
                                 downloads = state.activeDownloads,
                                 onPause = { appId -> viewModel.pauseDownload(appId) },
@@ -1563,7 +1586,8 @@ internal fun LibraryFrontendPane(
                                 onStop = { appId -> viewModel.stopAllDownloads() },
                                 onCancel = { appId -> viewModel.cancelDownload(appId) },
                                 onClear = { viewModel.clearCompletedDownloads() },
-                                modifier = Modifier.fillMaxWidth().height(260.dp).align(Alignment.TopCenter).padding(top = 70.dp, start = 16.dp, end = 16.dp)
+                                listState = downloadsListState,
+                                modifier = Modifier.fillMaxSize().padding(top = 70.dp, start = 16.dp, end = 16.dp)
                             )
                         } else {
                             // Storefront tabs (Steam, Epic, GOG, Amazon): 4-column vertical grid                    // gridState is hoisted above for controller access
@@ -1836,122 +1860,119 @@ fun DownloadsListContent(
     onStop: (String) -> Unit,
     onCancel: (String) -> Unit,
     onClear: () -> Unit,
+    listState: androidx.compose.foundation.lazy.LazyListState = remember { androidx.compose.foundation.lazy.LazyListState() },
     modifier: Modifier = Modifier
 ) {
     var selectedAppId by remember { mutableStateOf<String?>(null) }
 
-    Box(modifier = modifier) {
-        app.gamenative.ui.component.AnimatedWavyBackground(
-            modifier = Modifier.fillMaxSize(),
-            color = Color(0xFF1E3A8A) // A sleek blue tone
-        )
-        
-        Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-            // Global Progress Info
-            val totalDownloaded = downloads.sumOf { it.downloadedBytes }
-            val totalSize = downloads.sumOf { it.totalBytes }
-            val overallSpeed = downloads.sumOf { it.speed }
-            
-            Text(
-                text = "Total: ${app.gamenative.utils.StorageUtils.formatBinarySize(totalDownloaded)} / ${app.gamenative.utils.StorageUtils.formatBinarySize(totalSize)} @ ${app.gamenative.utils.StorageUtils.formatBinarySize(overallSpeed.toLong())}/s",
-                color = Color.White.copy(alpha = 0.7f),
-                fontSize = 14.sp,
-                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center
-            )
-            
-            // Top Action Bar
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                if (selectedAppId != null && downloads.any { it.appId == selectedAppId }) {
-                    val selectedItem = downloads.first { it.appId == selectedAppId }
-                    Button(
-                        onClick = {
-                            if (selectedItem.isPaused) onResume(selectedItem.appId)
-                            else onPause(selectedItem.appId)
-                        },
-                        modifier = Modifier.padding(horizontal = 4.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                    ) {
-                        Text(if (selectedItem.isPaused) "Resume" else "Pause", color = Color.White)
-                    }
-                    Button(
-                        onClick = { onStop(selectedItem.appId) },
-                        modifier = Modifier.padding(horizontal = 4.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color.DarkGray)
-                    ) {
-                        Text("Stop", color = Color.White)
-                    }
-                    Button(
-                        onClick = { onCancel(selectedItem.appId); selectedAppId = null },
-                        modifier = Modifier.padding(horizontal = 4.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-                    ) {
-                        Text("Cancel", color = Color.White)
-                    }
-                } else {
-                    // Global Actions
-                    val allPaused = downloads.isNotEmpty() && downloads.all { it.isPaused }
-                    Button(
-                        onClick = {
-                            if (allPaused) downloads.forEach { onResume(it.appId) }
-                            else downloads.forEach { onPause(it.appId) }
-                        },
-                        modifier = Modifier.padding(horizontal = 4.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                    ) {
-                        Text(if (allPaused) "Resume All" else "Pause All", color = Color.White)
-                    }
-                    Button(
-                        onClick = { downloads.forEach { onStop(it.appId) } },
-                        modifier = Modifier.padding(horizontal = 4.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color.DarkGray)
-                    ) {
-                        Text("Stop All", color = Color.White)
-                    }
-                    Button(
-                        onClick = { downloads.forEach { onCancel(it.appId) }; selectedAppId = null },
-                        modifier = Modifier.padding(horizontal = 4.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-                    ) {
-                        Text("Cancel All", color = Color.White)
-                    }
-                }
+    val totalDownloaded = downloads.sumOf { it.downloadedBytes }
+    val totalSize = downloads.sumOf { it.totalBytes }
+    val overallSpeed = downloads.sumOf { it.speed }
 
-                Button(
-                    onClick = { onClear(); selectedAppId = null },
-                    modifier = Modifier.padding(horizontal = 4.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.Gray)
+    if (downloads.isEmpty()) {
+        Box(modifier = modifier, contentAlignment = Alignment.Center) {
+            Text("No active downloads", color = Color.White.copy(alpha = 0.5f))
+        }
+    } else {
+        androidx.compose.foundation.lazy.LazyColumn(
+            state = listState,
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            contentPadding = PaddingValues(bottom = 80.dp),
+            modifier = modifier
+        ) {
+            // Global Progress Info
+            item {
+                Text(
+                    text = "Total: ${app.gamenative.utils.StorageUtils.formatBinarySize(totalDownloaded)} / ${app.gamenative.utils.StorageUtils.formatBinarySize(totalSize)} @ ${app.gamenative.utils.StorageUtils.formatBinarySize(overallSpeed.toLong())}/s",
+                    color = Color.White.copy(alpha = 0.7f),
+                    fontSize = 14.sp,
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
+            }
+
+            // Action Bar
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Clear Completed", color = Color.White)
+                    if (selectedAppId != null && downloads.any { it.appId == selectedAppId }) {
+                        val selectedItem = downloads.first { it.appId == selectedAppId }
+                        Button(
+                            onClick = {
+                                if (selectedItem.isPaused) onResume(selectedItem.appId)
+                                else onPause(selectedItem.appId)
+                            },
+                            modifier = Modifier.padding(horizontal = 4.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                        ) {
+                            Text(if (selectedItem.isPaused) "Resume" else "Pause", color = Color.White)
+                        }
+                        Button(
+                            onClick = { onStop(selectedItem.appId) },
+                            modifier = Modifier.padding(horizontal = 4.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color.DarkGray)
+                        ) {
+                            Text("Stop", color = Color.White)
+                        }
+                        Button(
+                            onClick = { onCancel(selectedItem.appId); selectedAppId = null },
+                            modifier = Modifier.padding(horizontal = 4.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                        ) {
+                            Text("Cancel", color = Color.White)
+                        }
+                    } else {
+                        val allPaused = downloads.isNotEmpty() && downloads.all { it.isPaused }
+                        Button(
+                            onClick = {
+                                if (allPaused) downloads.forEach { onResume(it.appId) }
+                                else downloads.forEach { onPause(it.appId) }
+                            },
+                            modifier = Modifier.padding(horizontal = 4.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                        ) {
+                            Text(if (allPaused) "Resume All" else "Pause All", color = Color.White)
+                        }
+                        Button(
+                            onClick = { downloads.forEach { onStop(it.appId) } },
+                            modifier = Modifier.padding(horizontal = 4.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color.DarkGray)
+                        ) {
+                            Text("Stop All", color = Color.White)
+                        }
+                        Button(
+                            onClick = { downloads.forEach { onCancel(it.appId) }; selectedAppId = null },
+                            modifier = Modifier.padding(horizontal = 4.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                        ) {
+                            Text("Cancel All", color = Color.White)
+                        }
+                    }
+
+                    Button(
+                        onClick = { onClear(); selectedAppId = null },
+                        modifier = Modifier.padding(horizontal = 4.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.Gray)
+                    ) {
+                        Text("Clear Completed", color = Color.White)
+                    }
                 }
             }
 
-            // Downloads List
-            if (downloads.isEmpty()) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("No active downloads", color = Color.White.copy(alpha = 0.5f))
-                }
-            } else {
-                androidx.compose.foundation.lazy.LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    items(downloads.size) { index ->
-                        val item = downloads[index]
-                        DownloadItemRow(
-                            item = item,
-                            isSelected = item.appId == selectedAppId,
-                            onClick = { 
-                                if (selectedAppId == item.appId) selectedAppId = null 
-                                else selectedAppId = item.appId 
-                            }
-                        )
+            // Download Items
+            items(downloads.size) { index ->
+                val item = downloads[index]
+                DownloadItemRow(
+                    item = item,
+                    isSelected = item.appId == selectedAppId,
+                    onClick = {
+                        if (selectedAppId == item.appId) selectedAppId = null
+                        else selectedAppId = item.appId
                     }
-                }
+                )
             }
         }
     }
@@ -1988,8 +2009,21 @@ fun DownloadItemRow(
         
         // Progress Info
         Column(modifier = Modifier.weight(1f)) {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(item.name, color = Color.White, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Text(item.name, color = Color.White, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                val gameSource = when {
+                    item.appId.startsWith("STEAM_") -> GameSource.STEAM
+                    item.appId.startsWith("EPIC_") -> GameSource.EPIC
+                    item.appId.startsWith("GOG_") -> GameSource.GOG
+                    item.appId.startsWith("AMAZON_") -> GameSource.AMAZON
+                    item.appId.startsWith("CUSTOM_") -> GameSource.CUSTOM_GAME
+                    else -> null
+                }
+                if (gameSource != null) {
+                    Spacer(modifier = Modifier.width(6.dp))
+                    GameSourceIcon(gameSource = gameSource, iconSize = 14)
+                }
+                Spacer(modifier = Modifier.weight(0.01f))
                 Text(
                     text = if (item.isCompleted) "Completed" else if (item.isPaused) "Paused" else "${app.gamenative.utils.StorageUtils.formatBinarySize(item.speed.toLong())}/s",
                     color = Color.White.copy(alpha = 0.7f),

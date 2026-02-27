@@ -2216,7 +2216,7 @@ private fun getWineStartCommand(
         // For Epic games, get the launch command
         Timber.tag("XServerScreen").i("Launching Epic game: $gameId")
         val game = runBlocking {
-            EpicService.getInstance()?.epicManager?.getGameById(gameId.toInt())
+            EpicService.getInstance()?.epicManager?.getGameById(gameId)
         }
 
         if (game == null || !game.isInstalled || game.installPath.isEmpty()) {
@@ -2224,9 +2224,18 @@ private fun getWineStartCommand(
             return "\"explorer.exe\""
         }
 
-        // Get the executable path
-        val exePath = runBlocking {
-            EpicService.getInstance()?.epicManager?.getInstalledExe(game.id) ?: ""
+        // Use container's configured executable path if available, otherwise auto-detect and persist
+        val exePath = if (container != null && container.executablePath.isNotEmpty()) {
+            container.executablePath
+        } else {
+            val detectedPath = runBlocking {
+                EpicService.getInstance()?.epicManager?.getInstalledExe(game.id) ?: ""
+            }
+            if (detectedPath.isNotEmpty() && container != null) {
+                container.executablePath = detectedPath
+                container.saveData()
+            }
+            detectedPath
         }
 
         if (exePath.isEmpty()) {
@@ -2241,15 +2250,48 @@ private fun getWineStartCommand(
         // The container setup in ContainerUtils maps the game install path to A: drive
         val epicCommand = "A:\\$relativePath".replace("/", "\\")
 
+        // Get Epic launch parameters (auth tokens) at launch time
+        Timber.tag("XServerScreen").d("Building Epic launch parameters for ${game.appName}...")
+        val runArguments: List<String> = runBlocking {
+            val result = EpicService.buildLaunchParameters(context, game, false)
+            if (result.isFailure) {
+                Timber.tag("XServerScreen").e(result.exceptionOrNull(), "Failed to build Epic launch parameters")
+            }
+            val params = result.getOrNull() ?: listOf()
+            Timber.tag("XServerScreen").i("Got ${params.size} Epic launch parameters")
+            params
+        }
+
         // Set working directory to the folder containing the executable
         val executableDir = game.installPath + "/" + relativePath.substringBeforeLast("/", "")
         guestProgramLauncherComponent.workingDir = File(executableDir)
 
-        Timber.tag("XServerScreen").i("Epic launch command (initial): \"$epicCommand\"")
+        Timber.tag("XServerScreen").i("Epic launch command: \"$epicCommand\"")
 
-        // Return basic command without params initially.
-        // The full params with fresh token will be injected in unpackExecutableFile (preUnpack)
-        return "winhandler.exe \"$epicCommand\""
+        val launchCommand = if (runArguments.isNotEmpty()) {
+            val args = runArguments.joinToString(" ") { arg ->
+                if (arg.contains("=") && arg.substringAfter("=").contains(" ")) {
+                    val (key, value) = arg.split("=", limit = 2)
+                    "$key=\"$value\""
+                } else if (arg.contains(" ")) {
+                    "\"$arg\""
+                } else {
+                    arg
+                }
+            }
+            "winhandler.exe \"$epicCommand\" $args"
+        } else {
+            Timber.tag("XServerScreen").w("No Epic launch parameters available, launching without authentication")
+            "winhandler.exe \"$epicCommand\""
+        }
+
+        // Log command with sensitive auth tokens redacted
+        val redactedCommand = launchCommand
+            .replace(Regex("-AUTH_PASSWORD=(\"[^\"]*\"|[^ ]+)"), "-AUTH_PASSWORD=[REDACTED]")
+            .replace(Regex("-epicovt=(\"[^\"]*\"|[^ ]+)"), "-epicovt=[REDACTED]")
+        Timber.tag("XServerScreen").i("Epic launch command: $redactedCommand")
+
+        return launchCommand
     } else if (gameSource == GameSource.AMAZON) {
         // For Amazon games, get install path using the product ID string (not the Int gameId)
         val productId = appId.removePrefix("AMAZON_").substringBefore("(")
@@ -2976,57 +3018,7 @@ private fun unpackExecutableFile(
         Timber.e("Error during unpacking: $e")
         onError?.invoke("Error during unpacking: ${e.message}")
     } finally {
-        // Late binding for Epic Games parameters to ensure fresh exchange token
-        if (ContainerUtils.extractGameSourceFromContainerId(appId) == GameSource.EPIC) {
-            val gameId = ContainerUtils.extractGameIdFromContainerId(appId)
-            Timber.i("Performing late parameter injection for Epic game $gameId")
-            
-            try {
-                val game = runBlocking {
-                    EpicService.getInstance()?.epicManager?.getGameById(gameId.toInt())
-                }
-                
-                if (game != null) {
-                    Timber.tag("XServerScreen").d("Fetching fresh Epic launch parameters...")
-                    val runArguments: List<String> = runBlocking {
-                        val result = EpicService.buildLaunchParameters(context, game, false)
-                        if (result.isFailure) {
-                            Timber.tag("XServerScreen").e(result.exceptionOrNull(), "Failed to build Epic launch parameters")
-                        }
-                        result.getOrNull() ?: listOf()
-                    }
-                    
-                    if (runArguments.isNotEmpty()) {
-                        val currentCmd = guestProgramLauncherComponent.guestExecutable
-                        // Current cmd format: "wine explorer /desktop=shell,WxH winhandler.exe \"A:\Path\To.exe\""
-                        // We need to append args to the end
-                        
-                        val argsStr = runArguments.joinToString(" ") { arg ->
-                            if (arg.contains("=") && arg.substringAfter("=").contains(" ")) {
-                                val (key, value) = arg.split("=", limit = 2)
-                                "$key=\"$value\""
-                            } else if (arg.contains(" ")) {
-                                "\"$arg\""
-                            } else {
-                                arg
-                            }
-                        }
-                        
-                        val newCmd = "$currentCmd $argsStr"
-                        
-                        // Log with redaction
-                        val redacted = newCmd
-                            .replace(Regex("-AUTH_PASSWORD=(\"[^\"]*\"|[^ ]+)"), "-AUTH_PASSWORD=[REDACTED]")
-                            .replace(Regex("-epicovt=(\"[^\"]*\"|[^ ]+)"), "-epicovt=[REDACTED]")
-                            
-                        Timber.tag("XServerScreen").i("Updating guest command with fresh token: $redacted")
-                        guestProgramLauncherComponent.guestExecutable = newCmd
-                    }
-                }
-            } catch (e: Exception) {
-                Timber.e(e, "Error during late Epic parameter injection")
-            }
-        }
+        // no-op
     }
 }
 

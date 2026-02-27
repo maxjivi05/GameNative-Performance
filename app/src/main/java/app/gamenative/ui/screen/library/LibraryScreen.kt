@@ -187,6 +187,7 @@ private fun LibraryScreenContent(
     // Keep a stable reference to the selected item so detail view doesn't disappear during list refresh/pagination.
     var selectedLibraryItem by remember { mutableStateOf<LibraryItem?>(null) }
     val filterFabExpanded by remember { derivedStateOf { listState.firstVisibleItemIndex == 0 } }
+    var frontendOnDownloadsTab by remember { mutableStateOf(false) }
 
     // Dialog state for add custom game prompt
     var showAddCustomGameDialog by remember { mutableStateOf(false) }
@@ -230,6 +231,11 @@ private fun LibraryScreenContent(
     }
 
     val isFrontend = state.libraryLayout == app.gamenative.ui.enums.PaneType.FRONTEND
+
+    // Reset downloads tab flag when leaving frontend mode
+    LaunchedEffect(isFrontend) {
+        if (!isFrontend) frontendOnDownloadsTab = false
+    }
 
     // When in Frontend mode, force landscape. Otherwise follow system.
     LaunchedEffect(isFrontend) {
@@ -304,6 +310,7 @@ private fun LibraryScreenContent(
                 onFocusChanged = onFocusChanged,
                 isOffline = isOffline,
                 isAnyDialogOpen = isAnyDialogOpen,
+                onFrontendTabChanged = { isDownloads -> frontendOnDownloadsTab = isDownloads },
             )
         } else {
             LibraryDetailPane(
@@ -326,7 +333,7 @@ private fun LibraryScreenContent(
             )
         }
 
-        if (selectedLibraryItem == null) {
+        if (selectedLibraryItem == null && !frontendOnDownloadsTab) {
             val isFrontend = state.libraryLayout == app.gamenative.ui.enums.PaneType.FRONTEND
             Box(
                 modifier = Modifier
