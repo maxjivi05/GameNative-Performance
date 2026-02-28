@@ -1339,7 +1339,8 @@ private data class WineReleaseItem(
     val version: String,
     val url: String?,       // if null, use SteamService.fetchFileWithFallback (GameNative repo)
     val fileName: String,   // filename for storage
-    val releaseDate: String = ""
+    val releaseDate: String = "",
+    val source: String = ""
 )
 
 // Extract version-specific family from filename for upgrade-grouping.
@@ -1401,7 +1402,7 @@ private fun WineProtonDetailScreen(onBack: () -> Unit) {
                                 val n = aObj["name"]?.jsonPrimitive?.content ?: return@mapNotNull null
                                 val u = aObj["browser_download_url"]?.jsonPrimitive?.content ?: return@mapNotNull null
                                 if (!n.endsWith(".wcp", ignoreCase = true)) return@mapNotNull null
-                                WineReleaseItem(n.removeSuffix(".wcp"), extractVersionFromFilename(n), u, n, date)
+                                WineReleaseItem(n.removeSuffix(".wcp"), extractVersionFromFilename(n), u, n, date, source = "GN")
                             }
                         }
                     }
@@ -1421,7 +1422,7 @@ private fun WineProtonDetailScreen(onBack: () -> Unit) {
                             val n = aObj["name"]?.jsonPrimitive?.content ?: return@mapNotNull null
                             val u = aObj["browser_download_url"]?.jsonPrimitive?.content ?: return@mapNotNull null
                             if (!n.endsWith(".wcp", ignoreCase = true)) return@mapNotNull null
-                            WineReleaseItem(n.removeSuffix(".wcp"), extractVersionFromFilename(n), u, n, date)
+                            WineReleaseItem(n.removeSuffix(".wcp"), extractVersionFromFilename(n), u, n, date, source = "Nick")
                         }
                     }
                 } catch (e: Exception) { Timber.e(e, "Nick GameNative fetch error"); emptyList() }
@@ -1440,15 +1441,34 @@ private fun WineProtonDetailScreen(onBack: () -> Unit) {
                             val n = aObj["name"]?.jsonPrimitive?.content ?: return@mapNotNull null
                             val u = aObj["browser_download_url"]?.jsonPrimitive?.content ?: return@mapNotNull null
                             if (!n.endsWith(".wcp", ignoreCase = true)) return@mapNotNull null
-                            WineReleaseItem(n.removeSuffix(".wcp"), extractVersionFromFilename(n), u, n, date)
+                            WineReleaseItem(n.removeSuffix(".wcp"), extractVersionFromFilename(n), u, n, date, source = "Nick")
                         }
                     }
                 } catch (e: Exception) { Timber.e(e, "Nick Wine tag fetch error"); emptyList() }
 
-                // 3. Merge, deduplicate by download URL (same file from same release),
+                // 3. K11MCH1 Winlator101 releases (wine_col tag)
+                val k11mch1Items = try {
+                    val req = Request.Builder()
+                        .url("https://api.github.com/repos/K11MCH1/Winlator101/releases/tags/wine_col")
+                        .header("Accept", "application/vnd.github.v3+json").build()
+                    Net.http.newCall(req).execute().use { resp ->
+                        if (!resp.isSuccessful) return@use emptyList()
+                        val obj = Json.parseToJsonElement(resp.body?.string() ?: "{}").jsonObject
+                        val date = obj["published_at"]?.jsonPrimitive?.content ?: ""
+                        (obj["assets"]?.jsonArray ?: emptyList()).mapNotNull { el ->
+                            val aObj = el.jsonObject
+                            val n = aObj["name"]?.jsonPrimitive?.content ?: return@mapNotNull null
+                            val u = aObj["browser_download_url"]?.jsonPrimitive?.content ?: return@mapNotNull null
+                            if (!n.endsWith(".wcp", ignoreCase = true)) return@mapNotNull null
+                            WineReleaseItem(n.removeSuffix(".wcp"), extractVersionFromFilename(n), u, n, date, source = "K11MCH1")
+                        }
+                    }
+                } catch (e: Exception) { Timber.e(e, "K11MCH1 fetch error"); emptyList() }
+
+                // 4. Merge, deduplicate by download URL (same file from same release),
                 // but keep entries with same fileName but different dates (different uploads).
                 // Sort newest first.
-                val combined = (gnProtonItems + nickGameNativeItems + nickWineTagItems)
+                val combined = (gnProtonItems + nickGameNativeItems + nickWineTagItems + k11mch1Items)
                     .distinctBy { it.url ?: "${it.fileName}|${it.releaseDate}" }
                     .sortedWith { a, b ->
                         if (a.releaseDate.isNotEmpty() && b.releaseDate.isNotEmpty())
@@ -1664,12 +1684,22 @@ private fun WineProtonDetailScreen(onBack: () -> Unit) {
                                 ) {
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(prof.verName, fontWeight = FontWeight.SemiBold)
-                                        if (matchedRelease.releaseDate.isNotEmpty()) {
-                                            Text(
-                                                "Released ${formatRelativeTime(matchedRelease.releaseDate)}",
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            )
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            if (matchedRelease.source.isNotEmpty()) {
+                                                Text(
+                                                    "[${matchedRelease.source}] ",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = MaterialTheme.colorScheme.primary,
+                                                    fontWeight = FontWeight.Bold
+                                                )
+                                            }
+                                            if (matchedRelease.releaseDate.isNotEmpty()) {
+                                                Text(
+                                                    "Released ${formatRelativeTime(matchedRelease.releaseDate)}",
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                )
+                                            }
                                         }
                                     }
                                     IconButton(onClick = { deleteTarget = prof }) {
@@ -1750,12 +1780,22 @@ private fun WineProtonDetailScreen(onBack: () -> Unit) {
                                 ) {
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(item.name, fontWeight = FontWeight.SemiBold)
-                                        if (item.releaseDate.isNotEmpty()) {
-                                            Text(
-                                                "Released ${formatRelativeTime(item.releaseDate)}",
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            )
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            if (item.source.isNotEmpty()) {
+                                                Text(
+                                                    "[${item.source}] ",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = MaterialTheme.colorScheme.primary,
+                                                    fontWeight = FontWeight.Bold
+                                                )
+                                            }
+                                            if (item.releaseDate.isNotEmpty()) {
+                                                Text(
+                                                    "Released ${formatRelativeTime(item.releaseDate)}",
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                )
+                                            }
                                         }
                                     }
                                     if (isUpgrade && oldProfile != null) {
