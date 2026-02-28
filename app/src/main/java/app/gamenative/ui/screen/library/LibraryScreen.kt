@@ -345,9 +345,13 @@ private fun LibraryScreenContent(
             ) {
                 if (!state.isSearching) {
                     ExtendedFloatingActionButton(
-                        text = { Text(text = if (isFrontend) stringResource(R.string.library_layout_title) else stringResource(R.string.library_filters)) },
+                        text = {
+                            if (!isFrontend) {
+                                Text(text = stringResource(R.string.library_filters))
+                            }
+                        },
                         icon = { Icon(imageVector = Icons.Default.FilterList, contentDescription = null) },
-                        expanded = filterFabExpanded,
+                        expanded = if (isFrontend) false else filterFabExpanded,
                         onClick = { onModalBottomSheet(true) },
                         containerColor = MaterialTheme.colorScheme.primary,
                         contentColor = MaterialTheme.colorScheme.onPrimary,
