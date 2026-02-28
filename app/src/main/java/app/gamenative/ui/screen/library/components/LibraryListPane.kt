@@ -114,6 +114,7 @@ internal fun LibraryListPane(
     onGoOnline: () -> Unit,
     onRefresh: () -> Unit,
     onSourceToggle: (GameSource) -> Unit,
+    onAioStoreToggle: () -> Unit = {},
     onAddCustomGame: () -> Unit = {},
     onFocusChanged: (LibraryItem?) -> Unit = {},
     isOffline: Boolean = false,
@@ -488,6 +489,8 @@ internal fun LibraryListPane(
                             showEpic = state.showEpicInLibrary,
                             showAmazon = state.showAmazonInLibrary,
                             onSourceToggle = onSourceToggle,
+                            aioStoreEnabled = state.aioStoreEnabled,
+                            onAioStoreToggle = onAioStoreToggle,
                         )
                     },
                 )

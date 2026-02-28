@@ -921,66 +921,68 @@ public class WinHandler {
                                           int slotIndex) {
         if (buffer == null || src == null) return;
 
-        buffer.clear();
+        synchronized (buffer) {
+            buffer.clear();
 
-        // SHM writer: compute final LX/LY/RX/RY based on target
-        float lx = src.thumbLX, ly = src.thumbLY;
-        float rx = src.thumbRX, ry = src.thumbRY;
+            // SHM writer: compute final LX/LY/RX/RY based on target
+            float lx = src.thumbLX, ly = src.thumbLY;
+            float rx = src.thumbRX, ry = src.thumbRY;
 
-        if (isP1 && gyroEnabled) {
-            if (gyroToLeftStick) {
-                lx = Mathf.clamp(lx + gyroX, -1f, 1f);
-                ly = Mathf.clamp(ly + gyroY, -1f, 1f);
-            } else {
-                rx = Mathf.clamp(rx + gyroX, -1f, 1f);
-                ry = Mathf.clamp(ry + gyroY, -1f, 1f);
+            if (isP1 && gyroEnabled) {
+                if (gyroToLeftStick) {
+                    lx = Mathf.clamp(lx + gyroX, -1f, 1f);
+                    ly = Mathf.clamp(ly + gyroY, -1f, 1f);
+                } else {
+                    rx = Mathf.clamp(rx + gyroX, -1f, 1f);
+                    ry = Mathf.clamp(ry + gyroY, -1f, 1f);
+                }
             }
+
+            buffer.putShort((short) (lx * 32767));
+            buffer.putShort((short) (ly * 32767));
+            buffer.putShort((short) (rx * 32767));
+            buffer.putShort((short) (ry * 32767));
+
+            // Triggers (curved)
+            float rawL = Math.max(0f, Math.min(1f, src.triggerL));
+            float rawR = Math.max(0f, Math.min(1f, src.triggerR));
+
+            // Buttons & dpad (SDL-style ordering)
+            byte[] sdlButtons = new byte[15];
+            sdlButtons[0]  = src.isPressed(0)  ? (byte)1 : 0;  // A
+            sdlButtons[1]  = src.isPressed(1)  ? (byte)1 : 0;  // B
+            sdlButtons[2]  = src.isPressed(2)  ? (byte)1 : 0;  // X
+            sdlButtons[3]  = src.isPressed(3)  ? (byte)1 : 0;  // Y
+            sdlButtons[9]  = src.isPressed(4)  ? (byte)1 : 0;  // LB
+            sdlButtons[10] = src.isPressed(5)  ? (byte)1 : 0;  // RB
+            sdlButtons[4]  = src.isPressed(6)  ? (byte)1 : 0;  // Back
+            sdlButtons[6]  = src.isPressed(7)  ? (byte)1 : 0;  // Start
+            sdlButtons[7]  = src.isPressed(8)  ? (byte)1 : 0;  // LStick
+            sdlButtons[8]  = src.isPressed(9)  ? (byte)1 : 0;  // RStick
+            sdlButtons[11] = src.dpad[0]       ? (byte)1 : 0;  // Up
+            sdlButtons[12] = src.dpad[2]       ? (byte)1 : 0;  // Down
+            sdlButtons[13] = src.dpad[3]       ? (byte)1 : 0;  // Left
+            sdlButtons[14] = src.dpad[1]       ? (byte)1 : 0;  // Right
+
+            // apply turbo
+            applyTurboMask(slotIndex, sdlButtons);
+
+            // Note trigger gating uses the phase:
+            if (!turboPhaseOn && slotIndex >= 0 && slotIndex < includeTriggers.length && includeTriggers[slotIndex]) {
+                rawL = 0f; rawR = 0f;
+            }
+
+            // Curve & write triggers after potential gating
+            float lCurve = (float) Math.sqrt(rawL);
+            float rCurve = (float) Math.sqrt(rawR);
+            int lAxis = Math.round(lCurve * 65_534f) - 32_767;
+            int rAxis = Math.round(rCurve * 65_534f) - 32_767;
+            buffer.putShort((short) lAxis);
+            buffer.putShort((short) rAxis);
+
+            buffer.put(sdlButtons);
+            buffer.put((byte) 0); // HAT ignored
         }
-
-        buffer.putShort((short) (lx * 32767));
-        buffer.putShort((short) (ly * 32767));
-        buffer.putShort((short) (rx * 32767));
-        buffer.putShort((short) (ry * 32767));
-
-        // Triggers (curved)
-        float rawL = Math.max(0f, Math.min(1f, src.triggerL));
-        float rawR = Math.max(0f, Math.min(1f, src.triggerR));
-
-        // Buttons & dpad (SDL-style ordering)
-        byte[] sdlButtons = new byte[15];
-        sdlButtons[0]  = src.isPressed(0)  ? (byte)1 : 0;  // A
-        sdlButtons[1]  = src.isPressed(1)  ? (byte)1 : 0;  // B
-        sdlButtons[2]  = src.isPressed(2)  ? (byte)1 : 0;  // X
-        sdlButtons[3]  = src.isPressed(3)  ? (byte)1 : 0;  // Y
-        sdlButtons[9]  = src.isPressed(4)  ? (byte)1 : 0;  // LB
-        sdlButtons[10] = src.isPressed(5)  ? (byte)1 : 0;  // RB
-        sdlButtons[4]  = src.isPressed(6)  ? (byte)1 : 0;  // Back
-        sdlButtons[6]  = src.isPressed(7)  ? (byte)1 : 0;  // Start
-        sdlButtons[7]  = src.isPressed(8)  ? (byte)1 : 0;  // LStick
-        sdlButtons[8]  = src.isPressed(9)  ? (byte)1 : 0;  // RStick
-        sdlButtons[11] = src.dpad[0]       ? (byte)1 : 0;  // Up
-        sdlButtons[12] = src.dpad[2]       ? (byte)1 : 0;  // Down
-        sdlButtons[13] = src.dpad[3]       ? (byte)1 : 0;  // Left
-        sdlButtons[14] = src.dpad[1]       ? (byte)1 : 0;  // Right
-
-        // apply turbo
-        applyTurboMask(slotIndex, sdlButtons);
-
-        // Note trigger gating uses the phase:
-        if (!turboPhaseOn && slotIndex >= 0 && slotIndex < includeTriggers.length && includeTriggers[slotIndex]) {
-            rawL = 0f; rawR = 0f;
-        }
-
-        // Curve & write triggers after potential gating
-        float lCurve = (float) Math.sqrt(rawL);
-        float rCurve = (float) Math.sqrt(rawR);
-        int lAxis = Math.round(lCurve * 65_534f) - 32_767;
-        int rAxis = Math.round(rCurve * 65_534f) - 32_767;
-        buffer.putShort((short) lAxis);
-        buffer.putShort((short) rAxis);
-
-        buffer.put(sdlButtons);
-        buffer.put((byte) 0); // HAT ignored
     }
 
     /** Virtual gamepad writes directly to P1 buffer, caches last state for gyro-only updates. */

@@ -33,6 +33,10 @@ data class DownloadInfo(
     private var hasEmaSpeed: Boolean = false
     private var isActive: Boolean = true
     private val statusMessage = MutableStateFlow<String?>(null)
+    private var retryCount: Int = 0
+    private var maxRetries: Int = 3
+    private var hasError: Boolean = false
+    private var errorMessage: String = ""
 
     fun cancel() {
         cancel("Cancelled by user")
@@ -158,6 +162,27 @@ data class DownloadInfo(
     }
 
     fun isActive(): Boolean = isActive
+
+    fun getRetryCount(): Int = retryCount
+    fun hasError(): Boolean = hasError
+    fun getErrorMessage(): String = errorMessage
+
+    fun markError(message: String) {
+        hasError = true
+        errorMessage = message
+        setActive(false)
+    }
+
+    fun clearError() {
+        hasError = false
+        errorMessage = ""
+        retryCount = 0
+    }
+
+    fun incrementRetry(): Boolean {
+        retryCount++
+        return retryCount <= maxRetries
+    }
 
     /**
      * Returns the total expected bytes for the download.

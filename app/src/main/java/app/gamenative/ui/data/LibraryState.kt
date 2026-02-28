@@ -16,7 +16,11 @@ data class DownloadItemState(
     val speed: Long,
     val isPaused: Boolean,
     val isCompleted: Boolean,
-    val progress: Float
+    val progress: Float,
+    val isQueued: Boolean = false,
+    val retryCount: Int = 0,
+    val hasError: Boolean = false,
+    val errorMessage: String = ""
 )
 
 data class LibraryState(
@@ -66,4 +70,13 @@ data class LibraryState(
 
     // Current library layout
     val libraryLayout: app.gamenative.ui.enums.PaneType = app.gamenative.PrefManager.libraryLayout,
+
+    // Reactive max concurrent downloads
+    val maxConcurrentDownloads: Int = PrefManager.maxConcurrentDownloads,
+
+    // Download progress map: appId -> progress (0f..1f) for overlay in Library tab
+    val downloadProgressMap: Map<String, Float> = emptyMap(),
+
+    // AIO Store toggle: true = single "Store" tab, false = individual store tabs
+    val aioStoreEnabled: Boolean = PrefManager.aioStoreEnabled,
 )

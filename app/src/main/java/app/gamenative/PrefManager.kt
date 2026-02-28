@@ -938,4 +938,16 @@ object PrefManager {
     var rootPerformanceMode: Boolean
         get() = getPref(ROOT_PERFORMANCE_MODE, false)
         set(value) = setPref(ROOT_PERFORMANCE_MODE, value)
+
+    // Maximum number of concurrent game downloads (queue system)
+    private val MAX_CONCURRENT_DOWNLOADS = intPreferencesKey("max_concurrent_downloads")
+    var maxConcurrentDownloads: Int
+        get() = getPref(MAX_CONCURRENT_DOWNLOADS, 1)
+        set(value) = setPref(MAX_CONCURRENT_DOWNLOADS, value.coerceIn(1, 5))
+
+    // AIO Store toggle: true = single "Store" tab, false = individual store tabs
+    private val AIO_STORE_ENABLED = booleanPreferencesKey("aio_store_enabled")
+    var aioStoreEnabled: Boolean
+        get() = getPref(AIO_STORE_ENABLED, true)
+        set(value) = setPref(AIO_STORE_ENABLED, value)
 }

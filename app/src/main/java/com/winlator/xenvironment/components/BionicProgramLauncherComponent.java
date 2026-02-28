@@ -268,7 +268,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         // Setting up essential environment variables for Wine
         envVars.put("HOME", imageFs.home_path);
         envVars.put("USER", ImageFs.USER);
-        envVars.put("TMPDIR", rootDir.getPath() + "/usr/tmp");
+        envVars.put("TMPDIR", rootDir.getPath() + "/tmp");
         envVars.put("DISPLAY", ":0");
 
         String winePath = imageFs.getWinePath() + "/bin";
