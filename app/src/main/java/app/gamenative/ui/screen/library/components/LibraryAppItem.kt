@@ -467,9 +467,9 @@ internal fun GameInfoBlock(
     isListView: Boolean = false,
 ) {
     val isSteam = appInfo.gameSource == GameSource.STEAM
-    val downloadInfo = remember(appInfo.appId) { if (isSteam) SteamService.getAppDownloadInfo(appInfo.gameId) else null }
+    val downloadInfo = if (isSteam) SteamService.getAppDownloadInfo(appInfo.gameId) else null
     var downloadProgress by remember(downloadInfo) { mutableFloatStateOf(downloadInfo?.getProgress() ?: 0f) }
-    val isDownloading = downloadInfo != null && downloadProgress < 1f
+    val isDownloading = downloadInfo?.isActive() == true && downloadProgress < 1f
     var isInstalledSteam by remember(appInfo.appId) { mutableStateOf(if (isSteam) SteamService.isAppInstalled(appInfo.gameId) else false) }
 
     LaunchedEffect(isRefreshing) {

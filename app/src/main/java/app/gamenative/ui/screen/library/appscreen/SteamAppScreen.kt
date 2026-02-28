@@ -62,7 +62,10 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import org.json.JSONObject
 import timber.log.Timber
+import java.io.File
 import java.nio.file.Paths
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.io.path.pathString
 
 private data class InstallSizeInfo(
@@ -328,6 +331,26 @@ class SteamAppScreen : BaseAppScreen() {
             return exportConfigRequests[gameId] == true
         }
 
+        private val pauseResumeActionFlags = ConcurrentHashMap<Int, AtomicBoolean>()
+
+        private fun getPauseResumeActionFlag(gameId: Int): AtomicBoolean {
+            val existing = pauseResumeActionFlags[gameId]
+            if (existing != null) return existing
+
+            val created = AtomicBoolean(false)
+            val prior = pauseResumeActionFlags.putIfAbsent(gameId, created)
+            return prior ?: created
+        }
+
+        private fun tryAcquirePauseResumeAction(gameId: Int): Boolean {
+            return getPauseResumeActionFlag(gameId).compareAndSet(false, true)
+        }
+
+        private fun releasePauseResumeAction(gameId: Int) {
+            val flag = pauseResumeActionFlags[gameId] ?: return
+            flag.set(false)
+        }
+
         private val gameManagerDialogStates = mutableStateMapOf<Int, GameManagerDialogState>()
 
         fun showGameManagerDialog(gameId: Int, state: GameManagerDialogState) {
@@ -522,7 +545,7 @@ class SteamAppScreen : BaseAppScreen() {
 
     override fun isDownloading(context: Context, libraryItem: LibraryItem): Boolean {
         val downloadInfo = SteamService.getAppDownloadInfo(libraryItem.gameId)
-        return downloadInfo != null && (downloadInfo.getProgress() ?: 0f) < 1f
+        return downloadInfo?.isActive() == true
     }
 
     override fun getDownloadProgress(context: Context, libraryItem: LibraryItem): Float {
@@ -634,7 +657,7 @@ class SteamAppScreen : BaseAppScreen() {
     ) {
         val gameId = libraryItem.gameId
         val downloadInfo = SteamService.getAppDownloadInfo(gameId)
-        val isDownloading = downloadInfo != null && (downloadInfo.getProgress() ?: 0f) < 1f
+        val isDownloading = downloadInfo?.isActive() == true
         val isInstalled = SteamService.isAppInstalled(gameId)
 
         if (isDownloading) {
@@ -682,18 +705,32 @@ class SteamAppScreen : BaseAppScreen() {
 
     override fun onPauseResumeClick(context: Context, libraryItem: LibraryItem) {
         val gameId = libraryItem.gameId
+        if (!tryAcquirePauseResumeAction(gameId)) return
+
         val downloadInfo = SteamService.getAppDownloadInfo(gameId)
-        val isDownloading = downloadInfo != null && (downloadInfo.getProgress() ?: 0f) < 1f
+        val isDownloading = downloadInfo?.isActive() == true
 
         if (isDownloading) {
             downloadInfo?.cancel()
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    downloadInfo?.awaitCompletion(timeoutMs = 1200L)
+                } finally {
+                    releasePauseResumeAction(gameId)
+                }
+            }
         } else {
             val path = getAppDirPath(gameId)
             if (app.gamenative.ui.components.requestPermissionsForPath(context, path, null)) {
                 CoroutineScope(Dispatchers.IO).launch {
-                    SteamService.downloadApp(gameId)
+                    try {
+                        SteamService.downloadApp(gameId)
+                    } finally {
+                        releasePauseResumeAction(gameId)
+                    }
                 }
             } else {
+                releasePauseResumeAction(gameId)
                 Toast.makeText(context, "Please grant storage permissions and try again", Toast.LENGTH_LONG).show()
             }
         }
@@ -707,7 +744,7 @@ class SteamAppScreen : BaseAppScreen() {
         val gameId = libraryItem.gameId
         val isInstalled = SteamService.isAppInstalled(gameId)
         val downloadInfo = SteamService.getAppDownloadInfo(gameId)
-        val isDownloading = downloadInfo != null && (downloadInfo.getProgress() ?: 0f) < 1f
+        val isDownloading = downloadInfo?.isActive() == true
 
         if (isDownloading || SteamService.hasPartialDownload(gameId)) {
             // Show cancel download dialog when downloading
@@ -730,7 +767,7 @@ class SteamAppScreen : BaseAppScreen() {
 
     override fun onUpdateClick(context: Context, libraryItem: LibraryItem) {
         CoroutineScope(Dispatchers.IO).launch {
-            SteamService.downloadApp(libraryItem.gameId)
+            SteamService.downloadAppForUpdate(libraryItem.gameId)
         }
     }
 

@@ -1120,4 +1120,12 @@
     <string name="error_wine_not_installed">Wine/Proton package \'%1$s\' is not installed and could not be downloaded.</string>
     <string name="osc_transparency">On-Screen Controls Transparency</string>
     <string name="osc_transparency_description">Adjust the transparency of the on-screen controls.</string>
+    <string name="library_download_phase_downloading">Downloading</string>
+    <string name="library_download_phase_preparing">Preparing</string>
+    <string name="library_download_phase_patching">Patching</string>
+    <string name="library_download_phase_verifying">Verifying</string>
+    <string name="library_download_phase_applying_data">Applying Data</string>
+    <string name="library_download_phase_finalizing">Finalizing</string>
+    <string name="library_download_phase_paused">Paused</string>
+    <string name="library_download_phase_failed">Failed</string>
 </resources>
