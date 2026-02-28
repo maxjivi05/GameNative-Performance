@@ -276,7 +276,7 @@ private fun FrontendDownloadDialog(
             }
 
             progress = info?.getProgress() ?: 0f
-            speed = formatSpeed(info?.getRecentSpeedBytesPerSec() ?: 0.0)
+            speed = formatSpeed((info?.getCurrentDownloadSpeed() ?: 0L).toDouble())
             isPaused = info?.isActive() == false
 
             isInstalled = when (item.gameSource) {
@@ -2148,9 +2148,9 @@ fun DownloadItemRow(
 
         Spacer(modifier = Modifier.width(12.dp))
 
-        // Progress Info
+        // Progress Info: Combined Local + PR improvements
         Column(modifier = Modifier.weight(1f)) {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(item.name, color = Color.White, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
                 val gameSource = when {
                     item.appId.startsWith("STEAM_") -> GameSource.STEAM
@@ -2164,27 +2164,17 @@ fun DownloadItemRow(
                     Spacer(modifier = Modifier.width(6.dp))
                     GameSourceIcon(gameSource = gameSource, iconSize = 14)
                 }
-                Spacer(modifier = Modifier.weight(0.01f))
-                val statusText = when {
-                    item.isQueued -> "Queued"
-                    item.isCompleted -> "Completed"
-                    item.hasError && item.retryCount >= 3 -> "Failed"
-                    item.hasError -> "Error (retry ${item.retryCount}/3)"
-                    item.isPaused -> "Paused"
-                    else -> "${app.gamenative.utils.StorageUtils.formatBinarySize(item.speed.toLong())}/s"
-                }
-                val statusColor = when {
-                    item.hasError -> MaterialTheme.colorScheme.error
-                    item.isQueued -> Color.White.copy(alpha = 0.5f)
-                    else -> Color.White.copy(alpha = 0.7f)
-                }
-                Text(
-                    text = statusText,
-                    color = statusColor,
-                    fontSize = 12.sp
-                )
             }
 
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Text(
+                text = "${app.gamenative.utils.StorageUtils.formatBinarySize(item.downloadedBytes)} / ${app.gamenative.utils.StorageUtils.formatBinarySize(item.totalBytes)}",
+                color = Color.White.copy(alpha = 0.5f),
+                fontSize = 12.sp,
+                maxLines = 1
+            )
+            
             Spacer(modifier = Modifier.height(4.dp))
 
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -2206,23 +2196,46 @@ fun DownloadItemRow(
                     fontSize = 12.sp
                 )
             }
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            if (!item.isQueued) {
-                Text(
-                    text = "( ${app.gamenative.utils.StorageUtils.formatBinarySize(item.downloadedBytes)} / ${app.gamenative.utils.StorageUtils.formatBinarySize(item.totalBytes)} )",
-                    color = Color.White.copy(alpha = 0.5f),
-                    fontSize = 12.sp
-                )
-            } else {
-                Text(
-                    text = "Waiting in queue...",
-                    color = Color.White.copy(alpha = 0.4f),
-                    fontSize = 12.sp
-                )
+        }
+        
+        Spacer(modifier = Modifier.width(12.dp))
+        
+        // Right side: Phrase on top, status below
+        Column(horizontalAlignment = Alignment.End, modifier = Modifier.widthIn(min = 90.dp)) {
+            val statusPhrase = when {
+                item.isCompleted -> "Download Complete"
+                item.hasError -> "Download Error"
+                item.isQueued -> "In Queue"
+                item.isPaused -> "Download Paused"
+                else -> "Downloading..."
             }
+            
+            Text(
+                text = statusPhrase,
+                color = Color.White.copy(alpha = 0.7f),
+                fontSize = 12.sp,
+                maxLines = 1
+            )
+            
+            Spacer(modifier = Modifier.height(4.dp))
+            
+            val statusText = when {
+                item.isCompleted -> "Completed"
+                item.hasError && item.retryCount >= 3 -> "Failed"
+                item.hasError -> "Retrying (${item.retryCount}/3)"
+                item.isQueued -> "Waiting"
+                item.isPaused -> "Paused"
+                else -> "${app.gamenative.utils.StorageUtils.formatBinarySize(item.speed.toLong())}/s"
+            }
+            
+            Text(
+                text = statusText,
+                color = if (item.isCompleted) Color(0xFF4CAF50) else if (item.hasError) MaterialTheme.colorScheme.error else if (item.isPaused) Color(0xFFFFA726) else Color.White.copy(alpha = 0.7f),
+                fontSize = 12.sp,
+                maxLines = 1
+            )
         }
     }
 }
+
 

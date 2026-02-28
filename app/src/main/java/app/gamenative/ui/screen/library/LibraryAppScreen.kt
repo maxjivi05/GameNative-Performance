@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.rememberScrollState
@@ -51,6 +52,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -66,6 +68,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -74,6 +77,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import app.gamenative.Constants
 import app.gamenative.R
+import app.gamenative.data.DownloadPhase
 import app.gamenative.data.LibraryItem
 import app.gamenative.data.SteamApp
 import app.gamenative.service.SteamService
@@ -106,24 +110,18 @@ import app.gamenative.ui.data.GameDisplayInfo
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import timber.log.Timber
-import app.gamenative.service.SteamService.Companion.getAppDirPath
 import com.posthog.PostHog
 import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
-import android.os.Environment
 import androidx.compose.foundation.border
 import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.rememberCoroutineScope
 import app.gamenative.PrefManager
 import app.gamenative.service.DownloadService
-import java.nio.file.Paths
-import kotlin.io.path.pathString
 import kotlin.math.roundToInt
 import app.gamenative.enums.PathType
 import com.winlator.container.ContainerManager
@@ -214,11 +212,53 @@ private fun formatBytes(bytes: Long): String {
     val mb = kb * 1024
     val gb = mb * 1024
     return when {
-        bytes >= gb -> String.format("%.1f GB", bytes / gb)
-        bytes >= mb -> String.format("%.1f MB", bytes / mb)
-        bytes >= kb -> String.format("%.1f KB", bytes / kb)
+        bytes >= gb -> String.format("%.2f GB", bytes / gb)
+        bytes >= mb -> String.format("%.2f MB", bytes / mb)
+        bytes >= kb -> String.format("%.2f KB", bytes / kb)
         else -> "$bytes B"
     }
+}
+
+// Formats network speed in bits per second using decimal units
+
+private fun formatNetworkSpeed(bytesPerSecond: Long): String {
+    val bitsPerSecond = (bytesPerSecond.coerceAtLeast(0L).toDouble() * 8.0)
+    val kb = 1000.0
+    val mb = kb * 1000.0
+    val gb = mb * 1000.0
+    return when {
+        bitsPerSecond >= gb -> String.format(Locale.US, "%.1f Gb/s", bitsPerSecond / gb)
+        bitsPerSecond >= mb -> String.format(Locale.US, "%.1f Mb/s", bitsPerSecond / mb)
+        bitsPerSecond >= kb -> String.format(Locale.US, "%.1f Kb/s", bitsPerSecond / kb)
+        else -> "${bitsPerSecond.toLong()} b/s"
+    }
+}
+
+private fun formatStableEtaText(etaMs: Long): String {
+    val totalSeconds = ((etaMs + 999L) / 1000L).coerceAtLeast(0L)
+    val minutesLeft = totalSeconds / 60L
+    val secondsPart = totalSeconds % 60L
+    return "${minutesLeft}m ${secondsPart}s left"
+}
+
+private fun phaseStringResId(phase: DownloadPhase): Int {
+    return when (phase) {
+        DownloadPhase.UNKNOWN -> R.string.library_download_phase_downloading
+        DownloadPhase.PREPARING -> R.string.library_download_phase_preparing
+        DownloadPhase.DOWNLOADING -> R.string.library_download_phase_downloading
+        DownloadPhase.PAUSED -> R.string.library_download_phase_paused
+        DownloadPhase.FAILED -> R.string.library_download_phase_failed
+        DownloadPhase.VERIFYING -> R.string.library_download_phase_verifying
+        DownloadPhase.PATCHING -> R.string.library_download_phase_patching
+        DownloadPhase.APPLYING_DATA -> R.string.library_download_phase_applying_data
+        DownloadPhase.FINALIZING, DownloadPhase.COMPLETE -> R.string.library_download_phase_finalizing
+    }
+}
+
+// Always return the phase label for the current download status
+@Composable
+private fun deriveDownloadPhase(status: DownloadPhase): String {
+    return stringResource(phaseStringResId(status))
 }
 
 @Composable
@@ -254,6 +294,20 @@ internal fun AppScreenContent(
     val scrollState = rememberScrollState()
 
     var optionsMenuVisible by remember { mutableStateOf(false) }
+    val downloadStateFlow = downloadInfo?.getStatusFlow()
+    val downloadState = if (downloadStateFlow != null) {
+        downloadStateFlow.collectAsState(initial = downloadStateFlow.value)
+    } else {
+        null
+    }
+    val downloadStatus = downloadState?.value ?: DownloadPhase.UNKNOWN
+    val downloadStatusMessageFlow = downloadInfo?.getStatusMessageFlow()
+    val downloadStatusMessageState = if (downloadStatusMessageFlow != null) {
+        downloadStatusMessageFlow.collectAsState(initial = downloadStatusMessageFlow.value)
+    } else {
+        null
+    }
+    val statusMessage = downloadStatusMessageState?.value
 
     LaunchedEffect(displayInfo.appId) {
         scrollState.animateScrollTo(0)
@@ -460,7 +514,7 @@ internal fun AppScreenContent(
                         contentPadding = PaddingValues(12.dp)
                     ) {
                         Text(
-                            text = if (isInstalled) stringResource(R.string.uninstall) else stringResource(R.string.delete_app),
+                            text = if (isInstalled) stringResource(R.string.uninstall) else stringResource(R.string.cancel_download_prompt_title),
                             style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
                         )
                     }
@@ -559,26 +613,105 @@ internal fun AppScreenContent(
 
             // Download progress section
             if (isDownloading) {
-                // downloadInfo passed from BaseAppScreen based on game source
-                val statusMessageFlow = downloadInfo?.getStatusMessageFlow()
-                val statusMessageState = statusMessageFlow?.collectAsState(initial = statusMessageFlow.value)
-                val statusMessage = statusMessageState?.value
-
-                // Use DownloadInfo's byte-based ETA when available for more stable estimates
-                val timeLeftText = remember(displayInfo.appId, downloadProgress, downloadInfo, statusMessage) {
-                    val etaMs = downloadInfo?.getEstimatedTimeRemaining()
-                    if (etaMs != null && etaMs > 0L) {
-                        val totalSeconds = etaMs / 1000
-                        val minutesLeft = totalSeconds / 60
-                        val secondsPart = totalSeconds % 60
-                        "${minutesLeft}m ${secondsPart}s left"
-                    } else if (downloadProgress in 0f..1f && downloadProgress < 1f) {
-                        val statusText = statusMessage?.takeUnless { it.isBlank() }
-                        statusText ?: "Calculating..."
-                    } else {
-                        ""
+                val etaTick by produceState(initialValue = 0L, key1 = isDownloading, key2 = displayInfo.appId) {
+                    while (isDownloading) {
+                        value = System.currentTimeMillis()
+                        delay(1_000L)
                     }
                 }
+
+                val rawEtaMs = remember(downloadInfo, etaTick) {
+                    downloadInfo?.getEstimatedTimeRemaining()
+                }
+                var etaAnchorMs by remember(displayInfo.appId) { mutableStateOf<Long?>(null) }
+                var etaAnchorAtMs by remember(displayInfo.appId) { mutableStateOf<Long?>(null) }
+
+                LaunchedEffect(displayInfo.appId, isDownloading, rawEtaMs) {
+                    if (!isDownloading) {
+                        etaAnchorMs = null
+                        etaAnchorAtMs = null
+                        return@LaunchedEffect
+                    }
+
+                    val freshEtaMs = rawEtaMs ?: return@LaunchedEffect
+                    if (freshEtaMs <= 0L) return@LaunchedEffect
+
+                    val now = System.currentTimeMillis()
+                    val anchorMs = etaAnchorMs
+                    val anchorAt = etaAnchorAtMs
+                    val predictedNow = if (anchorMs != null && anchorAt != null) {
+                        (anchorMs - (now - anchorAt)).coerceAtLeast(0L)
+                    } else {
+                        null
+                    }
+
+                    if (predictedNow == null) {
+                        etaAnchorMs = freshEtaMs
+                        etaAnchorAtMs = now
+                    } else {
+                        val deltaMs = freshEtaMs - predictedNow
+                        if (kotlin.math.abs(deltaMs) > 12_000L) {
+                            etaAnchorMs = freshEtaMs
+                            etaAnchorAtMs = now
+                        } else {
+                            // Keep second-by-second display, but limit abrupt ETA swings.
+                            val correctionMs = (deltaMs * 0.15).toLong().coerceIn(-2_000L, 2_000L)
+                            val smoothed = (predictedNow + correctionMs).coerceAtLeast(0L)
+                            etaAnchorMs = smoothed
+                            etaAnchorAtMs = now
+                        }
+                    }
+                }
+
+                val progressPercent = (downloadProgress * 100f).toInt().coerceIn(0, 100)
+
+                val phaseText = deriveDownloadPhase(downloadStatus)
+
+                // Show statusMessage in the status area, not the phase label
+                val statusText = remember(statusMessage) {
+                    statusMessage?.trim().orEmpty()
+                }
+
+                val timeLeftText = remember(
+                    displayInfo.appId,
+                    downloadInfo,
+                    downloadProgress,
+                    downloadStatus,
+                    statusText,
+                    etaTick,
+                    rawEtaMs,
+                    etaAnchorMs,
+                    etaAnchorAtMs,
+                ) {
+                    if (downloadStatus == DownloadPhase.FINALIZING || downloadStatus == DownloadPhase.COMPLETE) {
+                        return@remember statusText.ifEmpty { "Finalizing..." }
+                    }
+
+                    val etaMs = if (etaAnchorMs != null && etaAnchorAtMs != null && etaTick > 0L) {
+                        (etaAnchorMs!! - (etaTick - etaAnchorAtMs!!)).coerceAtLeast(0L)
+                    } else {
+                        rawEtaMs
+                    }
+
+                    val displayEtaMs = if (etaMs != null && etaMs > 0L) {
+                        etaMs
+                    } else {
+                        val speedBytes = downloadInfo?.getCurrentDownloadSpeed() ?: 0L
+                        val (bytesDone, bytesTotal) = downloadInfo?.getBytesProgress() ?: (0L to 0L)
+                        if (speedBytes > 0L && bytesTotal > bytesDone) {
+                            (((bytesTotal - bytesDone).toDouble() / speedBytes) * 1000.0).toLong()
+                        } else {
+                            null
+                        }
+                    }
+
+                    if (displayEtaMs != null) {
+                        formatStableEtaText(displayEtaMs)
+                    } else {
+                        statusText.ifEmpty { "Calculating..." }
+                    }
+                }
+
                 Column(
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -592,7 +725,7 @@ internal fun AppScreenContent(
                             style = MaterialTheme.typography.titleMedium
                         )
                         Text(
-                            text = "${(downloadProgress * 100f).toInt()}%",
+                            text = "${progressPercent}%",
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.tertiary
                         )
@@ -613,15 +746,13 @@ internal fun AppScreenContent(
                     Spacer(modifier = Modifier.height(8.dp))
 
                     // Show download size and ETA
-                    val downloadingText = stringResource(R.string.downloading)
-                    val sizeText = remember(displayInfo.gameId, downloadProgress, downloadInfo) {
+                    val sizeText = remember(displayInfo.appId, downloadProgress, downloadInfo) {
                         val (bytesDone, bytesTotal) = downloadInfo?.getBytesProgress() ?: (0L to 0L)
-                        if (bytesTotal > 0L) {
-                            "${formatBytes(bytesDone)} / ${formatBytes(bytesTotal)}"
-                        } else if (bytesDone > 0L) {
-                            formatBytes(bytesDone)
-                        } else {
-                            downloadingText
+                        when {
+                            bytesDone <= 0L && bytesTotal > 0L -> "0 B / ${formatBytes(bytesTotal)}"
+                            bytesDone <= 0L -> "0 / XX"
+                            bytesTotal > 0L -> "${formatBytes(bytesDone)} / ${formatBytes(bytesTotal)}"
+                            else -> "${formatBytes(bytesDone)} / XX"
                         }
                     }
                     Row(
@@ -635,9 +766,41 @@ internal fun AppScreenContent(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = timeLeftText,
+                            text = phaseText,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.tertiary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    val speedText = remember(displayInfo.gameId, downloadProgress, downloadInfo, etaTick) {
+                        val speedBytes = downloadInfo?.getCurrentDownloadSpeed()
+                        if (speedBytes != null && speedBytes > 0L) {
+                            formatNetworkSpeed(speedBytes)
+                        } else {
+                            ""
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = speedText,
+                            modifier = Modifier.weight(1f),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            text = timeLeftText,
+                            modifier = Modifier.widthIn(min = 120.dp),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.End,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
