@@ -1426,10 +1426,29 @@ private fun WineProtonDetailScreen(onBack: () -> Unit) {
                     }
                 } catch (e: Exception) { Timber.e(e, "Nick GameNative fetch error"); emptyList() }
 
+                // 2.1 Nick's repo Wine tag (Additional Wine builds)
+                val nickWineTagItems = try {
+                    val req = Request.Builder()
+                        .url("https://api.github.com/repos/Xnick417x/Winlator-Bionic-Nightly-wcp/releases/tags/Wine")
+                        .header("Accept", "application/vnd.github.v3+json").build()
+                    Net.http.newCall(req).execute().use { resp ->
+                        if (!resp.isSuccessful) return@use emptyList()
+                        val obj = Json.parseToJsonElement(resp.body?.string() ?: "{}").jsonObject
+                        val date = obj["published_at"]?.jsonPrimitive?.content ?: ""
+                        (obj["assets"]?.jsonArray ?: emptyList()).mapNotNull { el ->
+                            val aObj = el.jsonObject
+                            val n = aObj["name"]?.jsonPrimitive?.content ?: return@mapNotNull null
+                            val u = aObj["browser_download_url"]?.jsonPrimitive?.content ?: return@mapNotNull null
+                            if (!n.endsWith(".wcp", ignoreCase = true)) return@mapNotNull null
+                            WineReleaseItem(n.removeSuffix(".wcp"), extractVersionFromFilename(n), u, n, date)
+                        }
+                    }
+                } catch (e: Exception) { Timber.e(e, "Nick Wine tag fetch error"); emptyList() }
+
                 // 3. Merge, deduplicate by download URL (same file from same release),
                 // but keep entries with same fileName but different dates (different uploads).
                 // Sort newest first.
-                val combined = (gnProtonItems + nickGameNativeItems)
+                val combined = (gnProtonItems + nickGameNativeItems + nickWineTagItems)
                     .distinctBy { it.url ?: "${it.fileName}|${it.releaseDate}" }
                     .sortedWith { a, b ->
                         if (a.releaseDate.isNotEmpty() && b.releaseDate.isNotEmpty())

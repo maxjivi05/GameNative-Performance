@@ -1064,7 +1064,8 @@ internal fun LibraryFrontendPane(
                         KeyEvent.KEYCODE_BUTTON_A -> {
                             if (isHeaderFocused) {
                                 when (headerFocusIndex) {
-                                    0 -> { // Search
+                                    0 -> onNavigateRoute("settings")
+                                    1 -> { // Search
                                         isSearchingLocally = true
                                         coroutineScope.launch {
                                             delay(100)
@@ -1075,7 +1076,6 @@ internal fun LibraryFrontendPane(
                                             } catch (e: Exception) {}
                                         }
                                     }
-                                    1 -> onNavigateRoute("settings")
                                     2 -> focusedItem?.let { onEdit(it) }
                                 }
                                 true
@@ -1094,8 +1094,8 @@ internal fun LibraryFrontendPane(
                             if (isHeaderFocused) {
                                 // In header, X acts same as A for convenience
                                 when (headerFocusIndex) {
-                                    0 -> { isSearchingLocally = true; coroutineScope.launch { delay(100); searchFocusRequester.requestFocus() } }
-                                    1 -> onNavigateRoute("settings")
+                                    0 -> onNavigateRoute("settings")
+                                    1 -> { isSearchingLocally = true; coroutineScope.launch { delay(100); searchFocusRequester.requestFocus() } }
                                     2 -> focusedItem?.let { onEdit(it) }
                                 }
                                 true
@@ -1240,16 +1240,33 @@ internal fun LibraryFrontendPane(
                 },
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Top Left Source Icon
+            // Top Left Source Icon (Now Settings Button)
             Box(modifier = Modifier.width(110.dp), contentAlignment = Alignment.CenterStart) {
-                focusedItem?.let { item ->
-                    val iconModifier = Modifier.size(28.dp).alpha(0.8f)
-                    when (item.gameSource) {
-                        GameSource.STEAM -> Icon(imageVector = Icons.Filled.Steam, contentDescription = "Steam", tint = Color.White, modifier = iconModifier)
-                        GameSource.EPIC -> Icon(painterResource(R.drawable.ic_epic), "Epic", tint = Color.White, modifier = iconModifier)
-                        GameSource.GOG -> Icon(painterResource(R.drawable.ic_gog), "GOG", tint = Color.White, modifier = iconModifier)
-                        GameSource.AMAZON -> Icon(imageVector = Icons.Filled.Amazon, contentDescription = "Amazon", tint = Color.White, modifier = iconModifier)
-                        GameSource.CUSTOM_GAME -> Icon(imageVector = Icons.Filled.CustomGame, contentDescription = "Custom", tint = Color.White, modifier = iconModifier)
+                val isSettingsFocused = isHeaderFocused && headerFocusIndex == 0
+                IconButton(
+                    onClick = {
+                        isHeaderFocused = true
+                        headerFocusIndex = 0
+                        onNavigateRoute("settings")
+                    },
+                    modifier = Modifier
+                        .size(48.dp)
+                        .then(
+                            if (isSettingsFocused) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, CircleShape)
+                            else Modifier
+                        )
+                ) {
+                    focusedItem?.let { item ->
+                        val iconModifier = Modifier.size(28.dp).alpha(0.8f)
+                        when (item.gameSource) {
+                            GameSource.STEAM -> Icon(imageVector = Icons.Filled.Steam, contentDescription = "Steam", tint = Color.White, modifier = iconModifier)
+                            GameSource.EPIC -> Icon(painterResource(R.drawable.ic_epic), "Epic", tint = Color.White, modifier = iconModifier)
+                            GameSource.GOG -> Icon(painterResource(R.drawable.ic_gog), "GOG", tint = Color.White, modifier = iconModifier)
+                            GameSource.AMAZON -> Icon(imageVector = Icons.Filled.Amazon, contentDescription = "Amazon", tint = Color.White, modifier = iconModifier)
+                            GameSource.CUSTOM_GAME -> Icon(imageVector = Icons.Filled.CustomGame, contentDescription = "Custom", tint = Color.White, modifier = iconModifier)
+                        }
+                    } ?: run {
+                        Icon(Icons.Default.Settings, "Settings", tint = Color.White, modifier = Modifier.size(28.dp))
                     }
                 }
             }
@@ -1320,11 +1337,11 @@ internal fun LibraryFrontendPane(
                 }
 
                 if (!isSearchingLocally) {
-                    val isSearchFocused = isHeaderFocused && headerFocusIndex == 0
+                    val isSearchFocused = isHeaderFocused && headerFocusIndex == 1
                     IconButton(
                         onClick = {
                             isHeaderFocused = true
-                            headerFocusIndex = 0
+                            headerFocusIndex = 1
                             isSearchingLocally = true
                             coroutineScope.launch {
                                 delay(100)
@@ -1433,7 +1450,7 @@ internal fun LibraryFrontendPane(
 
             Spacer(modifier = Modifier.weight(1f))
             
-            // Top Right Settings & Game Menu Buttons (Outside central pill)
+            // Top Right Game Settings Button (Outside central pill)
             Row(
                 modifier = Modifier.width(110.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -1458,26 +1475,6 @@ internal fun LibraryFrontendPane(
                     ) {
                         Icon(Icons.Default.SportsEsports, "Game Menu", tint = Color.White, modifier = Modifier.size(28.dp))
                     }
-                    Spacer(modifier = Modifier.width(12.dp))
-                }
-
-                val isSettingsFocused = isHeaderFocused && headerFocusIndex == 1
-                IconButton(
-                    onClick = { 
-                        isHeaderFocused = true
-                        headerFocusIndex = 1
-                        onNavigateRoute("settings") 
-                    },
-                    modifier = Modifier
-                        .size(48.dp)
-                        .shadow(8.dp, CircleShape)
-                        .background(Color.Black.copy(alpha = 0.6f), CircleShape)
-                        .then(
-                            if (isSettingsFocused) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, CircleShape)
-                            else Modifier
-                        )
-                ) {
-                    Icon(Icons.Default.Settings, "Settings", tint = Color.White, modifier = Modifier.size(28.dp))
                 }
             }
         }
