@@ -236,15 +236,17 @@ private fun ControllerBadge(
 }
 
 private fun formatSpeed(bytesPerSec: Double): String {
-    if (bytesPerSec <= 0) return "0 B/s"
-    val units = arrayOf("B/s", "KB/s", "MB/s", "GB/s")
-    var speed = bytesPerSec
-    var unitIdx = 0
-    while (speed >= 1024 && unitIdx < units.size - 1) {
-        speed /= 1024
-        unitIdx++
+    if (bytesPerSec <= 0) return "0 b/s"
+    val bitsPerSec = bytesPerSec * 8.0
+    val kb = 1000.0
+    val mb = kb * 1000.0
+    val gb = mb * 1000.0
+    return when {
+        bitsPerSec >= gb -> String.format("%.1f Gb/s", bitsPerSec / gb)
+        bitsPerSec >= mb -> String.format("%.1f Mb/s", bitsPerSec / mb)
+        bitsPerSec >= kb -> String.format("%.1f Kb/s", bitsPerSec / kb)
+        else -> "${bitsPerSec.toLong()} b/s"
     }
-    return String.format("%.1f %s", speed, units[unitIdx])
 }
 
 @Composable
@@ -276,7 +278,7 @@ private fun FrontendDownloadDialog(
             }
 
             progress = info?.getProgress() ?: 0f
-            speed = formatSpeed(info?.getRecentSpeedBytesPerSec() ?: 0.0)
+            speed = formatSpeed((info?.getCurrentDownloadSpeed() ?: 0L).toDouble())
             isPaused = info?.isActive() == false
 
             isInstalled = when (item.gameSource) {
@@ -2007,9 +2009,9 @@ fun DownloadItemRow(
         
         Spacer(modifier = Modifier.width(12.dp))
         
-        // Progress Info
+        // Left/Middle: Name, source icon, download size, progress bar
         Column(modifier = Modifier.weight(1f)) {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(item.name, color = Color.White, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
                 val gameSource = when {
                     item.appId.startsWith("STEAM_") -> GameSource.STEAM
@@ -2023,13 +2025,16 @@ fun DownloadItemRow(
                     Spacer(modifier = Modifier.width(6.dp))
                     GameSourceIcon(gameSource = gameSource, iconSize = 14)
                 }
-                Spacer(modifier = Modifier.weight(0.01f))
-                Text(
-                    text = if (item.isCompleted) "Completed" else if (item.isPaused) "Paused" else "${app.gamenative.utils.StorageUtils.formatBinarySize(item.speed.toLong())}/s",
-                    color = Color.White.copy(alpha = 0.7f),
-                    fontSize = 12.sp
-                )
             }
+            
+            Spacer(modifier = Modifier.height(4.dp))
+            
+            Text(
+                text = "${app.gamenative.utils.StorageUtils.formatBinarySize(item.downloadedBytes)} / ${app.gamenative.utils.StorageUtils.formatBinarySize(item.totalBytes)}",
+                color = Color.White.copy(alpha = 0.5f),
+                fontSize = 12.sp,
+                maxLines = 1
+            )
             
             Spacer(modifier = Modifier.height(4.dp))
             
@@ -2043,13 +2048,24 @@ fun DownloadItemRow(
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("${(item.progress * 100).toInt()}%", color = Color.White, fontSize = 12.sp)
             }
-            
-            Spacer(modifier = Modifier.height(4.dp))
-            
+        }
+        
+        Spacer(modifier = Modifier.width(12.dp))
+        
+        // Right side: Phrase on top, status below
+        Column(horizontalAlignment = Alignment.End, modifier = Modifier.widthIn(min = 90.dp)) {
             Text(
-                text = "( ${app.gamenative.utils.StorageUtils.formatBinarySize(item.downloadedBytes)} / ${app.gamenative.utils.StorageUtils.formatBinarySize(item.totalBytes)} )",
-                color = Color.White.copy(alpha = 0.5f),
-                fontSize = 12.sp
+                text = if (item.isCompleted) "Download Complete" else if (item.isPaused) "Download Paused" else "Downloading...",
+                color = Color.White.copy(alpha = 0.7f),
+                fontSize = 12.sp,
+                maxLines = 1
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = if (item.isCompleted) "Completed" else if (item.isPaused) "Paused" else "${app.gamenative.utils.StorageUtils.formatBinarySize(item.speed.toLong())}/s",
+                color = if (item.isCompleted) Color(0xFF4CAF50) else if (item.isPaused) Color(0xFFFFA726) else Color.White.copy(alpha = 0.7f),
+                fontSize = 12.sp,
+                maxLines = 1
             )
         }
     }

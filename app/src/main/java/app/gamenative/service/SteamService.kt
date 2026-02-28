@@ -15,6 +15,8 @@ import app.gamenative.R
 import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
 import app.gamenative.data.DepotInfo
+import app.gamenative.data.DownloadFailedException
+import app.gamenative.data.DownloadPhase
 import app.gamenative.data.DownloadInfo
 import app.gamenative.data.GameProcessInfo
 import app.gamenative.data.LaunchInfo
@@ -45,6 +47,7 @@ import app.gamenative.utils.MarkerUtils
 import app.gamenative.enums.Marker
 import app.gamenative.utils.generateSteamApp
 import com.winlator.xenvironment.ImageFs
+import com.winlator.container.ContainerManager
 import dagger.hilt.android.AndroidEntryPoint
 import `in`.dragonbra.javasteam.enums.EDepotFileFlag
 import `in`.dragonbra.javasteam.enums.ELicenseFlags
@@ -101,7 +104,7 @@ import java.nio.file.Files
 import java.nio.file.Paths
 import java.util.Collections
 import java.util.EnumSet
-import java.util.concurrent.CancellationException
+import kotlinx.coroutines.CancellationException
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
@@ -275,6 +278,9 @@ class SteamService : Service(), IChallengeUrlChanged {
         const val INVALID_APP_ID: Int = Int.MAX_VALUE
         const val INVALID_PKG_ID: Int = Int.MAX_VALUE
         private const val STEAM_CONTROLLER_CONFIG_FILENAME = "steam_controller_config.vdf"
+        private const val DOWNLOAD_INFO_DIR = ".DownloadInfo"
+        private const val DOWNLOAD_INFO_FILE = "depot_bytes.json"
+        private const val LEGACY_DOWNLOAD_INFO_FILE = "bytes_downloaded.txt"
 
         /**
          * Default timeout to use when making requests
@@ -317,21 +323,153 @@ class SteamService : Service(), IChallengeUrlChanged {
         }
 
         /** Returns true if there is an incomplete download on disk (in-progress marker or actively downloading). */
-        fun hasPartialDownload(appId: Int): Boolean {
-            if (isAppInstalled(appId)) return false
-            
-            val downloadingApp = getDownloadingAppInfoOf(appId)
-            if (downloadingApp != null) {
+        private fun hasPartialDownloadFiles(appDirPath: String): Boolean {
+            val appDir = File(appDirPath)
+            if (!appDir.exists()) return false
+
+            val persistenceFile = File(File(appDirPath, DOWNLOAD_INFO_DIR), DOWNLOAD_INFO_FILE)
+            if (persistenceFile.exists() && persistenceFile.length() > 0L) {
                 return true
             }
 
-            val dirPath = getAppDirPath(appId)
-            val dir = File(dirPath)
-            if (!dir.exists()) return false
+            // If a complete install marker exists and there is no persisted resume file,
+            // treat this as fully installed (not a resumable partial download).
+            if (MarkerUtils.hasMarker(appDirPath, Marker.DOWNLOAD_COMPLETE_MARKER)) {
+                return false
+            }
 
-            // Only consider it partial if there's an in-progress marker
-            // Legacy installations without markers should be treated as complete
-            return MarkerUtils.hasMarker(dirPath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
+            // Check for in-progress marker (this fork's convention)
+            if (MarkerUtils.hasMarker(appDirPath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)) {
+                return true
+            }
+
+            val rootFiles = appDir.listFiles() ?: return false
+            return rootFiles.any { file ->
+                if (file.name != DOWNLOAD_INFO_DIR) {
+                    true
+                } else {
+                    val nestedFiles = file.listFiles().orEmpty()
+                    nestedFiles.any { nested ->
+                        nested.name != DOWNLOAD_INFO_FILE && nested.name != LEGACY_DOWNLOAD_INFO_FILE
+                    }
+                }
+            }
+        }
+
+        private fun inferResumeDlcAppIds(appId: Int, appDirPath: String): List<Int> {
+            // Try to recover selected DLCs from persisted depot progress when metadata row is missing.
+            return runCatching {
+                val persistenceFile = File(File(appDirPath, DOWNLOAD_INFO_DIR), DOWNLOAD_INFO_FILE)
+                if (!persistenceFile.exists() || !persistenceFile.canRead()) return@runCatching emptyList()
+
+                val text = persistenceFile.readText().trim()
+                if (text.isEmpty()) return@runCatching emptyList()
+
+                val persistedDepotIds = mutableSetOf<Int>()
+                val json = JSONObject(text)
+                for (key in json.keys()) {
+                    val depotId = key.toIntOrNull() ?: continue
+                    persistedDepotIds.add(depotId)
+                }
+                if (persistedDepotIds.isEmpty()) return@runCatching emptyList()
+
+                val container = ContainerManager(instance!!.applicationContext).getContainerById("STEAM_${appId}")
+                val containerLanguage = container?.language ?: PrefManager.containerLanguage
+                val depots = getDownloadableDepots(appId = appId, preferredLanguage = containerLanguage)
+                depots.asSequence()
+                    .filter { (depotId, _) -> depotId in persistedDepotIds }
+                    .map { (_, depot) -> depot.dlcAppId }
+                    .filter { it != INVALID_APP_ID }
+                    .distinct()
+                    .toList()
+            }.getOrElse {
+                emptyList()
+            }
+        }
+
+        private fun hasPersistedDepotResumeMetadata(appDirPath: String): Boolean {
+            return runCatching {
+                val persistenceFile = File(File(appDirPath, DOWNLOAD_INFO_DIR), DOWNLOAD_INFO_FILE)
+                if (!persistenceFile.exists() || !persistenceFile.canRead()) return@runCatching false
+
+                val text = persistenceFile.readText().trim()
+                if (text.isEmpty()) return@runCatching false
+
+                val json = JSONObject(text)
+                json.keys().asSequence().any { key -> key.toIntOrNull() != null }
+            }.getOrElse {
+                false
+            }
+        }
+
+        private fun clearPersistedProgressSnapshot(appDirPath: String) {
+            val persistenceDir = File(appDirPath, DOWNLOAD_INFO_DIR)
+            val persistenceFile = File(persistenceDir, DOWNLOAD_INFO_FILE)
+            if (persistenceFile.exists()) {
+                persistenceFile.delete()
+            }
+            val legacyFile = File(persistenceDir, LEGACY_DOWNLOAD_INFO_FILE)
+            if (legacyFile.exists()) {
+                legacyFile.delete()
+            }
+            if (persistenceDir.exists() && persistenceDir.list().isNullOrEmpty()) {
+                persistenceDir.delete()
+            }
+        }
+
+        private fun clearFailedResumeState(appId: Int) {
+            val appDirPath = getAppDirPath(appId)
+            clearPersistedProgressSnapshot(appDirPath)
+            runBlocking(Dispatchers.IO) {
+                instance?.downloadingAppInfoDao?.deleteApp(appId)
+            }
+        }
+
+        private fun deleteRecursivelyWithRetries(target: File, maxAttempts: Int = 5, delayMs: Long = 250L): Boolean {
+            if (!target.exists()) return true
+
+            repeat(maxAttempts) {
+                if (target.deleteRecursively()) return true
+                try {
+                    Thread.sleep(delayMs)
+                } catch (_: InterruptedException) {
+                    Thread.currentThread().interrupt()
+                    return !target.exists()
+                }
+            }
+
+            return !target.exists()
+        }
+
+        fun hasPartialDownload(appId: Int): Boolean {
+            if (isAppInstalled(appId)) return false
+
+            val appDirPath = getAppDirPath(appId)
+            val downloadingApp = getDownloadingAppInfoOf(appId)
+            val hasCompleteMarker = MarkerUtils.hasMarker(appDirPath, Marker.DOWNLOAD_COMPLETE_MARKER)
+            val hasPartialFiles = hasPartialDownloadFiles(appDirPath)
+            val hasPersistedMetadata = hasPersistedDepotResumeMetadata(appDirPath)
+            val isResumable = if (hasCompleteMarker) {
+                downloadingApp != null || hasPersistedMetadata
+            } else {
+                hasPartialFiles
+            }
+
+            if (isResumable) {
+                return true
+            }
+
+            if (downloadingApp != null) {
+                runBlocking(Dispatchers.IO) {
+                    instance?.downloadingAppInfoDao?.deleteApp(appId)
+                }
+            }
+
+            if (hasCompleteMarker && !hasPersistedMetadata) {
+                clearPersistedProgressSnapshot(appDirPath)
+            }
+
+            return false
         }
 
         private val syncInProgressApps = ConcurrentHashMap<Int, AtomicBoolean>()
@@ -693,33 +831,26 @@ class SteamService : Service(), IChallengeUrlChanged {
          * Get downloadable depots for a given app, including all DLCs
          * @return Map of app ID to depot ID to depot info
          */
-        fun getDownloadableDepots(appId: Int): Map<Int, DepotInfo> {
+        fun getDownloadableDepots(appId: Int, preferredLanguage: String = PrefManager.containerLanguage): Map<Int, DepotInfo> {
             val appInfo = getAppInfoOf(appId) ?: return emptyMap()
             val ownedDlc = runBlocking { getOwnedAppDlc(appId) }
-            val preferredLanguage = PrefManager.containerLanguage
 
             // If the game ships any 64-bit depot for Windows, prefer those and ignore x86 ones
             val has64Bit = appInfo.depots.values.any { 
                 it.osArch == OSArch.Arch64 && (it.osList.contains(OS.windows) || (it.osList.isEmpty() || it.osList.contains(OS.none)))
             }
 
-            val map = appInfo.depots
-                .asSequence()
-                .filter { (depotId, depot) ->
-                    return@filter filterForDownloadableDepots(depot, has64Bit, preferredLanguage, ownedDlc)
+            val map = mutableMapOf<Int, DepotInfo>()
+            for ((depotId, depot) in appInfo.depots) {
+                if (filterForDownloadableDepots(depot, has64Bit, preferredLanguage, ownedDlc)) {
+                    map[depotId] = depot
                 }
-                .associate { it.toPair() }
-                .toMutableMap()
+            }
 
             val indirectDlcApps = getDownloadableDlcAppsOf(appId).orEmpty()
-            indirectDlcApps.forEach { dlcApp ->
-                dlcApp.depots
-                    .asSequence()
-                    .filter { (depotId, depot) ->
-                        return@filter filterForDownloadableDepots(depot, has64Bit, preferredLanguage, null)
-                    }
-                    .associate { it.toPair() }
-                    .forEach { (depotId, depot) ->
+            for (dlcApp in indirectDlcApps) {
+                for ((depotId, depot) in dlcApp.depots) {
+                    if (filterForDownloadableDepots(depot, has64Bit, preferredLanguage, null)) {
                         // Add DLC Depots with custom object
                         map[depotId] = DepotInfo(
                             depotId = depot.depotId,
@@ -734,6 +865,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                             encryptedManifests = depot.encryptedManifests,
                         )
                     }
+                }
             }
 
             return map
@@ -980,43 +1112,57 @@ class SteamService : Service(), IChallengeUrlChanged {
             })?.executable ?: ""
         }
 
-        fun deleteApp(appId: Int): Boolean {
-            // Cancel active download if any
-            downloadJobs[appId]?.cancel("Deleting app")
-
+        suspend fun deleteApp(appId: Int): Boolean = withContext(Dispatchers.IO) {
             val appDirPath = getAppDirPath(appId)
+            val isUnsafeDeleteTarget = appDirPath == internalAppInstallPath || appDirPath == externalAppInstallPath
+
+            // Guard against accidental root deletion if path resolution failed.
+            if (isUnsafeDeleteTarget) {
+                Timber.e("Refusing to delete appId=$appId because resolved path points to install root: $appDirPath")
+                return@withContext false
+            }
+
+            // If an active download exists, stop it and wait briefly before deleting files.
+            downloadJobs[appId]?.let { info ->
+                info.isDeleting = true
+                info.cancel("Cancelled for delete")
+                info.awaitCompletion(timeoutMs = 5000L)
+                removeDownloadJob(appId)
+            }
+
             // Remove any download-complete marker
-            MarkerUtils.removeMarker(appDirPath, Marker.DOWNLOAD_COMPLETE_MARKER)
-            MarkerUtils.removeMarker(appDirPath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
-            
-            // Remove from DB
+            if (!isUnsafeDeleteTarget) {
+                MarkerUtils.removeMarker(appDirPath, Marker.DOWNLOAD_COMPLETE_MARKER)
+                MarkerUtils.removeMarker(appDirPath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
+                clearPersistedProgressSnapshot(appDirPath)
+            }
+
+            // Remove from DB synchronously so immediate reinstall cannot race with stale metadata.
             with(instance!!) {
-                runBlocking {
-                    db.withTransaction {
-                        appInfoDao.deleteApp(appId)
-                        changeNumbersDao.deleteByAppId(appId)
-                        fileChangeListsDao.deleteByAppId(appId)
-                        downloadingAppInfoDao.deleteApp(appId)
+                db.withTransaction {
+                    appInfoDao.deleteApp(appId)
+                    changeNumbersDao.deleteByAppId(appId)
+                    fileChangeListsDao.deleteByAppId(appId)
+                    downloadingAppInfoDao.deleteApp(appId)
 
-                        // Clear installDir in steam_app table
-                        appDao.findApp(appId)?.let { steamApp ->
-                            if (steamApp.installDir.isNotEmpty()) {
-                                appDao.update(steamApp.copy(installDir = ""))
-                                Timber.i("Cleared installDir for appId $appId in DB")
-                            }
+                    // Clear installDir in steam_app table
+                    appDao.findApp(appId)?.let { steamApp ->
+                        if (steamApp.installDir.isNotEmpty()) {
+                            appDao.update(steamApp.copy(installDir = ""))
+                            Timber.i("Cleared installDir for appId $appId in DB")
                         }
+                    }
 
-                        val indirectDlcAppIds = getDownloadableDlcAppsOf(appId).orEmpty().map { it.id }
-                        indirectDlcAppIds.forEach { dlcAppId ->
-                            appInfoDao.deleteApp(dlcAppId)
-                            changeNumbersDao.deleteByAppId(dlcAppId)
-                            fileChangeListsDao.deleteByAppId(dlcAppId)
-                        }
+                    val indirectDlcAppIds = getDownloadableDlcAppsOf(appId).orEmpty().map { it.id }
+                    indirectDlcAppIds.forEach { dlcAppId ->
+                        appInfoDao.deleteApp(dlcAppId)
+                        changeNumbersDao.deleteByAppId(dlcAppId)
+                        fileChangeListsDao.deleteByAppId(dlcAppId)
                     }
                 }
             }
 
-            return File(appDirPath).deleteRecursively()
+            return@withContext deleteRecursivelyWithRetries(File(appDirPath))
         }
 
         fun setCustomInstallPath(appId: Int, customInstallPath: String): String {
@@ -1045,35 +1191,124 @@ class SteamService : Service(), IChallengeUrlChanged {
 
         fun downloadApp(appId: Int): DownloadInfo? {
             val currentDownloadInfo = downloadJobs[appId]
-            if (currentDownloadInfo != null && currentDownloadInfo.isActive()) {
-                Timber.i("Returning existing active download job for appId: $appId")
-                return currentDownloadInfo
-            }
-
-            // If downloading app info exists in DB, resume it
-            val downloadingAppInfo = getDownloadingAppInfoOf(appId)
-            return if (downloadingAppInfo != null) {
-                Timber.i("Resuming download from DB info for appId: $appId")
-                downloadApp(appId, downloadingAppInfo.dlcAppIds.orEmpty(), isUpdateOrVerify = false)
-            } else {
-                // Otherwise it is verifying files or starting fresh
-                val dlcAppIds = getInstalledDlcDepotsOf(appId).orEmpty().toMutableList()
-
-                getDownloadableDlcAppsOf(appId)?.forEach { dlcApp ->
-                    val installedDlcApp = getInstalledApp(dlcApp.id)
-                    if (installedDlcApp != null) {
-                        dlcAppIds.add(installedDlcApp.id)
-                    }
+            if (currentDownloadInfo != null) {
+                if (!currentDownloadInfo.isActive()) {
+                    removeDownloadJob(appId)
+                } else {
+                    return downloadApp(appId, currentDownloadInfo.downloadingAppIds, isUpdateOrVerify = false)
                 }
-
-                // If it was already installed, it's a verify/update, otherwise it's a new download
-                val isUpdate = isAppInstalled(appId)
-                Timber.i("Starting new download/update for appId: $appId (isUpdate=$isUpdate)")
-                downloadApp(appId, dlcAppIds, isUpdateOrVerify = isUpdate)
             }
+
+            val downloadingAppInfo = getDownloadingAppInfoOf(appId)
+            val appDirPath = getAppDirPath(appId)
+            val hasCompleteMarker = MarkerUtils.hasMarker(appDirPath, Marker.DOWNLOAD_COMPLETE_MARKER)
+            val hasPartialFiles = hasPartialDownloadFiles(appDirPath)
+            val hasPersistedMetadata = hasPersistedDepotResumeMetadata(appDirPath)
+            val hasResumablePayload = if (hasCompleteMarker) {
+                downloadingAppInfo != null || hasPersistedMetadata
+            } else {
+                hasPartialFiles
+            }
+            if (hasResumablePayload) {
+                // Resume persisted progress whenever partial files exist, even if the
+                // DownloadingAppInfo row is missing (can happen after cancellation races).
+                val resumeDlcAppIds = downloadingAppInfo?.dlcAppIds
+                    ?: run {
+                        val inferred = inferResumeDlcAppIds(appId, appDirPath)
+                        if (inferred.isNotEmpty()) {
+                            inferred
+                        } else {
+                            resolveInstalledDlcIdsForUpdateOrVerify(appId)
+                        }
+                    }
+                return downloadApp(
+                    appId = appId,
+                    dlcAppIds = resumeDlcAppIds,
+                    includeInstalledDepots = false,
+                    enableVerify = false,
+                    allowPersistedProgress = true,
+                    hasPersistedResumeRow = downloadingAppInfo != null,
+                )
+            }
+
+            if (downloadingAppInfo != null) {
+                runBlocking(Dispatchers.IO) {
+                    instance?.downloadingAppInfoDao?.deleteApp(appId)
+                }
+            }
+
+            if (hasCompleteMarker && !hasPersistedMetadata) {
+                clearPersistedProgressSnapshot(appDirPath)
+            }
+
+            if (!hasPartialFiles) {
+                clearPersistedProgressSnapshot(appDirPath)
+            }
+
+            return downloadApp(
+                appId = appId,
+                dlcAppIds = resolveInstalledDlcIdsForUpdateOrVerify(appId),
+                includeInstalledDepots = false,
+                enableVerify = false,
+                allowPersistedProgress = false,
+            )
+        }
+
+        fun downloadAppForUpdate(appId: Int): DownloadInfo? {
+            return downloadApp(
+                appId,
+                resolveInstalledDlcIdsForUpdateOrVerify(appId),
+                includeInstalledDepots = true,
+                enableVerify = false,
+                allowPersistedProgress = false,
+            )
+        }
+
+        fun downloadAppForVerify(appId: Int): DownloadInfo? {
+            return downloadApp(
+                appId,
+                resolveInstalledDlcIdsForUpdateOrVerify(appId),
+                includeInstalledDepots = true,
+                enableVerify = true,
+                allowPersistedProgress = false,
+            )
+        }
+
+        private fun resolveInstalledDlcIdsForUpdateOrVerify(appId: Int): List<Int> {
+            val dlcAppIds = getInstalledDlcDepotsOf(appId).orEmpty().toMutableList()
+
+            getDownloadableDlcAppsOf(appId)?.forEach { dlcApp ->
+                val installedDlcApp = getInstalledApp(dlcApp.id)
+                if (installedDlcApp != null) {
+                    dlcAppIds.add(installedDlcApp.id)
+                }
+            }
+
+            return dlcAppIds.distinct()
         }
 
         fun downloadApp(appId: Int, dlcAppIds: List<Int>, isUpdateOrVerify: Boolean, customInstallPath: String? = null): DownloadInfo? {
+            // Backward-compatible API:
+            // true => include already-downloaded depots (update scope), but do not force verify.
+            return downloadApp(
+                appId = appId,
+                dlcAppIds = dlcAppIds,
+                includeInstalledDepots = isUpdateOrVerify,
+                enableVerify = false,
+                allowPersistedProgress = false,
+                customInstallPath = customInstallPath,
+            )
+        }
+
+        private fun downloadApp(
+            appId: Int,
+            dlcAppIds: List<Int>,
+            includeInstalledDepots: Boolean,
+            enableVerify: Boolean,
+            allowPersistedProgress: Boolean = false,
+            hasPersistedResumeRow: Boolean = false,
+            customInstallPath: String? = null,
+        ): DownloadInfo? {
             // Enforce Wi-Fi-only downloads
             if (PrefManager.downloadOnWifiOnly && instance?.isWifiConnected == false) {
                 Timber.w("Download aborted: Wi-Fi only enabled but not connected to Wi-Fi")
@@ -1086,8 +1321,8 @@ class SteamService : Service(), IChallengeUrlChanged {
                 return null
             }
 
-            val depots = getDownloadableDepots(appId)
-            if (depots.isEmpty()) {
+            val downloadableDepots = getDownloadableDepots(appId)
+            if (downloadableDepots.isEmpty()) {
                 Timber.w("Download aborted: No downloadable depots found for appId: $appId")
                 instance?.let { service ->
                     service.scope.launch(Dispatchers.Main) {
@@ -1097,10 +1332,18 @@ class SteamService : Service(), IChallengeUrlChanged {
                 return null
             }
 
-            // If a custom path is provided, we treat it as a new install at that location
-            val effectiveUpdateOrVerify = if (customInstallPath != null) false else isUpdateOrVerify
-
-            return downloadApp(appId, depots, dlcAppIds, "public", effectiveUpdateOrVerify, customInstallPath)
+            // Delegate to the full depot-level downloadApp overload
+            return downloadApp(
+                appId = appId,
+                downloadableDepots = downloadableDepots,
+                userSelectedDlcAppIds = dlcAppIds,
+                branch = "public",
+                includeInstalledDepots = includeInstalledDepots,
+                enableVerify = enableVerify,
+                allowPersistedProgress = allowPersistedProgress,
+                hasPersistedResumeRow = hasPersistedResumeRow,
+                customInstallPath = customInstallPath,
+            )
         }
 
         fun isImageFsInstalled(context: Context): Boolean {
@@ -1424,7 +1667,10 @@ class SteamService : Service(), IChallengeUrlChanged {
             downloadableDepots: Map<Int, DepotInfo>,
             userSelectedDlcAppIds: List<Int>,
             branch: String,
-            isUpdateOrVerify: Boolean,
+            includeInstalledDepots: Boolean,
+            enableVerify: Boolean,
+            allowPersistedProgress: Boolean = false,
+            hasPersistedResumeRow: Boolean = false,
             customInstallPath: String? = null,
         ): DownloadInfo? {
             var appDirPath = getAppDirPath(appId)
@@ -1488,7 +1734,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                 }
                 
                 // If this is not an update/verify, remove the complete marker to reset state
-                if (!isUpdateOrVerify) {
+                if (!includeInstalledDepots) {
                     MarkerUtils.removeMarker(appDirPath, Marker.DOWNLOAD_COMPLETE_MARKER)
                 }
             } catch (e: Exception) {
@@ -1521,11 +1767,12 @@ class SteamService : Service(), IChallengeUrlChanged {
             // Depots from Main game
             val mainDepots = getMainAppDepots(appId)
             Timber.d("Main app depots count: ${mainDepots.size}")
-            var mainAppDepots = mainDepots.filter { (_, depot) ->
+            val originalMainAppDepots = mainDepots.filter { (_, depot) ->
                 depot.dlcAppId == INVALID_APP_ID
             } + mainDepots.filter { (_, depot) ->
                 userSelectedDlcAppIds.contains(depot.dlcAppId) && depot.manifests.isNotEmpty()
             }
+            var mainAppDepots = originalMainAppDepots
             Timber.d("Filtered main app depots count: ${mainAppDepots.size}")
 
             // Depots from DLC App
@@ -1535,24 +1782,135 @@ class SteamService : Service(), IChallengeUrlChanged {
             }
             Timber.d("Filtered DLC app depots count: ${dlcAppDepots.size}")
 
-            // Remove depots that are already downloaded (not for update/verify)
+            // Remove depots that are already downloaded only when install metadata is trusted.
             // But if a custom path is provided, we want to check/download everything at the new location
-            val installedApp = getInstalledApp(appId)
-            if (installedApp != null && !isUpdateOrVerify && customInstallPath == null) {
+            var installedApp = getInstalledApp(appId)
+            val hasCompleteMarker = MarkerUtils.hasMarker(appDirPath, Marker.DOWNLOAD_COMPLETE_MARKER)
+            var hasTrustedInstalledState = installedApp?.isDownloaded == true && hasCompleteMarker
+            if (!includeInstalledDepots && installedApp != null && !hasTrustedInstalledState && customInstallPath == null) {
+                val hasStaleInstallMetadata = installedApp.isDownloaded ||
+                    installedApp.downloadedDepots.isNotEmpty() ||
+                    installedApp.dlcDepots.isNotEmpty()
+                if (hasStaleInstallMetadata) {
+                    Timber.w(
+                        "Clearing stale install metadata for appId=$appId " +
+                            "(isDownloaded=${installedApp.isDownloaded}, marker=$hasCompleteMarker)",
+                    )
+                    runBlocking(Dispatchers.IO) {
+                        instance?.appInfoDao?.deleteApp(appId)
+                    }
+                    installedApp = null
+                }
+                hasTrustedInstalledState = false
+            }
+            if (installedApp != null && !includeInstalledDepots && hasTrustedInstalledState && customInstallPath == null) {
                 val beforeCount = mainAppDepots.size
                 mainAppDepots = mainAppDepots.filter { it.key !in installedApp.downloadedDepots }
                 Timber.d("Removed already downloaded depots. Count before: $beforeCount, after: ${mainAppDepots.size}")
             }
 
+            val allDepots = originalMainAppDepots + dlcAppDepots
+            // Use install (uncompressed) size for progress tracking
+            val depotSizeById = allDepots.mapValues { (_, depot) ->
+                val mInfo = depot.manifests[branch] ?: depot.encryptedManifests[branch]
+                (mInfo?.size ?: 1L).coerceAtLeast(1L)
+            }
+
+            // Load persisted progress snapshot to skip fully downloaded depots
+            val persistedDepotBytes = if (allowPersistedProgress) {
+                DownloadInfo.loadPersistedDepotBytes(appDirPath)
+            } else {
+                emptyMap()
+            }
+
+            val fullyDownloadedDepotsFromSnapshot = mutableSetOf<Int>()
+            if (persistedDepotBytes.isNotEmpty()) {
+                for ((depotId, _) in allDepots) {
+                    val depotSize = depotSizeById[depotId] ?: 1L
+                    val downloadedBytes = persistedDepotBytes[depotId] ?: 0L
+                    if (downloadedBytes >= depotSize) {
+                        fullyDownloadedDepotsFromSnapshot.add(depotId)
+                    }
+                }
+                if (fullyDownloadedDepotsFromSnapshot.isNotEmpty()) {
+                    Timber.i("Skipping ${fullyDownloadedDepotsFromSnapshot.size} fully downloaded depots from snapshot")
+                    mainAppDepots = mainAppDepots.filter { it.key !in fullyDownloadedDepotsFromSnapshot }
+                }
+            }
+
             // Combine main app and DLC depots
-            val selectedDepots = mainAppDepots + dlcAppDepots
+            val filteredDlcAppDepots = dlcAppDepots.filter { it.key !in fullyDownloadedDepotsFromSnapshot }
+            val selectedDepots = mainAppDepots + filteredDlcAppDepots
             Timber.i("Total selected depots for download: ${selectedDepots.size}")
+
+            if (selectedDepots.isEmpty()) {
+                // Check if it was empty even before snapshot filtering
+                var preSnapshotMainAppDepots = originalMainAppDepots
+                if (installedApp != null && !includeInstalledDepots && hasTrustedInstalledState) {
+                    preSnapshotMainAppDepots = preSnapshotMainAppDepots.filter { it.key !in installedApp.downloadedDepots }
+                }
+                val preSnapshotSelectedDepots = preSnapshotMainAppDepots + dlcAppDepots
+                
+                if (preSnapshotSelectedDepots.isEmpty()) {
+                    Timber.i("selectedDepots is empty before snapshot filtering")
+                    if (allowPersistedProgress) {
+                        Timber.i("Resume became a no-op; clearing stale persisted resume state")
+                        clearFailedResumeState(appId)
+                    }
+                    // Cleanup: remove the in-progress marker if we're aborting before starting the coroutine
+                    MarkerUtils.removeMarker(appDirPath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
+                    instance?.let { service ->
+                        service.scope.launch(Dispatchers.Main) {
+                            Toast.makeText(service.applicationContext, "No depots selected for download", Toast.LENGTH_LONG).show()
+                        }
+                    }
+                    return null
+                }
+
+                // Snapshot says all depots are complete but marker is missing.
+                // Finalize metadata/markers directly instead of re-queuing depots.
+                val canFinalizeFromSnapshot = allowPersistedProgress &&
+                    fullyDownloadedDepotsFromSnapshot.isNotEmpty() &&
+                    (hasCompleteMarker || hasPersistedResumeRow)
+                if (canFinalizeFromSnapshot) {
+                    Timber.i("All resume depots appear complete from snapshot; finalizing without downloader")
+                    finalizeSnapshotResumeAsComplete(
+                        appId = appId,
+                        appDirPath = appDirPath,
+                        mainAppDepots = preSnapshotMainAppDepots,
+                        dlcAppDepots = dlcAppDepots,
+                        userSelectedDlcAppIds = userSelectedDlcAppIds,
+                    )
+                } else {
+                    if (allowPersistedProgress) {
+                        if (fullyDownloadedDepotsFromSnapshot.isNotEmpty()) {
+                            Timber.w(
+                                "Snapshot indicates completion for appId=$appId but state is untrusted " +
+                                    "(marker=$hasCompleteMarker, resumeRow=$hasPersistedResumeRow); clearing resume metadata",
+                            )
+                        } else {
+                            Timber.i("selectedDepots resolved empty on resume; clearing stale resume metadata")
+                        }
+                        clearFailedResumeState(appId)
+                    } else {
+                        Timber.i("selectedDepots resolved empty after filtering; skipping download start")
+                    }
+                }
+                MarkerUtils.removeMarker(appDirPath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
+                return null
+            }
 
             val downloadingAppIds = CopyOnWriteArrayList<Int>()
             val calculatedDlcAppIds = CopyOnWriteArrayList<Int>()
+            val allDepotIdsByDlcAppId = dlcAppDepots.values
+                .groupBy(keySelector = { it.dlcAppId }, valueTransform = { it.depotId })
+                .mapValues { (_, depotIds) -> depotIds.sorted() }
+            val selectedDepotIdsByDlcAppId = selectedDepots.values
+                .groupBy(keySelector = { it.dlcAppId }, valueTransform = { it.depotId })
+                .mapValues { (_, depotIds) -> depotIds.sorted() }
 
             userSelectedDlcAppIds.forEach { dlcAppId ->
-                if (dlcAppDepots.filter { (_, depot) -> depot.dlcAppId == dlcAppId }.isNotEmpty()) {
+                if (allDepotIdsByDlcAppId[dlcAppId]?.isNotEmpty() == true) {
                     downloadingAppIds.add(dlcAppId)
                     calculatedDlcAppIds.add(dlcAppId)
                 }
@@ -1577,21 +1935,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                 downloadingAppIds.add(appId)
             }
 
-            if (selectedDepots.isEmpty()) {
-                Timber.w("Download aborted: selectedDepots is empty for appId: $appId")
-                
-                // Cleanup: remove the in-progress marker if we're aborting before starting the coroutine
-                MarkerUtils.removeMarker(appDirPath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
-                
-                instance?.let { service ->
-                    service.scope.launch(Dispatchers.Main) {
-                        Toast.makeText(service.applicationContext, "No depots selected for download", Toast.LENGTH_LONG).show()
-                    }
-                }
-                return null
-            }
-
-            Timber.i("Starting download process for appId: $appId")
+            Timber.i("Starting download for $appId")
             Timber.i("App contains ${mainAppDepots.size} depot(s): ${mainAppDepots.keys}")
             Timber.i("DLC contains ${dlcAppDepots.size} depot(s): ${dlcAppDepots.keys}")
             Timber.i("downloadingAppIds: $downloadingAppIds")
@@ -1608,28 +1952,49 @@ class SteamService : Service(), IChallengeUrlChanged {
 
             val info = DownloadInfo(selectedDepots.size, appId, downloadingAppIds).also { di ->
                 di.setPersistencePath(appDirPath)
+
                 // Set weights for each depot based on manifest sizes
-                val sizes = selectedDepots.map { (_, depot) ->
-                    val mInfo = depot.manifests[branch]
-                        ?: depot.encryptedManifests[branch]
-                        ?: return@map 1L
-                    (mInfo.size ?: 1).toLong()
+                val selectedDepotSizes = selectedDepots.mapValues { (depotId, _) ->
+                    depotSizeById[depotId] ?: 1L
                 }
-                sizes.forEachIndexed { i, bytes -> di.setWeight(i, bytes) }
+                selectedDepots.keys.forEachIndexed { index, depotId ->
+                    di.setWeight(index, selectedDepotSizes[depotId] ?: 1L)
+                }
+
+                // Track progress only for depots in this active run so excluded/complete depots
+                // (including DLC already marked complete) cannot pre-fill progress at startup.
+                val selectedTotalBytes = selectedDepotSizes.values.sum()
+                val totalBytes = selectedTotalBytes.coerceAtLeast(1L)
 
                 // Total expected size (used for ETA based on recent download speed)
-                val totalBytes = sizes.sum()
                 di.setTotalExpectedBytes(totalBytes)
-                di.updateStatusMessage("Preparing download...")
 
-                // Load persisted bytes downloaded value on resume
-                val persistedBytes = di.loadPersistedBytesDownloaded(appDirPath)
-                if (persistedBytes > 0L) {
-                    di.initializeBytesDownloaded(persistedBytes)
-                    Timber.i("Resumed download: initialized with $persistedBytes bytes")
+                var resumedBytes = 0L
+
+                if (allowPersistedProgress) {
+                    for ((depotId, bytes) in persistedDepotBytes) {
+                        // If the depot was excluded because it's fully downloaded, we still need to track its bytes
+                        // so that future snapshots retain this progress.
+                        val depotSize = depotSizeById[depotId] ?: continue
+                        val safeBytes = bytes.coerceIn(0L, depotSize)
+                        di.depotCumulativeUncompressedBytes[depotId] = java.util.concurrent.atomic.AtomicLong(safeBytes)
+                        // Count resumed bytes only for depots actively downloading in this run.
+                        if (depotId in selectedDepots) {
+                            resumedBytes += safeBytes
+                        }
+                    }
+                } else {
+                    di.clearPersistedBytesDownloaded(appDirPath)
+                }
+                resumedBytes = resumedBytes.coerceIn(0L, totalBytes)
+
+                if (resumedBytes > 0L) {
+                    di.initializeBytesDownloaded(resumedBytes)
+                    Timber.i("Resumed download: initialized with $resumedBytes bytes")
                 }
 
                 val downloadJob = instance!!.scope.launch {
+                    var depotDownloader: DepotDownloader? = null
                     try {
                         // Retry loop for transient Steam API failures (AsyncJobFailedException) or missing client
                         val maxRetries = 3
@@ -1735,7 +2100,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                                 // Create DepotDownloader instance
                                 Timber.i("Initializing DepotDownloader for appId: $appId (attempt $attempt)")
                                 di.updateStatusMessage("Initializing downloader...")
-                                val depotDownloader = DepotDownloader(
+                                depotDownloader = DepotDownloader(
                                     client,
                                     licenses,
                                     debug = false,
@@ -1746,60 +2111,64 @@ class SteamService : Service(), IChallengeUrlChanged {
                                     autoStartDownload = false,
                                 )
 
-                                try {
-                                    // Create listeners for DLC apps
-                                    val depotIdToIndex = selectedDepots.keys.mapIndexed { index, depotId -> depotId to index }.toMap()
-                                    val listener = AppDownloadListener(di, depotIdToIndex)
-                                    depotDownloader.addListener(listener)
+                                // Create listeners for DLC apps
+                                val depotIdToIndex = selectedDepots.keys.mapIndexed { index, depotId -> depotId to index }.toMap()
+                                val listener = AppDownloadListener(
+                                    di,
+                                    depotIdToIndex,
+                                    selectedDepotSizes,
+                                )
+                                depotDownloader!!.addListener(listener)
 
-                                    if (mainAppDepots.isNotEmpty()) {
-                                        val mainAppDepotIds = mainAppDepots.keys.sorted()
-                                        val mainAppItem = AppItem(
-                                            appId,
-                                            installDirectory = appDirPath,
-                                            depot = mainAppDepotIds,
-                                        )
-                                        depotDownloader.add(mainAppItem)
-                                    }
+                                if (mainAppDepots.isNotEmpty()) {
+                                    val mainAppDepotIds = mainAppDepots.keys.sorted()
+                                    val mainAppItem = AppItem(
+                                        appId,
+                                        installDirectory = appDirPath,
+                                        depot = mainAppDepotIds,
+                                        verify = enableVerify,
+                                    )
+                                    depotDownloader!!.add(mainAppItem)
+                                }
 
-                                    calculatedDlcAppIds.forEach { dlcAppId ->
-                                        val dlcDepots = selectedDepots.filter { it.value.dlcAppId == dlcAppId }
-                                        val dlcDepotIds = dlcDepots.keys.sorted()
-                                        val dlcAppItem = AppItem(
-                                            dlcAppId,
-                                            installDirectory = appDirPath,
-                                            depot = dlcDepotIds
-                                        )
-                                        depotDownloader.add(dlcAppItem)
-                                    }
+                                calculatedDlcAppIds.forEach { dlcAppId ->
+                                    val dlcDepotIds = selectedDepotIdsByDlcAppId[dlcAppId].orEmpty()
+                                    if (dlcDepotIds.isEmpty()) return@forEach
 
-                                    // ... [Steam Controller Config logic kept same, omitted for brevity but should be included if I'm replacing the whole block. Since I'm using 'replace' I must be careful.
-                                    // I'll assume the user wants me to KEEP the controller logic. I will include it.]
-                                    val appConfig = getAppInfoOf(appId)?.config
-                                    if (appConfig?.steamControllerTemplateIndex == 1) {
-                                        val controllerConfig = appConfig.steamControllerConfigDetails
-                                            .let { selectSteamControllerConfig(it) }
+                                    val dlcAppItem = AppItem(
+                                        dlcAppId,
+                                        installDirectory = appDirPath,
+                                        depot = dlcDepotIds,
+                                        verify = enableVerify,
+                                    )
+                                    depotDownloader!!.add(dlcAppItem)
+                                }
 
-                                        if (controllerConfig != null) {
-                                            val publishedFileId = controllerConfig.publishedFileId
-                                            runCatching {
-                                                val requestBody = FormBody.Builder().add("itemcount", "1").add("publishedfileids[0]", publishedFileId.toString()).build()
-                                                val request = Request.Builder().url("https://api.steampowered.com/ISteamRemoteStorage/GetPublishedFileDetails/v1").post(requestBody).build()
-                                                Net.http.newCall(request).execute().use { response ->
-                                                    if (response.isSuccessful) {
-                                                        val responseBody = response.body?.string()
-                                                        if (!responseBody.isNullOrEmpty()) {
-                                                            val responseJson = JSONObject(responseBody)
-                                                            val responseData = responseJson.optJSONObject("response")
-                                                            val fileUrl = responseData?.optJSONArray("publishedfiledetails")?.optJSONObject(0)?.optString("file_url", "")?.trim()
-                                                            if (!fileUrl.isNullOrEmpty()) {
-                                                                val configFile = File(appDirPath, STEAM_CONTROLLER_CONFIG_FILENAME)
-                                                                val downloadRequest = Request.Builder().url(fileUrl).get().build()
-                                                                Net.http.newCall(downloadRequest).execute().use { downloadResponse ->
-                                                                    if (downloadResponse.isSuccessful) {
-                                                                        downloadResponse.body?.byteStream()?.use { input ->
-                                                                            configFile.outputStream().use { output -> input.copyTo(output) }
-                                                                        }
+                                // Steam Controller Config download
+                                val appConfig = getAppInfoOf(appId)?.config
+                                if (appConfig?.steamControllerTemplateIndex == 1) {
+                                    val controllerConfig = appConfig.steamControllerConfigDetails
+                                        .let { selectSteamControllerConfig(it) }
+
+                                    if (controllerConfig != null) {
+                                        val publishedFileId = controllerConfig.publishedFileId
+                                        runCatching {
+                                            val requestBody = FormBody.Builder().add("itemcount", "1").add("publishedfileids[0]", publishedFileId.toString()).build()
+                                            val request = Request.Builder().url("https://api.steampowered.com/ISteamRemoteStorage/GetPublishedFileDetails/v1").post(requestBody).build()
+                                            Net.http.newCall(request).execute().use { response ->
+                                                if (response.isSuccessful) {
+                                                    val responseBody = response.body?.string()
+                                                    if (!responseBody.isNullOrEmpty()) {
+                                                        val responseJson = JSONObject(responseBody)
+                                                        val responseData = responseJson.optJSONObject("response")
+                                                        val fileUrl = responseData?.optJSONArray("publishedfiledetails")?.optJSONObject(0)?.optString("file_url", "")?.trim()
+                                                        if (!fileUrl.isNullOrEmpty()) {
+                                                            val configFile = File(appDirPath, STEAM_CONTROLLER_CONFIG_FILENAME)
+                                                            val downloadRequest = Request.Builder().url(fileUrl).get().build()
+                                                            Net.http.newCall(downloadRequest).execute().use { downloadResponse ->
+                                                                if (downloadResponse.isSuccessful) {
+                                                                    downloadResponse.body?.byteStream()?.use { input ->
+                                                                        configFile.outputStream().use { output -> input.copyTo(output) }
                                                                     }
                                                                 }
                                                             }
@@ -1809,31 +2178,32 @@ class SteamService : Service(), IChallengeUrlChanged {
                                             }
                                         }
                                     }
-
-                                    // Signal that no more items will be added
-                                    depotDownloader.finishAdding()
-
-                                    // Start Download
-                                    di.updateStatusMessage("Starting download...")
-                                    depotDownloader.startDownloading()
-
-                                    Timber.i("Downloading game to $appDirPath (attempt $attempt)")
-
-                                    // Wait for completion
-                                    depotDownloader.getCompletion().await()
-                                    
-                                    Timber.i("DepotDownloader finished for appId: $appId")
-
-                                } finally {
-                                    // Ensure resources are released
-                                    depotDownloader.close()
                                 }
+
+                                // Signal that no more items will be added
+                                depotDownloader!!.finishAdding()
+
+                                // Start Download
+                                di.updateStatusMessage("Starting download...")
+                                depotDownloader!!.startDownloading()
+
+                                Timber.i("Downloading game to $appDirPath (attempt $attempt)")
+
+                                // Wait for completion
+                                depotDownloader!!.getCompletion().await()
+                                
+                                Timber.i("DepotDownloader finished for appId: $appId")
 
                                 // If we got here without exception, download succeeded
                                 break
                             } catch (e: AsyncJobFailedException) {
                                 lastException = e
                                 Timber.w(e, "AsyncJobFailedException on attempt $attempt/$maxRetries for appId: $appId")
+                                // Close the downloader from the failed attempt
+                                runCatching { depotDownloader?.close() }.onFailure { closeError ->
+                                    Timber.w(closeError, "Failed to close downloader on retry for app $appId")
+                                }
+                                depotDownloader = null
                                 if (attempt >= maxRetries) {
                                     Timber.e("All $maxRetries retry attempts failed for appId: $appId")
                                     throw e
@@ -1846,21 +2216,18 @@ class SteamService : Service(), IChallengeUrlChanged {
                         // Complete app download - Wrap in try-catch to ensure we don't crash at the finish line
                         try {
                             di.updateStatusMessage("Finalizing installation...")
-                            if (mainAppDepots.isNotEmpty()) {
-                                val mainAppDepotIds = mainAppDepots.keys.sorted()
+                            if (originalMainAppDepots.isNotEmpty()) {
+                                val mainAppDepotIds = originalMainAppDepots.keys.sorted()
                                 completeAppDownload(di, appId, mainAppDepotIds, mainAppDlcIds, appDirPath)
                             }
 
                             calculatedDlcAppIds.forEach { dlcAppId ->
-                                val dlcDepots = selectedDepots.filter { it.value.dlcAppId == dlcAppId }
-                                val dlcDepotIds = dlcDepots.keys.sorted()
+                                val dlcDepotIds = allDepotIdsByDlcAppId[dlcAppId].orEmpty()
                                 completeAppDownload(di, dlcAppId, dlcDepotIds, emptyList(), appDirPath)
                             }
                             Timber.i("Installation finalized for appId: $appId")
                         } catch (e: Exception) {
                             Timber.e(e, "Error during finalize/database update for appId: $appId")
-                            // Even if DB update fails, if files are there, we might want to recover?
-                            // For now, rethrow so the outer catch handles it, but log it.
                             throw e
                         }
 
@@ -1871,18 +2238,32 @@ class SteamService : Service(), IChallengeUrlChanged {
                         runBlocking {
                             instance?.downloadingAppInfoDao?.deleteApp(appId)
                         }
-                        
-                        // Notify UI that installation status changed
-                        PluviaApp.events.emit(AndroidEvent.LibraryInstallStatusChanged(appId))
-                        
+                    } catch (e: DownloadFailedException) {
+                        Timber.d(e, "Download failed for app $appId via cancellation")
+                        clearFailedResumeState(appId)
+                        di.updateStatus(DownloadPhase.FAILED)
+                        di.setActive(false)
+                        // Clean up markers
+                        MarkerUtils.removeMarker(appDirPath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
+                        removeDownloadJob(appId)
+                        return@launch
+                    } catch (e: CancellationException) {
+                        if (di.isDeleting) {
+                            Timber.d("Download cancelled for deletion for app $appId")
+                            return@launch
+                        }
+
+                        Timber.d(e, "Download paused for app $appId")
+                        // Keep downloadingAppInfo on cancellation so resume does not fall into verify mode.
+                        di.persistProgressSnapshot(force = true)
+                        di.updateStatus(DownloadPhase.PAUSED)
+                        di.setActive(false)
+                        throw e
                     } catch (e: Exception) {
                         Timber.e(e, "Download failed for app $appId")
-                        di.persistProgressSnapshot()
-                        // Mark all depots as failed
-                        selectedDepots.keys.sorted().forEachIndexed { idx, _ ->
-                            di.setWeight(idx, 0)
-                            di.setProgress(1f, idx)
-                        }
+                        clearFailedResumeState(appId)
+                        di.updateStatus(DownloadPhase.FAILED)
+                        di.setActive(false)
                         // Clean up markers and DB state
                         MarkerUtils.removeMarker(appDirPath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
                         runBlocking {
@@ -1897,20 +2278,94 @@ class SteamService : Service(), IChallengeUrlChanged {
                             }
                         }
                         PluviaApp.events.emit(AndroidEvent.DownloadStatusChanged(appId, false))
+                    } finally {
+                        runCatching {
+                            depotDownloader?.close()
+                        }.onFailure { closeError ->
+                            Timber.w(closeError, "Failed to close downloader for app $appId")
+                        }
                     }
                 }
                 downloadJob.invokeOnCompletion { throwable ->
-                    if (throwable is kotlinx.coroutines.CancellationException) {
-                        Timber.d(throwable, "Download canceled for app $appId")
-                        removeDownloadJob(appId)
+                    if (throwable is CancellationException && throwable !is DownloadFailedException) {
+                        if (!di.isDeleting) {
+                            Timber.d(throwable, "Download paused for app $appId")
+                            removeDownloadJob(appId)
+                        }
                     }
                 }
                 di.setDownloadJob(downloadJob)
             }
 
             downloadJobs[appId] = info
+            info.updateStatus(DownloadPhase.PREPARING)
             notifyDownloadStarted(appId)
             return info
+        }
+
+        private fun finalizeSnapshotResumeAsComplete(
+            appId: Int,
+            appDirPath: String,
+            mainAppDepots: Map<Int, DepotInfo>,
+            dlcAppDepots: Map<Int, DepotInfo>,
+            userSelectedDlcAppIds: List<Int>,
+        ) {
+            val downloadingAppIds = CopyOnWriteArrayList<Int>()
+            val calculatedDlcAppIds = CopyOnWriteArrayList<Int>()
+            val allDepotIdsByDlcAppId = dlcAppDepots.values
+                .groupBy(keySelector = { it.dlcAppId }, valueTransform = { it.depotId })
+                .mapValues { (_, depotIds) -> depotIds.sorted() }
+
+            userSelectedDlcAppIds.forEach { dlcAppId ->
+                if (allDepotIdsByDlcAppId[dlcAppId]?.isNotEmpty() == true) {
+                    downloadingAppIds.add(dlcAppId)
+                    calculatedDlcAppIds.add(dlcAppId)
+                }
+            }
+
+            if (mainAppDepots.isNotEmpty()) {
+                downloadingAppIds.add(appId)
+            }
+
+            val mainAppDlcIds = getMainAppDlcIdsWithoutProperDepotDlcIds(appId)
+            if (dlcAppDepots.isEmpty()) {
+                mainAppDlcIds.addAll(mainAppDepots.filter { it.value.dlcAppId != INVALID_APP_ID }.map { it.value.dlcAppId }.distinct())
+                calculatedDlcAppIds.clear()
+                downloadingAppIds.clear()
+                downloadingAppIds.add(appId)
+            }
+
+            val syntheticInfo = DownloadInfo(
+                jobCount = 1,
+                gameId = appId,
+                downloadingAppIds = downloadingAppIds,
+            )
+            syntheticInfo.setPersistencePath(appDirPath)
+
+            runBlocking(Dispatchers.IO) {
+                if (mainAppDepots.isNotEmpty()) {
+                    completeAppDownload(
+                        downloadInfo = syntheticInfo,
+                        downloadingAppId = appId,
+                        entitledDepotIds = mainAppDepots.keys.sorted(),
+                        selectedDlcAppIds = mainAppDlcIds,
+                        appDirPath = appDirPath,
+                    )
+                }
+
+                calculatedDlcAppIds.forEach { dlcAppId ->
+                    val dlcDepotIds = allDepotIdsByDlcAppId[dlcAppId].orEmpty()
+                    completeAppDownload(
+                        downloadInfo = syntheticInfo,
+                        downloadingAppId = dlcAppId,
+                        entitledDepotIds = dlcDepotIds,
+                        selectedDlcAppIds = emptyList(),
+                        appDirPath = appDirPath,
+                    )
+                }
+
+                instance?.downloadingAppInfoDao?.deleteApp(appId)
+            }
         }
 
         private suspend fun completeAppDownload(
@@ -1954,6 +2409,18 @@ class SteamService : Service(), IChallengeUrlChanged {
 
             // All downloading appIds are removed
             if (downloadInfo.downloadingAppIds.isEmpty()) {
+                // If manifest-size top-up was deferred during depot completion, settle the
+                // remaining bytes once at the end to avoid visible mid-download jumps.
+                val totalExpectedBytes = downloadInfo.getTotalExpectedBytes()
+                if (totalExpectedBytes > 0L) {
+                    val downloadedBytes = downloadInfo.getBytesDownloaded()
+                    val remainingBytes = (totalExpectedBytes - downloadedBytes).coerceAtLeast(0L)
+                    if (remainingBytes > 0L) {
+                        downloadInfo.updateBytesDownloaded(remainingBytes, System.currentTimeMillis())
+                        downloadInfo.emitProgressChange()
+                    }
+                }
+
                 // Handle completion: add markers
                 withContext(Dispatchers.IO) {
                     MarkerUtils.addMarker(appDirPath, Marker.DOWNLOAD_COMPLETE_MARKER)
@@ -1975,27 +2442,114 @@ class SteamService : Service(), IChallengeUrlChanged {
                     }
                 }
 
+                downloadInfo.updateStatus(DownloadPhase.COMPLETE)
+                PluviaApp.events.emit(AndroidEvent.LibraryInstallStatusChanged(downloadInfo.gameId))
+
                 // Clear persisted bytes file on successful completion
-                downloadInfo.clearPersistedBytesDownloaded(appDirPath)
+                downloadInfo.clearPersistedBytesDownloaded(appDirPath, sync = true)
             }
         }
 
-        /**
-         * Listener for download progress and completion events from DepotDownloader
-         */
+        // onChunkCompleted reports GLOBAL cumulative bytes across all depots, not per depot.
+        // We diff successive global values to get the real per chunk delta.
         private class AppDownloadListener(
             private val downloadInfo: DownloadInfo,
             private val depotIdToIndex: Map<Int, Int>,
+            private val depotMaxBytesById: Map<Int, Long>,
         ) : IDownloadListener {
-            // Track cumulative uncompressed bytes per depot to calculate deltas
-            // (uncompressedBytes from onChunkCompleted is cumulative per depot)
-            private val depotCumulativeUncompressedBytes = mutableMapOf<Int, Long>()
+            private var lastByteProgressAtMs: Long = 0L
+
+            // Last global cumulative uncompressed bytes from onChunkCompleted
+            private val lastGlobalUncompressedBytes = java.util.concurrent.atomic.AtomicLong(0L)
+
+            // Consumes monotonic global cumulative bytes and returns only newly observed delta.
+            // This is resilient to out-of-order callbacks from concurrent decompression workers.
+            private fun consumeGlobalUncompressedDelta(currentGlobalBytes: Long): Long {
+                if (currentGlobalBytes <= 0L) return 0L
+
+                while (true) {
+                    val previousGlobalBytes = lastGlobalUncompressedBytes.get()
+                    if (currentGlobalBytes <= previousGlobalBytes) {
+                        return 0L
+                    }
+
+                    if (lastGlobalUncompressedBytes.compareAndSet(previousGlobalBytes, currentGlobalBytes)) {
+                        return currentGlobalBytes - previousGlobalBytes
+                    }
+                }
+            }
+
+            // Sets per depot cumulative value, returns delta
+            private fun updateDepotBytesAndGetDelta(depotId: Int, reportedBytes: Long): Long {
+                if (!depotIdToIndex.containsKey(depotId)) {
+                    return 0L
+                }
+
+                var atomicBytes = downloadInfo.depotCumulativeUncompressedBytes[depotId]
+                if (atomicBytes == null) {
+                    atomicBytes = java.util.concurrent.atomic.AtomicLong(0L)
+                    val existing = downloadInfo.depotCumulativeUncompressedBytes.putIfAbsent(depotId, atomicBytes)
+                    if (existing != null) {
+                        atomicBytes = existing
+                    }
+                }
+
+                if (reportedBytes <= 0L) {
+                    return 0L
+                }
+
+                val maxBytes = depotMaxBytesById[depotId]?.coerceAtLeast(1L)
+                val clampedReportedBytes = if (maxBytes != null) {
+                    reportedBytes.coerceIn(0L, maxBytes)
+                } else {
+                    reportedBytes
+                }
+
+                var deltaBytes = 0L
+                while (true) {
+                    val prev = atomicBytes.get()
+                    val next = maxOf(prev, clampedReportedBytes)
+                    if (prev == next) {
+                        break
+                    }
+                    if (atomicBytes.compareAndSet(prev, next)) {
+                        deltaBytes = (next - prev).coerceAtLeast(0L)
+                        break
+                    }
+                }
+                return deltaBytes
+            }
+
+            // Adds delta to per depot cumulative bytes, clamped to depot max
+            private fun addDeltaToDepotBytes(depotId: Int, delta: Long) {
+                if (delta <= 0L) return
+                if (!depotIdToIndex.containsKey(depotId)) return
+
+                var atomicBytes = downloadInfo.depotCumulativeUncompressedBytes[depotId]
+                if (atomicBytes == null) {
+                    atomicBytes = java.util.concurrent.atomic.AtomicLong(0L)
+                    val existing = downloadInfo.depotCumulativeUncompressedBytes.putIfAbsent(depotId, atomicBytes)
+                    if (existing != null) {
+                        atomicBytes = existing
+                    }
+                }
+
+                val maxBytes = depotMaxBytesById[depotId]?.coerceAtLeast(1L) ?: Long.MAX_VALUE
+                while (true) {
+                    val prev = atomicBytes.get()
+                    val next = (prev + delta).coerceIn(0L, maxBytes)
+                    if (prev == next) break
+                    if (atomicBytes.compareAndSet(prev, next)) break
+                }
+            }
+
             override fun onItemAdded(item: DownloadItem) {
                 Timber.d("Item ${item.appId} added to queue")
             }
 
             override fun onDownloadStarted(item: DownloadItem) {
                 Timber.i("Item ${item.appId} download started")
+                downloadInfo.updateStatus(DownloadPhase.DOWNLOADING)
             }
 
             override fun onDownloadCompleted(item: DownloadItem) {
@@ -2003,16 +2557,31 @@ class SteamService : Service(), IChallengeUrlChanged {
             }
 
             override fun onDownloadFailed(item: DownloadItem, error: Throwable) {
-                Timber.e(error, "Item ${item.appId} failed to download: ${error.javaClass.simpleName}: ${error.message}")
-                // downloadInfo.failedToDownload() // Removed: Let the main coroutine handle retries/failure
-                
+                if (error is CancellationException && error !is DownloadFailedException) {
+                    if (downloadInfo.isDeleting) {
+                        Timber.d("Item ${item.appId} download cancelled for deletion")
+                        return
+                    }
+                    // Treat cancellation as pause: preserve resume metadata/state.
+                    Timber.d(error, "Item ${item.appId} download paused")
+                    downloadInfo.persistProgressSnapshot(force = true)
+                    downloadInfo.updateStatus(DownloadPhase.PAUSED)
+                    downloadInfo.setActive(false)
+                    return
+                }
+
+                Timber.e(error, "Item ${item.appId} failed to download")
+                // Hard stop current session on item failure so we do not continue toward completion
+                // with missing/corrupt files. Resume metadata is preserved for retry.
+                downloadInfo.persistProgressSnapshot(force = true)
+                downloadInfo.updateStatus(DownloadPhase.FAILED)
+                downloadInfo.failedToDownload()
+
                 instance?.let { service ->
                     service.scope.launch(Dispatchers.Main) {
-                        val errorName = error.javaClass.simpleName
-                        val errorMsg = error.localizedMessage ?: error.message ?: errorName
                         Toast.makeText(
                             service.applicationContext,
-                            "Download error for depot ${item.appId}: $errorMsg",
+                            "Download error for depot ${item.appId}: ${error.message}",
                             Toast.LENGTH_LONG,
                         ).show()
                     }
@@ -2021,7 +2590,23 @@ class SteamService : Service(), IChallengeUrlChanged {
 
             override fun onStatusUpdate(message: String) {
                 Timber.d("Download status: $message")
-                downloadInfo.updateStatusMessage(message)
+                val mappedStatus = DownloadPhase.fromMessage(message)
+                if (mappedStatus != null) {
+                    if (
+                        mappedStatus == DownloadPhase.PREPARING ||
+                        mappedStatus == DownloadPhase.VERIFYING ||
+                        mappedStatus == DownloadPhase.PATCHING
+                    ) {
+                        val nowMs = System.currentTimeMillis()
+                        val recentlyMovedBytes = nowMs - lastByteProgressAtMs <= 5_000L
+                        if (recentlyMovedBytes && downloadInfo.getStatusFlow().value == DownloadPhase.DOWNLOADING) {
+                            return
+                        }
+                    }
+                    downloadInfo.updateStatus(mappedStatus, message)
+                } else {
+                    downloadInfo.updateStatusMessage(message)
+                }
             }
 
             override fun onChunkCompleted(
@@ -2030,44 +2615,74 @@ class SteamService : Service(), IChallengeUrlChanged {
                 compressedBytes: Long,
                 uncompressedBytes: Long,
             ) {
-                val isFirstCallForDepot = !depotCumulativeUncompressedBytes.containsKey(depotId)
-
-                // uncompressedBytes is cumulative per depot, so calculate delta
-                val previousBytes = depotCumulativeUncompressedBytes[depotId] ?: 0L
-                val deltaBytes = uncompressedBytes - previousBytes
-                depotCumulativeUncompressedBytes[depotId] = uncompressedBytes
+                // uncompressedBytes is global cumulative across all depots.
+                val deltaBytes = consumeGlobalUncompressedDelta(uncompressedBytes)
 
                 if (deltaBytes > 0L) {
-                    // Normal case: add the delta
-                    downloadInfo.updateBytesDownloaded(deltaBytes, System.currentTimeMillis())
+                    lastByteProgressAtMs = System.currentTimeMillis()
+
+                    addDeltaToDepotBytes(depotId, deltaBytes)
+                    downloadInfo.updateBytesDownloaded(deltaBytes, lastByteProgressAtMs)
+                    downloadInfo.markProgressSnapshotDirty()
+
+                    // If resume verification/prepare phases already ran and bytes are now moving again,
+                    // report active downloading.
+                    val currentPhase = downloadInfo.getStatusFlow().value
+                    if (
+                        currentPhase == DownloadPhase.UNKNOWN ||
+                        currentPhase == DownloadPhase.PREPARING ||
+                        currentPhase == DownloadPhase.VERIFYING ||
+                        currentPhase == DownloadPhase.PATCHING
+                    ) {
+                        downloadInfo.updateStatus(DownloadPhase.DOWNLOADING)
+                    }
                 }
 
                 depotIdToIndex[depotId]?.let { index ->
                     downloadInfo.setProgress(depotPercentComplete, index)
                 }
 
-                // Persist progress snapshot
-                downloadInfo.persistProgressSnapshot()
+                // Emit progress change
+                downloadInfo.emitProgressChange()
             }
 
             override fun onDepotCompleted(depotId: Int, compressedBytes: Long, uncompressedBytes: Long) {
                 Timber.i("Depot $depotId completed (compressed: $compressedBytes, uncompressed: $uncompressedBytes)")
 
-                // Ensure we capture any remaining bytes
-                val previousBytes = depotCumulativeUncompressedBytes[depotId] ?: 0L
-                val deltaBytes = uncompressedBytes - previousBytes
-                depotCumulativeUncompressedBytes[depotId] = uncompressedBytes
+                // Catch up any uncompressed bytes not covered by onChunkCompleted
+                val deltaBytes = updateDepotBytesAndGetDelta(depotId, uncompressedBytes)
 
                 if (deltaBytes > 0L) {
-                    downloadInfo.updateBytesDownloaded(deltaBytes, System.currentTimeMillis())
+                    lastByteProgressAtMs = System.currentTimeMillis()
+                    downloadInfo.updateBytesDownloaded(deltaBytes, lastByteProgressAtMs)
+                    downloadInfo.markProgressSnapshotDirty()
+                }
+
+                // Credit full manifest size so dedup gaps don't stall progress
+                val manifestSize = depotMaxBytesById[depotId] ?: 0L
+                val tracked = downloadInfo.depotCumulativeUncompressedBytes[depotId]?.get() ?: 0L
+                val remaining = manifestSize - tracked
+                if (remaining > 0L) {
+                    addDeltaToDepotBytes(depotId, remaining)
+                    downloadInfo.markProgressSnapshotDirty()
+                }
+
+                val currentPhase = downloadInfo.getStatusFlow().value
+                if (
+                    currentPhase == DownloadPhase.UNKNOWN ||
+                    currentPhase == DownloadPhase.PREPARING ||
+                    currentPhase == DownloadPhase.VERIFYING ||
+                    currentPhase == DownloadPhase.PATCHING
+                ) {
+                    downloadInfo.updateStatus(DownloadPhase.DOWNLOADING)
                 }
 
                 depotIdToIndex[depotId]?.let { index ->
                     downloadInfo.setProgress(1f, index)
                 }
 
-                // Persist progress snapshot
-                downloadInfo.persistProgressSnapshot()
+                // Emit progress change
+                downloadInfo.emitProgressChange()
             }
         }
 
@@ -2901,7 +3516,7 @@ class SteamService : Service(), IChallengeUrlChanged {
         // Persist download progress for all active downloads
         // This is a safety net for OS kills (unlikely but possible)
         downloadJobs.values.forEach { downloadInfo ->
-            downloadInfo.persistProgressSnapshot()
+            downloadInfo.persistProgressSnapshot(force = true)
         }
 
         stopForeground(STOP_FOREGROUND_REMOVE)

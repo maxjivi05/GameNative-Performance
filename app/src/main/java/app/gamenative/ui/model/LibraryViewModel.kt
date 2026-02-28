@@ -761,7 +761,7 @@ class LibraryViewModel @Inject constructor(
                 artUrl = artUrl,
                 downloadedBytes = info.getBytesDownloaded(),
                 totalBytes = info.getTotalExpectedBytes(),
-                speed = info.getRecentSpeedBytesPerSec().toLong(),
+                speed = (info.getCurrentDownloadSpeed() ?: 0L).toLong(),
                 isPaused = !info.isActive(),
                 isCompleted = info.getProgress() >= 1f,
                 progress = info.getProgress()
