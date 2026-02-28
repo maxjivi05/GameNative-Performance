@@ -117,7 +117,7 @@ class PhysicalControllerHandler(
 
     /**
      * Create a timer for continuous mouse movement injection.
-     * Runs at 60 FPS, injecting mouse deltas based on mouseMoveOffset.
+     * Runs at 120 FPS, injecting mouse deltas based on mouseMoveOffset.
      */
     private fun createMouseMoveTimer() {
         if (profile != null && mouseMoveTimer == null) {
@@ -132,10 +132,18 @@ class PhysicalControllerHandler(
                     val cursorSpeed = profile?.cursorSpeed ?: 1f
                     val deltaX = (mouseMoveOffset.x * 10 * cursorSpeed).toInt()
                     val deltaY = (mouseMoveOffset.y * 10 * cursorSpeed).toInt()
+                    if (deltaX != 0 || deltaY != 0) setCursorVisible(true)
                     xServer?.injectPointerMoveDelta(deltaX, deltaY)
                 }
             }, 0, 1000 / 120) // 120 FPS for smoother, lower-latency mouse movement
         }
+    }
+
+    /**
+     * Set the cursor visibility on the XServer.
+     */
+    private fun setCursorVisible(visible: Boolean) {
+        xServer?.getRenderer()?.setCursorVisible(visible)
     }
 
     /**

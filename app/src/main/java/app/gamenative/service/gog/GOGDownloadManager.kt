@@ -174,26 +174,20 @@ class GOGDownloadManager @Inject constructor(
 
             downloadInfo.updateStatusMessage("Filtering depots...")
 
-            // Step 3: Filter depots by language and bitness (32-bit or 64-bit)
+            // Step 3: Filter depots by language
             val languageDepots = parser.filterDepotsByLanguage(gameManifest, language)
             if (languageDepots.isEmpty()) {
                 return@withContext Result.failure(Exception("No depots found for language: $language"))
             }
 
-            // TODO: Verify if we need this anymore.
-            val bitnessDepots = parser.filterDepotsByBitness(languageDepots, bitness = "64")
-            if (bitnessDepots.isEmpty()) {
-                return@withContext Result.failure(Exception("No 64-bit depots found for language: $language"))
-            }
-
             // Filter by ownership to exclude unowned DLC depots
             val ownedGameIds = gogManager.getAllGameIds()
-            val depots = parser.filterDepotsByOwnership(bitnessDepots, ownedGameIds)
+            val depots = parser.filterDepotsByOwnership(languageDepots, ownedGameIds)
             if (depots.isEmpty()) {
                 return@withContext Result.failure(Exception("No owned depots found for language: $language"))
             }
 
-            Timber.tag("GOG").d("Found ${depots.size} owned depot(s) for $language (64-bit)")
+            Timber.tag("GOG").d("Found ${depots.size} owned depot(s) for $language")
             depots.forEachIndexed { index, depot ->
                 Timber.tag("GOG").d("  Depot $index: productId=${depot.productId}, manifest=${depot.manifest}, size=${depot.size}, compressedSize=${depot.compressedSize}")
             }

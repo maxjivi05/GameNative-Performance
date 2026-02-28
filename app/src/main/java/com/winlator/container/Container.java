@@ -14,6 +14,8 @@ import com.winlator.fexcore.FEXCorePreset;
 import com.winlator.winhandler.WinHandler;
 import com.winlator.xenvironment.ImageFs;
 
+import app.gamenative.BuildConfig;
+
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -21,6 +23,7 @@ import java.io.File;
 import java.util.Iterator;
 
 public class Container {
+    private static final String DATA_DIR = "/data/data/" + BuildConfig.APPLICATION_ID;
     public enum XrControllerMapping {
         BUTTON_A, BUTTON_B, BUTTON_X, BUTTON_Y, BUTTON_GRIP, BUTTON_TRIGGER,
         THUMBSTICK_UP, THUMBSTICK_DOWN, THUMBSTICK_LEFT, THUMBSTICK_RIGHT
@@ -48,14 +51,14 @@ public class Container {
     public static final String DEFAULT_WINCOMPONENTS = "direct3d=1,directsound=1,directmusic=0,directshow=0,directplay=0,vcrun2010=1,wmdecoder=1,opengl=0";
     public static final String FALLBACK_WINCOMPONENTS = "direct3d=1,directsound=1,directmusic=1,directshow=1,directplay=1,vcrun2010=1,wmdecoder=1,opengl=0";
     public static final String[] MEDIACONV_ENV_VARS = {
-            "MEDIACONV_AUDIO_DUMP_FILE=/data/data/app.gamenative/files/imagefs/home/xuser/audio.dmp",
-            "MEDIACONV_VIDEO_DUMP_FILE=/data/data/app.gamenative/files/imagefs/home/xuser/video.dmp",
-            "MEDIACONV_VIDEO_TRANSCODED_FILE=/data/data/app.gamenative/files/imagefs/home/xuser/transcoded.mkv",
-            "MEDIACONV_AUDIO_TRANSCODED_FILE=/data/data/app.gamenative/files/imagefs/home/xuser/transcoded.wav",
-            "MEDIACONV_BLANK_AUDIO_FILE=/data/data/app.gamenative/files/imagefs/home/xuser/blank.wav",
-            "MEDIACONV_BLANK_VIDEO_FILE=/data/data/app.gamenative/files/imagefs/home/xuser/blank.mkv",
+            "MEDIACONV_AUDIO_DUMP_FILE=" + DATA_DIR + "/files/imagefs/home/xuser/audio.dmp",
+            "MEDIACONV_VIDEO_DUMP_FILE=" + DATA_DIR + "/files/imagefs/home/xuser/video.dmp",
+            "MEDIACONV_VIDEO_TRANSCODED_FILE=" + DATA_DIR + "/files/imagefs/home/xuser/transcoded.mkv",
+            "MEDIACONV_AUDIO_TRANSCODED_FILE=" + DATA_DIR + "/files/imagefs/home/xuser/transcoded.wav",
+            "MEDIACONV_BLANK_AUDIO_FILE=" + DATA_DIR + "/files/imagefs/home/xuser/blank.wav",
+            "MEDIACONV_BLANK_VIDEO_FILE=" + DATA_DIR + "/files/imagefs/home/xuser/blank.mkv",
     };
-    public static final String DEFAULT_DRIVES = "D:"+Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)+"E:/data/data/app.gamenative/storage";
+    public static final String DEFAULT_DRIVES = "D:"+Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)+"E:" + DATA_DIR + "/storage";
     public static final String DEFAULT_VARIANT = DefaultVersion.VARIANT;
     public static final String DEFAULT_WINE_VERSION = DefaultVersion.WINE_VERSION;
     public static final byte STARTUP_SELECTION_NORMAL = 0;
@@ -134,6 +137,8 @@ public class Container {
     private boolean gstreamerWorkaround = false;
 
     private boolean forceDlc = false;
+
+    private boolean localSavesOnly = false;
 
     private boolean useLegacyDRM = false;
 
@@ -712,6 +717,9 @@ public class Container {
             // Force DLC setting
             data.put("forceDlc", forceDlc);
 
+            // Local saves only setting
+            data.put("localSavesOnly", localSavesOnly);
+
             // Use Legacy DRM setting
             data.put("useLegacyDRM", useLegacyDRM);
 
@@ -897,6 +905,9 @@ public class Container {
                 case "forceDlc":
                     this.forceDlc = data.getBoolean(key);
                     break;
+                case "localSavesOnly":
+                    this.localSavesOnly = data.getBoolean(key);
+                    break;
                 case "useLegacyDRM":
                     this.useLegacyDRM = data.getBoolean(key);
                     break;
@@ -976,6 +987,14 @@ public class Container {
 
     public void setForceDlc(boolean forceDlc) {
         this.forceDlc = forceDlc;
+    }
+
+    public boolean isLocalSavesOnly() {
+        return localSavesOnly;
+    }
+
+    public void setLocalSavesOnly(boolean localSavesOnly) {
+        this.localSavesOnly = localSavesOnly;
     }
 
     public boolean isUseLegacyDRM() {

@@ -113,6 +113,7 @@ object ContainerUtils {
             language = PrefManager.containerLanguage,
             containerVariant = PrefManager.containerVariant,
             forceDlc = PrefManager.forceDlc,
+            localSavesOnly = PrefManager.localSavesOnly,
             useLegacyDRM = PrefManager.useLegacyDRM,
             unpackFiles = PrefManager.unpackFiles,
             wineVersion = PrefManager.wineVersion,
@@ -195,6 +196,7 @@ object ContainerUtils {
 		PrefManager.dinputEnabled = containerData.enableDInput
 		PrefManager.dinputMapperType = containerData.dinputMapperType.toInt()
         PrefManager.forceDlc = containerData.forceDlc
+        PrefManager.localSavesOnly = containerData.localSavesOnly
         PrefManager.useLegacyDRM = containerData.useLegacyDRM
         PrefManager.unpackFiles = containerData.unpackFiles
         PrefManager.sharpnessEffect = containerData.sharpnessEffect
@@ -294,6 +296,7 @@ object ContainerUtils {
             sdlControllerAPI = container.isSdlControllerAPI,
             useSteamInput = useSteamInput,
             forceDlc = container.isForceDlc,
+            localSavesOnly = container.isLocalSavesOnly,
             useLegacyDRM = container.isUseLegacyDRM(),
             unpackFiles = container.isUnpackFiles(),
             enableXInput = enableX,
@@ -518,6 +521,7 @@ object ContainerUtils {
         container.setExternalDisplayMode(containerData.externalDisplayMode)
         container.setExternalDisplaySwap(containerData.externalDisplaySwap)
         container.setForceDlc(containerData.forceDlc)
+        container.setLocalSavesOnly(containerData.localSavesOnly)
         container.setUseLegacyDRM(containerData.useLegacyDRM)
         container.setUnpackFiles(containerData.unpackFiles)
         container.isForceAdrenoClocks = containerData.forceAdrenoClocks

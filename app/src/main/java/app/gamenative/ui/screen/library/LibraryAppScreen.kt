@@ -429,6 +429,7 @@ internal fun AppScreenContent(
                 ) {
                     optionsMenu.forEach { menuOption ->
                         DropdownMenuItem(
+                            enabled = menuOption.enabled,
                             text = { Text(menuOption.optionType.text) },
                             onClick = {
                                 menuOption.onClick()

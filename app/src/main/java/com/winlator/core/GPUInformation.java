@@ -22,13 +22,21 @@ import javax.microedition.khronos.egl.EGLDisplay;
 import javax.microedition.khronos.opengles.GL10;
 
 public abstract class GPUInformation {
+    private static String cachedGpuNameList = null;
 
     static {
         System.loadLibrary("extras");
     }
 
+    private static String getGpuNameList(Context context) {
+        if (cachedGpuNameList == null) {
+            cachedGpuNameList = FileUtils.readString(context, "gpu_cards.json");
+        }
+        return cachedGpuNameList;
+    }
+
     public static String getDeviceIdFromGPUName(Context context, String gpuName) {
-        String gpuNameList = FileUtils.readString(context, "gpu_cards.json");
+        String gpuNameList = getGpuNameList(context);
         String deviceId = "";
         try {
             JSONArray jsonArray = new JSONArray(gpuNameList);
@@ -45,7 +53,7 @@ public abstract class GPUInformation {
     }
 
     public static String getVendorIdFromGPUName(Context context, String gpuName) {
-        String gpuNameList = FileUtils.readString(context, "gpu_cards.json");
+        String gpuNameList = getGpuNameList(context);
         String vendorId = "";
         try {
             JSONArray jsonArray = new JSONArray(gpuNameList);

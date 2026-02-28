@@ -907,8 +907,10 @@ class SteamAppScreen : BaseAppScreen() {
             ),
             // Uninstall option removed from menu - now handled by delete button next to play button
             // The button uses onDeleteDownloadClick which shows the uninstall dialog
+            val isLocalSavesOnly = ContainerUtils.isLocalSavesOnly(context, appId)
             AppMenuOption(
                 AppOptionMenuType.ForceCloudSync,
+                enabled = !isLocalSavesOnly,
                 onClick = {
                     PostHog.capture(
                         event = "cloud_sync_forced",

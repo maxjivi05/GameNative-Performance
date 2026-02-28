@@ -1,0 +1,34 @@
+# GameNative-Performance Detailed Changelog
+
+### 🚀 Performance & Resource Management
+*   **Leak Prevention:** Wrapped all OkHttp network responses in `BestConfigService` and `GameCompatibilityService` within `use{}` blocks to ensure sockets and buffers are closed immediately, preventing memory leaks.
+*   **BestConfig Caching:** Implemented a maximum cache size (`MAX_CACHE_SIZE = 100`) for the Best Configuration service with an eviction policy to manage memory usage during long sessions.
+*   **GPU Data Caching:** Added static caching for `gpu_cards.json` in `GPUInformation.java`, significantly reducing redundant file I/O when looking up Device and Vendor IDs.
+*   **Thread Safety:** Migrated `GameCompatibilityCache` to use `ConcurrentHashMap` for both response data and timestamps to prevent potential `ConcurrentModificationException` during background syncs.
+*   **Rendering Optimization:** Removed redundant `forceUpdate()` and `rewind()` calls in `Drawable.java` that were causing unnecessary redraw cycles during image operations.
+*   **Dead Code Removal:** Cleaned up `BestConfigService` by removing unreachable JSON put operations that existed after return statements.
+
+### 🖱️ Input & Mouse Improvements
+*   **High-Precision Mouse:** Updated `TouchpadView.java` to process **historical motion events**. The app now collects all intermediate coordinates between touch updates, resulting in much smoother and more accurate mouse movement.
+*   **Source Validation:** Replaced hardcoded magic numbers (e.g., `8194`) with standard `InputDevice.SOURCE_MOUSE` constants for better maintainability.
+*   **Dynamic Cursor Visibility:** 
+    *   The cursor now intelligently shows itself when external mouse or controller-as-mouse movement is detected via `PhysicalControllerHandler`.
+    *   Fixed a bug in `XServerScreen` where the cursor remained hidden when the app window first appeared if "Touchscreen Mode" was active.
+
+### ☁️ Cloud Sync & Save Management
+*   **"Disable Cloud Sync" Feature:** 
+    *   Added a new toggle in the **Container Configuration -> General** tab to disable cloud sync on a per-container basis.
+    *   Updated `MainViewModel` and `PluviaMain` to bypass both pre-launch and post-exit sync operations when this is enabled.
+    *   The "Force Cloud Sync" option in the game menu now dynamically disables itself if the container is set to local-only mode.
+*   **Global Defaults:** Added a global preference in `PrefManager` so users can set the default cloud sync behavior for all newly created containers.
+
+### 🔑 Authentication & URL Handling
+*   **Wine Request Component:** Introduced a new IPC server (`WineRequestComponent`) that allows Wine processes to communicate back to Android.
+*   **Improved Epic OAuth:**
+    *   `BionicProgramLauncherComponent` now defers URL handling to the new component.
+    *   `EpicOAuthActivity` was updated to accept direct authentication URLs, fixing login issues where the OAuth state might get lost or mismatched when opening from a browser.
+*   **External Link Support:** Added logic to handle the `open_web_links_externally` preference through the Wine-to-Android bridge.
+
+### 🛠️ Compatibility & Architecture
+*   **Dynamic Application ID:** Removed hardcoded `app.gamenative` strings from `Container.java`, `DXVKHelper.java`, and `WineUtils.java`. All paths (like `/data/data/.../storage`) now use `BuildConfig.APPLICATION_ID`, ensuring the app works perfectly across different build variants (like **.gold** or experimental forks).
+*   **GOG Depot Fix:** Removed the unnecessary bitness filter in `GOGDownloadManager`. This ensures that depots that aren't explicitly tagged as 64-bit (but are still required) are no longer skipped during the download process.

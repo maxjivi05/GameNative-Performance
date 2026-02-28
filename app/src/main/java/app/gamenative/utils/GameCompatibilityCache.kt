@@ -6,6 +6,7 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import timber.log.Timber
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Persistent cache for game compatibility responses with 7-day TTL.
@@ -14,8 +15,8 @@ import timber.log.Timber
 object GameCompatibilityCache {
     private const val CACHE_TTL_MS = 6 * 60 * 60 * 1000L // 6 hours
 
-    private val inMemoryCache = mutableMapOf<String, GameCompatibilityService.GameCompatibilityResponse>()
-    private val timestamps = mutableMapOf<String, Long>()
+    private val inMemoryCache = ConcurrentHashMap<String, GameCompatibilityService.GameCompatibilityResponse>()
+    private val timestamps = ConcurrentHashMap<String, Long>()
     private var cacheLoaded = false
 
     @Serializable

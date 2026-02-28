@@ -308,17 +308,22 @@ class MainViewModel @Inject constructor(
             }
 
             // Upload local cloud saves after exit; dispatches to GOG, Epic, or Steam.
-            uploadCloudSaves(
-                context = context,
-                appId = appId,
-                gameId = gameId,
-                isOffline = isOffline.value,
-                prefixToPath = { prefix ->
-                    PathType.from(prefix).toAbsPath(context, gameId, SteamService.userSteamId!!.accountID)
-                },
-                setLoadingMessage = { setExitingState(true, "Exiting...\n$it") },
-                setLoadingProgress = { setExitingState(true, _state.value.exitingMessage, it) }
-            )
+            val container = ContainerUtils.getOrCreateContainer(context, appId)
+            if (!container.isLocalSavesOnly) {
+                uploadCloudSaves(
+                    context = context,
+                    appId = appId,
+                    gameId = gameId,
+                    isOffline = isOffline.value,
+                    prefixToPath = { prefix ->
+                        PathType.from(prefix).toAbsPath(context, gameId, SteamService.userSteamId!!.accountID)
+                    },
+                    setLoadingMessage = { setExitingState(true, "Exiting...\n$it") },
+                    setLoadingProgress = { setExitingState(true, _state.value.exitingMessage, it) }
+                )
+            } else {
+                Timber.i("Local saves only enabled, skipping cloud sync for $appId")
+            }
 
             // Final cleanup of all processes in the container
             setExitingState(true, "Exiting...\nCleaning up resources...", -1f)

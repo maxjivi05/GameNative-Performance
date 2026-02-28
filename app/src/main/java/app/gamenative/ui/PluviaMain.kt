@@ -1273,8 +1273,12 @@ fun preLaunchApp(
             return@launch
         }
 
-        if (skipCloudSync) {
-            Timber.tag("preLaunchApp").w("Skipping Steam Cloud sync for $appId by user request")
+        if (skipCloudSync || container.isLocalSavesOnly) {
+            if (container.isLocalSavesOnly) {
+                Timber.tag("preLaunchApp").i("Local saves only enabled, skipping cloud sync for $appId")
+            } else {
+                Timber.tag("preLaunchApp").w("Skipping Steam Cloud sync for $appId by user request")
+            }
             setLoadingDialogVisible(false)
             onSuccess(context, appId)
             return@launch

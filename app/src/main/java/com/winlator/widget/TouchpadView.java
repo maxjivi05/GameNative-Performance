@@ -302,6 +302,19 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
                     else
                         xServer.injectPointerMove((int)transformedPoint[0], (int)transformedPoint[1]);
                 } else {
+                    int historySize = event.getHistorySize();
+                    for (int h = 0; h < historySize; h++) {
+                        for (byte i = 0; i < MAX_FINGERS; i++) {
+                            if (fingers[i] != null) {
+                                int pointerIndex = event.findPointerIndex(i);
+                                if (pointerIndex >= 0) {
+                                    fingers[i].update(event.getHistoricalX(pointerIndex, h), event.getHistoricalY(pointerIndex, h));
+                                    handleFingerMove(fingers[i]);
+                                }
+                            }
+                        }
+                    }
+
                     for (byte i = 0; i < MAX_FINGERS; i++) {
                         if (fingers[i] != null) {
                             int pointerIndex = event.findPointerIndex(i);
@@ -700,7 +713,7 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
             this.xServer.injectPointerMoveDelta(Mathf.roundPoint(dx), Mathf.roundPoint(dy));
             return true;
         }
-        event.setSource(event.getSource() | 8194);
+        event.setSource(event.getSource() | InputDevice.SOURCE_MOUSE);
         return onExternalMouseEvent(event);
     }
 

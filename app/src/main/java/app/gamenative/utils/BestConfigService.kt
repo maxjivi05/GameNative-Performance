@@ -33,6 +33,7 @@ import java.util.concurrent.ConcurrentHashMap
 object BestConfigService {
     private const val API_BASE_URL = "https://gamenative-best-config-worker.gamenative.workers.dev/api/best-config"
     private const val TIMEOUT_SECONDS = 10L
+    private const val MAX_CACHE_SIZE = 100
 
     private val httpClient = OkHttpClient.Builder()
         .connectTimeout(10, TimeUnit.SECONDS)
@@ -106,34 +107,40 @@ object BestConfigService {
                     .header("Content-Type", "application/json")
                     .build()
 
-                val response = httpClient.newCall(request).execute()
+                httpClient.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) {
+                        Timber.tag("BestConfigService")
+                            .w("API request failed - HTTP ${response.code}")
+                        return@withTimeout null
+                    }
 
-                if (!response.isSuccessful) {
+                    val responseBody = response.body?.string() ?: return@withTimeout null
+                    val jsonResponse = JSONObject(responseBody)
+
+                    val bestConfigJson = jsonResponse.getJSONObject("bestConfig")
+                    val bestConfig = Json.parseToJsonElement(bestConfigJson.toString()).jsonObject
+
+                    val bestConfigResponse = BestConfigResponse(
+                        bestConfig = bestConfig,
+                        matchType = jsonResponse.getString("matchType"),
+                        matchedGpu = jsonResponse.getString("matchedGpu"),
+                        matchedDeviceId = jsonResponse.getInt("matchedDeviceId")
+                    )
+
+                    // Cache eviction if full
+                    if (cache.size >= MAX_CACHE_SIZE) {
+                        val firstKey = cache.keys().nextElement()
+                        if (firstKey != null) cache.remove(firstKey)
+                    }
+
+                    // Cache the response
+                    cache[cacheKey] = bestConfigResponse
+
                     Timber.tag("BestConfigService")
-                        .w("API request failed - HTTP ${response.code}")
-                    return@withTimeout null
+                        .d("Fetched best config for $gameName on $gpuName (matchType: ${bestConfigResponse.matchType})")
+
+                    bestConfigResponse
                 }
-
-                val responseBody = response.body?.string() ?: return@withTimeout null
-                val jsonResponse = JSONObject(responseBody)
-
-                val bestConfigJson = jsonResponse.getJSONObject("bestConfig")
-                val bestConfig = Json.parseToJsonElement(bestConfigJson.toString()).jsonObject
-
-                val bestConfigResponse = BestConfigResponse(
-                    bestConfig = bestConfig,
-                    matchType = jsonResponse.getString("matchType"),
-                    matchedGpu = jsonResponse.getString("matchedGpu"),
-                    matchedDeviceId = jsonResponse.getInt("matchedDeviceId")
-                )
-
-                // Cache the response
-                cache[cacheKey] = bestConfigResponse
-
-                Timber.tag("BestConfigService")
-                    .d("Fetched best config for $gameName on $gpuName (matchType: ${bestConfigResponse.matchType})")
-
-                bestConfigResponse
             }
         } catch (e: java.util.concurrent.TimeoutException) {
             Timber.tag("BestConfigService")
@@ -311,9 +318,8 @@ object BestConfigService {
             val kvs = KeyValueSet(dxwrapperConfig)
             val version = kvs.get("version")
             if (version.isNotEmpty() && !ManifestComponentHelper.versionExists(version, availableDxvk)) {
-                Timber.tag("BestConfigService").w("DXVK version $version not found, updating to PrefManager default")
+                Timber.tag("BestConfigService").w("DXVK version $version not found")
                 return "DXVK $version"
-                filteredJson.put("dxwrapperConfig", PrefManager.dxWrapperConfig)
             }
         }
 
@@ -322,9 +328,8 @@ object BestConfigService {
             val kvs = KeyValueSet(dxwrapperConfig)
             val version = kvs.get("vkd3dVersion")
             if (version.isNotEmpty() && !ManifestComponentHelper.versionExists(version, availableVkd3d)) {
-                Timber.tag("BestConfigService").w("VKD3D version $version not found, updating to PrefManager default")
+                Timber.tag("BestConfigService").w("VKD3D version $version not found")
                 return "VKD3D $version"
-                filteredJson.put("dxwrapperConfig", PrefManager.dxWrapperConfig)
             }
         }
 
@@ -339,25 +344,23 @@ object BestConfigService {
                 }
             }
             if (!ManifestComponentHelper.versionExists(box64Version, box64VersionsToCheck)) {
-                Timber.tag("BestConfigService").w("Box64 version $box64Version not found in $containerVariant variant entries, updating to PrefManager default")
+                Timber.tag("BestConfigService").w("Box64 version $box64Version not found in $containerVariant variant entries")
                 return "Box64 $box64Version"
-                filteredJson.put("box64Version", PrefManager.box64Version)
             }
         }
 
         // Validate WoWBox64 version (if wineVersion contains arm64ec)
         if (wineVersion.contains("arm64ec", ignoreCase = true)) {
             if (box64Version.isNotEmpty() && !ManifestComponentHelper.versionExists(box64Version, availableWowBox64) && emulator != "FEXCore") {
-                Timber.tag("BestConfigService").w("WoWBox64 version $box64Version not found, updating to PrefManager default")
+                Timber.tag("BestConfigService").w("WoWBox64 version $box64Version not found")
                 return "WoWBox64 $box64Version"
             }
         }
 
         // Validate FEXCore version
         if (fexcoreVersion.isNotEmpty() && !ManifestComponentHelper.versionExists(fexcoreVersion, availableFexcore)) {
-            Timber.tag("BestConfigService").w("FEXCore version $fexcoreVersion not found, updating to PrefManager default")
+            Timber.tag("BestConfigService").w("FEXCore version $fexcoreVersion not found")
             return "FEXCore $fexcoreVersion"
-            filteredJson.put("fexcoreVersion", PrefManager.fexcoreVersion)
         }
 
         // Validate Wine/Proton version (check separately based on container variant)
@@ -371,9 +374,8 @@ object BestConfigService {
                 }
             }
             if (!ManifestComponentHelper.versionExists(wineVersion, wineVersionsToCheck)) {
-                Timber.tag("BestConfigService").w("Wine version $wineVersion not found in $containerVariant variant entries, updating to PrefManager default")
+                Timber.tag("BestConfigService").w("Wine version $wineVersion not found in $containerVariant variant entries")
                 return "Wine $wineVersion"
-                filteredJson.put("wineVersion", PrefManager.wineVersion)
             }
         }
 
@@ -388,7 +390,7 @@ object BestConfigService {
             val driverVersion = configMap["version"] ?: ""
             if (driverVersion.isNotEmpty() && !ManifestComponentHelper.versionExists(driverVersion, availableDrivers)) {
                 Timber.tag("BestConfigService")
-                    .w("Graphics driver version $driverVersion not found for $containerVariant variant, updating to PrefManager default")
+                    .w("Graphics driver version $driverVersion not found for $containerVariant variant")
                 return "Graphics driver $driverVersion"
             }
         }
@@ -397,9 +399,8 @@ object BestConfigService {
         if (box64Preset.isNotEmpty()) {
             val preset = Box86_64PresetManager.getPreset("box64", context, box64Preset)
             if (preset == null) {
-                Timber.tag("BestConfigService").w("Box64 preset $box64Preset not found, updating to PrefManager default")
+                Timber.tag("BestConfigService").w("Box64 preset $box64Preset not found")
                 return "Box64 preset $box64Preset"
-                filteredJson.put("box64Preset", PrefManager.box64Preset)
             }
         }
 
@@ -408,9 +409,8 @@ object BestConfigService {
         if (fexcorePreset.isNotEmpty()) {
             val preset = FEXCorePresetManager.getPreset(context, fexcorePreset)
             if (preset == null) {
-                Timber.tag("BestConfigService").w("FEXCore preset $fexcorePreset not found, updating to PrefManager default")
+                Timber.tag("BestConfigService").w("FEXCore preset $fexcorePreset not found")
                 return "FEXCore preset $fexcorePreset"
-                filteredJson.put("fexcorePreset", PrefManager.fexcorePreset)
             }
         }
 

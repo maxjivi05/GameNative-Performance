@@ -794,7 +794,7 @@ fun XServerScreen(
                         }
                         override fun onUpdateWindowContent(window: Window) {
                             if (!xServerState.value.winStarted && window.isApplicationWindow()) {
-                                if (!container.isDisableMouseInput && !container.isTouchscreenMode) renderer?.setCursorVisible(true)
+                                if (!container.isDisableMouseInput) renderer?.setCursorVisible(true)
                                 xServerState.value.winStarted = true
                             }
                             if (window.id == frameRatingWindowId) {
@@ -2016,6 +2016,7 @@ private fun setupXEnvironment(
     )
     environment.addComponent(XServerComponent(xServer, UnixSocketConfig.createSocket(rootPath, UnixSocketConfig.XSERVER_PATH)))
     environment.addComponent(NetworkInfoUpdateComponent())
+    environment.addComponent(com.winlator.xenvironment.components.WineRequestComponent())
 
     if (!container.isLaunchRealSteam) {
         environment.addComponent(SteamClientComponent())
