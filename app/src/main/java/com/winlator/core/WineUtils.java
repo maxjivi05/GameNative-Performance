@@ -156,8 +156,8 @@ public abstract class WineUtils {
         final String[] direct3dLibs = {"d3d8", "d3d9", "d3d10", "d3d10_1", "d3d10core", "d3d11", "d3d12", "d3d12core", "ddraw", "dxgi", "wined3d"};
         final String[] xinputLibs = {"dinput", "dinput8", "xinput1_1", "xinput1_2", "xinput1_3", "xinput1_4", "xinput9_1_0", "xinputuap"};
         final String[] opengLibs = {"opengl32"};
-        // Globally disabled DLLs - windows.gaming.input causes crashes in some games
-        final String[] disabledDlls = {"windows.gaming.input"};
+        // Globally disabled DLLs - windows.gaming.input and icu cause crashes in some games
+        final String[] disabledDlls = {"windows.gaming.input", "icu"};
         final String dllOverridesKey = "Software\\Wine\\DllOverrides";
 
         boolean isMainWineVersion = WineInfo.isMainWineVersion(wineInfo.identifier());
@@ -245,7 +245,7 @@ public abstract class WineUtils {
      */
     public static void ensureDisabledDllOverrides(Container container) {
         final String dllOverridesKey = "Software\\Wine\\DllOverrides";
-        final String[] disabledDlls = {"windows.gaming.input"};
+        final String[] disabledDlls = {"windows.gaming.input", "icu"};
         File userRegFile = new File(container.getRootDir(), ".wine/user.reg");
         if (!userRegFile.exists()) return;
 
