@@ -60,6 +60,8 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
 import app.gamenative.data.GameSource
+import app.gamenative.gamefixes.GameFixesRegistry
+import app.gamenative.externaldisplay.IMEInputReceiver
 import app.gamenative.data.LaunchInfo
 import app.gamenative.data.LibraryItem
 import app.gamenative.data.SteamApp
@@ -310,6 +312,8 @@ fun XServerScreen(
     }
 
     var swapInputOverlay: SwapInputOverlayView? by remember { mutableStateOf(null) }
+    var imeInputReceiver: IMEInputReceiver? by remember { mutableStateOf(null) }
+    var keyboardRequestedFromOverlay by remember { mutableStateOf(false) }
 
     var win32AppWorkarounds: Win32AppWorkarounds? by remember { mutableStateOf(null) }
     var physicalControllerHandler: PhysicalControllerHandler? by remember { mutableStateOf(null) }
@@ -429,7 +433,8 @@ fun XServerScreen(
         }
 
         Timber.i("BackHandler")
-        NavigationDialog(
+        keyboardRequestedFromOverlay = false
+        val navDialog = NavigationDialog(
             context,
             areControlsVisible.value,
             isGamePaused,
@@ -447,6 +452,7 @@ fun XServerScreen(
                         }
 
                         NavigationDialog.ACTION_KEYBOARD -> {
+                            keyboardRequestedFromOverlay = true
                             val anchor = view // use the same composable root view
                             val c = if (Build.VERSION.SDK_INT >= 30)
                                 anchor.windowInsetsController else null
@@ -455,7 +461,14 @@ fun XServerScreen(
                                 if (anchor.windowToken == null) return@post
                                 val show = {
                                     PostHog.capture(event = "onscreen_keyboard_enabled")
-                                    imm.toggleSoftInput(InputMethodManager.SHOW_FORCED, 0)
+                                    val isExternalDisplaySession =
+                                        (anchor.display?.displayId ?: Display.DEFAULT_DISPLAY) != Display.DEFAULT_DISPLAY
+
+                                    if (isExternalDisplaySession) {
+                                        imeInputReceiver?.showKeyboard() ?: imm.toggleSoftInput(InputMethodManager.SHOW_FORCED, 0)
+                                    } else {
+                                        imm.toggleSoftInput(InputMethodManager.SHOW_FORCED, 0)
+                                    }
                                 }
                                 if (Build.VERSION.SDK_INT > 29 && c != null) {
                                     anchor.postDelayed({ show() }, 500)  // Pixel/Android-12+ quirk
@@ -619,18 +632,28 @@ fun XServerScreen(
                             } else {
                                 PostHog.capture(event = "game_closed")
                             }
+                            imeInputReceiver?.hideKeyboard()
                             exit(xServerView!!.getxServer().winHandler, PluviaApp.xEnvironment, frameRating, currentAppInfo, container, onExit, navigateBack)
                         }
                     }
                 }
             }
-        ).show()
+        )
+        navDialog.setOnDismissListener {
+            if (!keyboardRequestedFromOverlay) {
+                imeInputReceiver?.hideKeyboard()
+            }
+            keyboardRequestedFromOverlay = false
+        }
+        navDialog.show()
     }
 
     DisposableEffect(container) {
         registerBackAction(gameBack)
         onDispose {
             Timber.d("XServerScreen leaving, clearing back action")
+            imeInputReceiver?.hideKeyboard()
+            imeInputReceiver = null
             registerBackAction { }
         }   // reset when screen leaves
     }
@@ -957,6 +980,13 @@ fun XServerScreen(
                             )
                             changeWineAudioDriver(xServerState.value.audioDriver, container, ImageFs.find(context))
                             setImagefsContainerVariant(context, container)
+
+                            try {
+                                GameFixesRegistry.applyFor(context, appId)
+                            } catch (e: Exception) {
+                                Timber.tag("GameFixes").w(e, "Game fixes failed during launch")
+                            }
+
                             PluviaApp.xEnvironment = setupXEnvironment(
                                 context,
                                 appId,
@@ -1063,7 +1093,12 @@ fun XServerScreen(
 
             xServerView.getxServer().winHandler.setInputControlsView(PluviaApp.inputControlsView)
 
-
+            val imeReceiver = IMEInputReceiver(context, context, xServerView.getxServer()).apply {
+                layoutParams = FrameLayout.LayoutParams(1, 1)
+                isClickable = false
+            }
+            frameLayout.addView(imeReceiver)
+            imeInputReceiver = imeReceiver
 
             // Add InputControlsView on top of XServerView
             frameLayout.addView(icView)

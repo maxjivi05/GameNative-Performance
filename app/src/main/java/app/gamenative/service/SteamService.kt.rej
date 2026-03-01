@@ -1,0 +1,20 @@
+--- app/src/main/java/app/gamenative/service/SteamService.kt
++++ app/src/main/java/app/gamenative/service/SteamService.kt
+@@ -1009,7 +1010,7 @@ class SteamService : Service(), IChallengeUrlChanged {
+ 
+         fun downloadApp(appId: Int, dlcAppIds: List<Int>, isUpdateOrVerify: Boolean): DownloadInfo? {
+             // Enforce Wi-Fi-only downloads
+-            if (PrefManager.downloadOnWifiOnly && instance?.isWifiConnected == false) {
++            if (PrefManager.downloadOnWifiOnly && !isWifiConnected) {
+                 instance?.notificationHelper?.notify("Not connected to Wi‑Fi/LAN")
+                 return null
+             }
+@@ -1361,7 +1362,7 @@ class SteamService : Service(), IChallengeUrlChanged {
+             val appDirPath = getAppDirPath(appId)
+ 
+             // Enforce Wi-Fi-only downloads
+-            if (PrefManager.downloadOnWifiOnly && instance?.isWifiConnected == false) {
++            if (PrefManager.downloadOnWifiOnly && !isWifiConnected) {
+                 instance?.notificationHelper?.notify("Not connected to Wi‑Fi/LAN")
+                 return null
+             }

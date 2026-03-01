@@ -1,0 +1,13 @@
+--- app/src/main/java/app/gamenative/ui/screen/library/LibraryAppScreen.kt
++++ app/src/main/java/app/gamenative/ui/screen/library/LibraryAppScreen.kt
+@@ -112,9 +112,7 @@ import kotlinx.coroutines.launch
+ import timber.log.Timber
+ import app.gamenative.service.SteamService.Companion.getAppDirPath
+ import com.posthog.PostHog
+-import android.content.Context
+-import android.net.ConnectivityManager
+-import android.net.NetworkCapabilities
++import app.gamenative.MainActivity
+ import android.os.Environment
+ import androidx.compose.foundation.border
+ import androidx.compose.material.icons.filled.ContentCopy

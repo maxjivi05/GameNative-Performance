@@ -281,9 +281,15 @@ internal fun AppScreenContent(
     onBack: () -> Unit = {},
     vararg optionsMenu: AppMenuOption,
 ) {
-    // reactive — recomposes when network state changes
-    val hasInternet by MainActivity.hasInternet.collectAsState()
-    val wifiConnected by MainActivity.isWifiConnected.collectAsState()
+    // Determine Wi-Fi connectivity for 'Wi-Fi only' preference
+    val context = LocalContext.current
+    val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+    val capabilities = connectivityManager.getNetworkCapabilities(connectivityManager.activeNetwork)
+    val hasInternet = capabilities?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
+    val wifiConnected = capabilities?.run {
+        hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
+        hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)
+    } == true
     val wifiAllowed = !PrefManager.downloadOnWifiOnly || wifiConnected
     val scrollState = rememberScrollState()
 

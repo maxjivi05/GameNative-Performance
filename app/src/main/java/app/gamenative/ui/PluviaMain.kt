@@ -487,6 +487,11 @@ fun PluviaMain(
     // Timeout if stuck in connecting state for 10 seconds so that its not in loading state forever
     LaunchedEffect(isConnecting) {
         if (isConnecting) {
+            if (!app.gamenative.NetworkMonitor.hasInternet.value) {
+                Timber.d("No internet, skipping connection attempt")
+                isConnecting = false
+                return@LaunchedEffect
+            }
             Timber.d("Started connecting, will timeout in 10s")
             delay(10000)
             Timber.d("Timeout reached, isSteamConnected=${state.isSteamConnected}")
@@ -979,10 +984,16 @@ fun PluviaMain(
                         CoroutineScope(Dispatchers.Main).launch {
                             val currentRoute = navController.currentBackStackEntry
                                 ?.destination
-                                ?.route // ← this is the screen’s route string
+                                ?.route
 
                             if (currentRoute == PluviaScreen.XServer.route) {
-                                navController.popBackStack()
+                                if (MainActivity.wasLaunchedViaExternalIntent) {
+                                    Timber.d("[IntentLaunch]: Finishing activity to return to external launcher")
+                                    MainActivity.wasLaunchedViaExternalIntent = false
+                                    (context as? android.app.Activity)?.finish()
+                                } else {
+                                    navController.popBackStack()
+                                }
                             }
                         }
                     },
