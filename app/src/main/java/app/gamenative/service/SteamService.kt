@@ -12,6 +12,7 @@ import android.widget.Toast
 import androidx.room.withTransaction
 import app.gamenative.BuildConfig
 import app.gamenative.MainActivity
+import app.gamenative.NetworkMonitor
 import app.gamenative.R
 import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
@@ -295,7 +296,7 @@ class SteamService : Service(), IChallengeUrlChanged {
 
         internal var instance: SteamService? = null
 
-        val isWifiConnected: Boolean get() = MainActivity.isWifiConnected.value
+        val isWifiConnected: Boolean get() = NetworkMonitor.isWifiConnected.value
 
         private val downloadJobs = ConcurrentHashMap<Int, DownloadInfo>()
 
@@ -1311,7 +1312,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             customInstallPath: String? = null,
         ): DownloadInfo? {
             // Enforce Wi-Fi-only downloads
-            if (PrefManager.downloadOnWifiOnly && instance?.isWifiConnected == false) {
+            if (PrefManager.downloadOnWifiOnly && !isWifiConnected) {
                 Timber.w("Download aborted: Wi-Fi only enabled but not connected to Wi-Fi")
                 instance?.notificationHelper?.notify("Not connected to Wi‑Fi/LAN")
                 return null
@@ -1706,7 +1707,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             }
 
             // Enforce Wi-Fi-only downloads
-            if (PrefManager.downloadOnWifiOnly && instance?.isWifiConnected == false) {
+            if (PrefManager.downloadOnWifiOnly && !isWifiConnected) {
                 Timber.w("Download aborted: Wi-Fi only enabled but not connected to Wi-Fi")
                 instance?.notificationHelper?.notify("Not connected to Wi‑Fi/LAN")
                 return null
@@ -2031,7 +2032,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                                     waitAttempts++
                                     
                                     // If waiting too long, check network
-                                    if (waitAttempts % 5 == 0 && instance?.isWifiConnected == false && PrefManager.downloadOnWifiOnly) {
+                                    if (waitAttempts % 5 == 0 && !isWifiConnected && PrefManager.downloadOnWifiOnly) {
                                          di.updateStatusMessage("Waiting for Wi-Fi...")
                                     }
                                 }

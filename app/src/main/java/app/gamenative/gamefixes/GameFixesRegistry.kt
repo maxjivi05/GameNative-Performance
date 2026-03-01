@@ -41,7 +41,7 @@ object GameFixesRegistry {
             // EPIC auto-generates the id. so we need the catalog id instead.
             GameSource.EPIC -> {
                 val game = EpicService.getEpicGameOf(gameId.toIntOrNull() ?: return) ?: return
-                game.catalogId
+                game.catalogId.toString()
             }
             else -> gameId
         }
@@ -63,8 +63,8 @@ object GameFixesRegistry {
                 path to "$GAME_DRIVE_LETTER:\\"
             }
             GameSource.STEAM -> {
-                val appInfo = SteamService.getAppInfoOf(gameId.toLong()) ?: return null
-                val path = SteamService.getAppInstallPath(context, appInfo)
+                val appInfo = SteamService.getAppInfoOf(gameId.toInt()) ?: return null
+                val path = SteamService.getAppDirPath(gameId.toInt())
                 if (path.isEmpty() || !File(path).exists()) return null
                 path to "$GAME_DRIVE_LETTER:\\"
             }
