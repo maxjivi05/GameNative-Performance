@@ -2036,7 +2036,7 @@ private fun setupXEnvironment(
         options.reflectorMode = audioDriver == "alsa-reflector"
         environment.addComponent(ALSAServerComponent(UnixSocketConfig.createSocket(imageFs.getRootDir().getPath(), UnixSocketConfig.ALSA_SERVER_PATH), options))
     } else if (audioDriver == "pulseaudio") {
-        envVars.put("PULSE_SERVER", imageFs.getRootDir().getPath() + UnixSocketConfig.PULSE_SERVER_PATH)
+        envVars.put("PULSE_SERVER", "unix:" + imageFs.getRootDir().getPath() + UnixSocketConfig.PULSE_SERVER_PATH)
         environment.addComponent(PulseAudioComponent(UnixSocketConfig.createSocket(imageFs.getRootDir().getPath(), UnixSocketConfig.PULSE_SERVER_PATH)))
     }
 
@@ -3238,7 +3238,7 @@ private fun refreshComponentsFiles(context: Context) {
     val pulseDir = File(context.filesDir, "pulseaudio")
     FileUtils.delete(pulseDir)
     pulseDir.mkdirs()
-    TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context.assets, "pulseaudio-gamenative.tzst", pulseDir)
+    TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context.assets, "pulseaudio.tzst", pulseDir)
 }
 private fun extractDXWrapperFiles(
     context: Context,

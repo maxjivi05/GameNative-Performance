@@ -342,9 +342,10 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
 
         if (!box64LdPreload.isEmpty()) {
             envVars.put("BOX64_LD_PRELOAD", box64LdPreload);
-            String currentBox64LibPath = envVars.get("BOX64_LD_LIBRARY_PATH");
-            envVars.put("BOX64_LD_LIBRARY_PATH", nativeLibDir + (currentBox64LibPath != null && !currentBox64LibPath.isEmpty() ? ":" + currentBox64LibPath : ""));
         }
+
+        String currentBox64LibPath = envVars.get("BOX64_LD_LIBRARY_PATH");
+        envVars.put("BOX64_LD_LIBRARY_PATH", nativeLibDir + (currentBox64LibPath != null && !currentBox64LibPath.isEmpty() ? ":" + currentBox64LibPath : ""));
 
         envVars.put("EVSHIM_SHM_NAME", "controller-shm0");
 

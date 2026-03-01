@@ -236,6 +236,7 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
 
         ImageFs imageFs = ImageFs.find(context);
         File rootDir = imageFs.getRootDir();
+        String nativeLibDir = context.getApplicationInfo().nativeLibraryDir;
 
         PrefManager.init(context);
         boolean enableBox86_64Logs = PrefManager.getBoolean("enable_box86_64_logs", true);
@@ -257,13 +258,13 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
         envVars.put("LD_LIBRARY_PATH", imageFs.getRootDir().getPath() + "/usr/lib");
         
         if (wineInfo != null && wineInfo.isArm64EC()) {
-            envVars.put("BOX64_LD_LIBRARY_PATH", imageFs.getRootDir().getPath() + "/usr/lib/aarch64-linux-gnu");
+            envVars.put("BOX64_LD_LIBRARY_PATH", nativeLibDir + ":" + imageFs.getRootDir().getPath() + "/usr/lib/aarch64-linux-gnu");
             envVars.put("VK_LAYER_PATH", imageFs.getRootDir().getPath() + "/usr/share/vulkan/implicit_layer.d" + ":" + imageFs.getRootDir().getPath() + "/usr/share/vulkan/explicit_layer.d");
             envVars.put("XDG_DATA_DIRS", imageFs.getRootDir().getPath() + "/usr/share");
             envVars.put("EVSHIM_SHM_ID", "1");
             envVars.put("EVSHIM_SHM_NAME", "controller-shm0");
         } else {
-            envVars.put("BOX64_LD_LIBRARY_PATH", imageFs.getRootDir().getPath() + "/usr/lib/x86_64-linux-gnu");
+            envVars.put("BOX64_LD_LIBRARY_PATH", nativeLibDir + ":" + imageFs.getRootDir().getPath() + "/usr/lib/x86_64-linux-gnu");
         }
         
         envVars.put("ANDROID_SYSVSHM_SERVER", imageFs.getRootDir().getPath() + UnixSocketConfig.SYSVSHM_SERVER_PATH);
