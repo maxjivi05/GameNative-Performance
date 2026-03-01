@@ -1083,6 +1083,22 @@ object ContainerUtils {
      * - 19283103 -> 19283103 (legacy GOG format)
      */
     fun extractGameIdFromContainerId(containerId: String): Int {
+        val idString = extractGameIdStringFromContainerId(containerId)
+        return try {
+            idString.toInt()
+        } catch (e: NumberFormatException) {
+            // Amazon, GOG, and EPIC IDs are strings (UUIDs or hashes) — not parseable as Int.
+            // For these, we return a stable Int hashCode of the full ID part for identifying the container index internally.
+            if (containerId.startsWith("AMAZON_") || containerId.startsWith("GOG_") || containerId.startsWith("EPIC_")) {
+                Timber.d("extractGameIdFromContainerId: Non-numeric ID '$idString' → hashCode=${idString.hashCode()}")
+                idString.hashCode()
+            } else {
+                throw IllegalArgumentException("Could not extract game ID from container ID: $containerId", e)
+            }
+        }
+    }
+
+    fun extractGameIdStringFromContainerId(containerId: String): String {
         // Remove duplicate suffix like (1), (2) if present
         val idWithoutSuffix = if (containerId.contains("(")) {
             containerId.substringBefore("(")
@@ -1090,24 +1106,9 @@ object ContainerUtils {
             containerId
         }
 
-        // Split by underscores and find the last numeric part
+        // Split by underscores and find the last part (the ID)
         val parts = idWithoutSuffix.split("_")
-        // The last part should be the numeric ID
-        val lastPart = parts.lastOrNull() ?: throw IllegalArgumentException("Invalid container ID format: $containerId")
-
-        return try {
-            lastPart.toInt()
-        } catch (e: NumberFormatException) {
-            // Amazon IDs are UUID strings (e.g. "amzn1.adg.product.xxx") — not parseable as Int.
-            // Use hashCode() of the full ID part (after prefix) for a stable Int representation.
-            if (containerId.startsWith("AMAZON_")) {
-                val idPart = idWithoutSuffix.removePrefix("AMAZON_")
-                Timber.d("extractGameIdFromContainerId: Amazon ID '$idPart' → hashCode=${idPart.hashCode()}")
-                idPart.hashCode()
-            } else {
-                throw IllegalArgumentException("Could not extract game ID from container ID: $containerId", e)
-            }
-        }
+        return parts.lastOrNull() ?: throw IllegalArgumentException("Invalid container ID format: $containerId")
     }
 
     /**

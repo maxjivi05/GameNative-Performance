@@ -36,12 +36,12 @@ object GameFixesRegistry {
 
     fun applyFor(context: Context, appId: String) {
         val source = ContainerUtils.extractGameSourceFromContainerId(appId)
-        val gameId = ContainerUtils.extractGameIdFromContainerId(appId) ?: return
+        val gameId = ContainerUtils.extractGameIdStringFromContainerId(appId)
         val catalogId = when (source) {
             // EPIC auto-generates the id. so we need the catalog id instead.
             GameSource.EPIC -> {
                 val game = EpicService.getEpicGameOf(gameId.toIntOrNull() ?: return) ?: return
-                game.catalogId.toString()
+                game.catalogId
             }
             else -> gameId
         }
