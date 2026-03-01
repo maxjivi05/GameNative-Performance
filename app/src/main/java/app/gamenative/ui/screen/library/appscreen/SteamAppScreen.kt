@@ -844,6 +844,7 @@ class SteamAppScreen : BaseAppScreen() {
         }
 
         val scope = rememberCoroutineScope()
+        val isLocalSavesOnly = ContainerUtils.isLocalSavesOnly(context, appId)
 
         // Steam-specific options (only when installed)
         return listOf(
@@ -907,7 +908,6 @@ class SteamAppScreen : BaseAppScreen() {
             ),
             // Uninstall option removed from menu - now handled by delete button next to play button
             // The button uses onDeleteDownloadClick which shows the uninstall dialog
-            val isLocalSavesOnly = ContainerUtils.isLocalSavesOnly(context, appId)
             AppMenuOption(
                 AppOptionMenuType.ForceCloudSync,
                 enabled = !isLocalSavesOnly,
@@ -934,7 +934,7 @@ class SteamAppScreen : BaseAppScreen() {
                         containerManager.activateContainer(container)
 
                         val prefixToPath: (String) -> String = { prefix ->
-                            PathType.from(prefix).toAbsPath(context, gameId, steamId.accountID)
+                            PathType.from(prefix).toAbsPath(context, gameId, steamId!!.accountID)
                         }
                         val syncResult = SteamService.forceSyncUserFiles(
                             appId = gameId,
