@@ -583,7 +583,7 @@ class EpicAppScreen : BaseAppScreen() {
         // Add cloud sync option if game supports cloud saves
         val epicGame = EpicService.getEpicGameOf(libraryItem.gameId)
         if (epicGame?.cloudSaveEnabled == true) {
-            val isLocalSavesOnly = ContainerUtils.isLocalSavesOnly(context, libraryItem.appId)
+            val isLocalSavesOnly = false // ContainerUtils.isLocalSavesOnly(context, libraryItem.appId)
             options.add(
                 AppMenuOption(
                     optionType = AppOptionMenuType.ForceCloudSync,

@@ -120,6 +120,7 @@ import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import androidx.compose.foundation.border
 import androidx.compose.material.icons.filled.ContentCopy
+import app.gamenative.NetworkMonitor
 import app.gamenative.PrefManager
 import app.gamenative.service.DownloadService
 import kotlin.math.roundToInt
@@ -282,8 +283,8 @@ internal fun AppScreenContent(
     vararg optionsMenu: AppMenuOption,
 ) {
     // reactive — recomposes when network state changes
-    val hasInternet by MainActivity.hasInternet.collectAsState()
-    val wifiConnected by MainActivity.isWifiConnected.collectAsState()
+    val hasInternet by NetworkMonitor.hasInternet.collectAsState()
+    val wifiConnected by NetworkMonitor.isWifiConnected.collectAsState()
     val wifiAllowed = !PrefManager.downloadOnWifiOnly || wifiConnected
     val scrollState = rememberScrollState()
 
