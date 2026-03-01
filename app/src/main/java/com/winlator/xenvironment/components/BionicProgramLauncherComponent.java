@@ -348,6 +348,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         envVars.put("BOX64_LD_LIBRARY_PATH", nativeLibDir + (currentBox64LibPath != null && !currentBox64LibPath.isEmpty() ? ":" + currentBox64LibPath : ""));
 
         envVars.put("EVSHIM_SHM_NAME", "controller-shm0");
+        envVars.put("EVSHIM_DATA_DIR", "/data/data/" + app.gamenative.BuildConfig.APPLICATION_ID);
 
         // Check for specific shared memory libraries
 //        if ((new File(imageFs.getLibDir(), "libandroid-sysvshm.so")).exists()){

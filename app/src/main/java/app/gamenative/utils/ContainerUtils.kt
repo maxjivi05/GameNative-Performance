@@ -1012,13 +1012,17 @@ object ContainerUtils {
         } else {
             Timber.w("Could not find gameFolderPath for game $appId, skipping drive mapping update")
         }
+
+        // Apply registry-based game fixes if available
+        app.gamenative.gamefixes.GameFixesRegistry.applyFor(context, appId)
+
         return container
     }
 
     fun getOrCreateContainerWithOverride(context: Context, appId: String): Container {
         val containerManager = ContainerManager(context)
 
-        return if (containerManager.hasContainer(appId)) {
+        val container = if (containerManager.hasContainer(appId)) {
             val container = containerManager.getContainerById(appId)
 
             // Apply temporary override if present (without saving to disk)
@@ -1051,6 +1055,11 @@ object ContainerUtils {
 
             createNewContainer(context, appId, appId, containerManager, overrideConfig)
         }
+
+        // Apply registry-based game fixes if available
+        app.gamenative.gamefixes.GameFixesRegistry.applyFor(context, appId)
+
+        return container
     }
 
     /**

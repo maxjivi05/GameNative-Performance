@@ -252,7 +252,8 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
         envVars.put("PATH", imageFs.getWinePath() + "/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin");
         envVars.put("LD_LIBRARY_PATH", "/usr/lib/aarch64-linux-gnu:/usr/lib/arm-linux-gnueabihf");
         envVars.put("ANDROID_SYSVSHM_SERVER", UnixSocketConfig.SYSVSHM_SERVER_PATH);
-
+        envVars.put("ALSA_CONFIG_PATH", "/usr/share/alsa/alsa.conf:/usr/etc/alsa/conf.d/android_aserver.conf");
+        envVars.put("ALSA_PLUGIN_DIR", "/usr/lib/alsa-lib");
         if ((new File(imageFs.getLib64Dir(), "libandroid-sysvshm.so")).exists() ||
                 (new File(imageFs.getLib32Dir(), "libandroid-sysvshm.so")).exists())
             envVars.put("LD_PRELOAD", "libandroid-sysvshm.so");

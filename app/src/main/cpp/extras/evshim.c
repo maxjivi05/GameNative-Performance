@@ -165,14 +165,22 @@ static void initialize_all_pads(void)
     int players = getenv("EVSHIM_MAX_PLAYERS") ? atoi(getenv("EVSHIM_MAX_PLAYERS")) : 1;
     if (players > MAX_GAMEPADS) players = MAX_GAMEPADS;
 
+    const char *data_dir = getenv("EVSHIM_DATA_DIR");
 
     /* per-player setup */
     for (int i = 0; i < players; ++i) {
 
         char path[256];
-        snprintf(path, sizeof path,
-                 "/tmp/gamepad%s.mem",
-                 (i == 0) ? "" : (char[2]){'0' + i, '\0'});
+        if (data_dir) {
+            snprintf(path, sizeof path,
+                     "%s/files/imagefs/tmp/gamepad%s.mem",
+                     data_dir,
+                     (i == 0) ? "" : (char[2]){'0' + i, '\0'});
+        } else {
+            snprintf(path, sizeof path,
+                     "/tmp/gamepad%s.mem",
+                     (i == 0) ? "" : (char[2]){'0' + i, '\0'});
+        }
 
         /* open once – store for reader + writer */
         read_fd  [i] = open(path, O_RDONLY);

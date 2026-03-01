@@ -955,7 +955,12 @@ fun XServerScreen(
                                 firstTimeBoot,
                                 vkbasaltConfig,
                             )
-                            changeWineAudioDriver(xServerState.value.audioDriver, container, ImageFs.find(context))
+                            changeWineAudioDriver(
+                                xServerState.value.audioDriver,
+                                container,
+                                ImageFs.find(context),
+                                wineVersionChanged,
+                            )
                             setImagefsContainerVariant(context, container)
                             PluviaApp.xEnvironment = setupXEnvironment(
                                 context,
@@ -3903,12 +3908,12 @@ private fun readLibraryNameFromExtractedDir(destinationDir: File): String? {
         null
     }
 }
-private fun changeWineAudioDriver(audioDriver: String, container: Container, imageFs: ImageFs) {
-    if (audioDriver != container.getExtra("audioDriver")) {
+private fun changeWineAudioDriver(audioDriver: String, container: Container, imageFs: ImageFs, force: Boolean = false) {
+    if (force || audioDriver != container.getExtra("audioDriver")) {
         val rootDir = imageFs.rootDir
         val userRegFile = File(rootDir, ImageFs.WINEPREFIX + "/user.reg")
         WineRegistryEditor(userRegFile).use { registryEditor ->
-            if (audioDriver == "alsa") {
+            if (audioDriver == "alsa" || audioDriver == "alsa-reflector") {
                 registryEditor.setStringValue("Software\\Wine\\Drivers", "Audio", "alsa")
             } else if (audioDriver == "pulseaudio") {
                 registryEditor.setStringValue("Software\\Wine\\Drivers", "Audio", "pulse")

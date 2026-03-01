@@ -269,6 +269,8 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
         
         envVars.put("ANDROID_SYSVSHM_SERVER", imageFs.getRootDir().getPath() + UnixSocketConfig.SYSVSHM_SERVER_PATH);
         envVars.put("FONTCONFIG_PATH", imageFs.getRootDir().getPath() + "/usr/etc/fonts");
+        envVars.put("ALSA_CONFIG_PATH", imageFs.getRootDir().getPath() + "/usr/share/alsa/alsa.conf" + ":" + imageFs.getRootDir().getPath() + "/usr/etc/alsa/conf.d/android_aserver.conf");
+        envVars.put("ALSA_PLUGIN_DIR", imageFs.getRootDir().getPath() + "/usr/lib/alsa-lib");
 
         if ((new File(imageFs.getGlibc64Dir(), "libandroid-sysvshm.so")).exists() ||
                 (new File(imageFs.getGlibc32Dir(), "libandroid-sysvshm.so")).exists
@@ -426,6 +428,8 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
         
         envVars.put("ANDROID_SYSVSHM_SERVER", imageFs.getRootDir().getPath() + UnixSocketConfig.SYSVSHM_SERVER_PATH);
         envVars.put("FONTCONFIG_PATH", imageFs.getRootDir().getPath() + "/usr/etc/fonts");
+        envVars.put("ALSA_CONFIG_PATH", imageFs.getRootDir().getPath() + "/usr/share/alsa/alsa.conf" + ":" + imageFs.getRootDir().getPath() + "/usr/etc/alsa/conf.d/android_aserver.conf");
+        envVars.put("ALSA_PLUGIN_DIR", imageFs.getRootDir().getPath() + "/usr/lib/alsa-lib");
 
         if ((new File(imageFs.getGlibc64Dir(), "libandroid-sysvshm.so")).exists() ||
                 (new File(imageFs.getGlibc32Dir(), "libandroid-sysvshm.so")).exists
