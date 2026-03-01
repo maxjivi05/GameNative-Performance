@@ -77,11 +77,11 @@ class IMEInputReceiver(
     }
 
     private fun dispatchKey(androidKeyCode: Int, requiresShift: Boolean) {
-        val winHandler = xServer.winHandler ?: return
-        if (requiresShift) winHandler.keyDown(KeyEvent.KEYCODE_SHIFT_LEFT)
-        winHandler.keyDown(androidKeyCode)
-        winHandler.keyUp(androidKeyCode)
-        if (requiresShift) winHandler.keyUp(KeyEvent.KEYCODE_SHIFT_LEFT)
+        val keyboard = xServer.keyboard
+        if (requiresShift) keyboard.onKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_SHIFT_LEFT))
+        keyboard.onKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, androidKeyCode))
+        keyboard.onKeyEvent(KeyEvent(KeyEvent.ACTION_UP, androidKeyCode))
+        if (requiresShift) keyboard.onKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_SHIFT_LEFT))
     }
 
     override fun onWindowFocusChanged(hasWindowFocus: Boolean) {
