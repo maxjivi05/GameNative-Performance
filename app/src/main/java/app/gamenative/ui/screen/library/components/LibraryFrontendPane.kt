@@ -95,8 +95,11 @@ import com.winlator.inputcontrols.ExternalController
 
 import app.gamenative.service.SteamService
 import app.gamenative.service.epic.EpicAuthManager
+import app.gamenative.service.epic.EpicService
 import app.gamenative.service.gog.GOGAuthManager
+import app.gamenative.service.gog.GOGService
 import app.gamenative.service.amazon.AmazonAuthManager
+import app.gamenative.utils.GameMetadataManager
 import kotlin.math.sign
 
 private enum class FrontendTab(val label: String) {
@@ -125,9 +128,61 @@ private fun checkAuthStatus(context: Context, tab: FrontendTab): Boolean {
 }
 
 @Composable
-private fun rememberFrontendArtUrl(item: LibraryItem, isHero: Boolean = false): String {
+private fun rememberFrontendArtUrl(item: LibraryItem, isHero: Boolean = false, imageRefreshCounter: Long = 0L): String {
     val context = LocalContext.current
-    return remember(item.appId, isHero) {
+    
+    // Helper to find custom artwork (duplicated logic for now, could be moved to a util)
+    fun findCustomArtwork(): String? {
+        val remoteMetadataDir = File(context.filesDir, "remote_games_metadata/${item.appId}")
+        if (remoteMetadataDir.exists()) {
+            val metadata = GameMetadataManager.read(remoteMetadataDir)
+            val customPath = metadata?.customImagePath
+            if (!customPath.isNullOrEmpty()) {
+                val file = File(customPath)
+                if (file.exists()) {
+                    return "file://$customPath?t=${file.lastModified()}"
+                }
+            }
+            
+            val artworkFile = File(remoteMetadataDir, "custom_artwork.jpg")
+            if (artworkFile.exists()) {
+                return "file://${artworkFile.absolutePath}?t=${artworkFile.lastModified()}"
+            }
+        }
+
+        val gameFolderPath = when (item.gameSource) {
+            GameSource.CUSTOM_GAME -> CustomGameScanner.getFolderPathFromAppId(item.appId)
+            GameSource.STEAM -> SteamService.getAppDirPath(item.gameId)
+            GameSource.GOG -> GOGService.getInstallPath(item.gameId.toString())
+            GameSource.EPIC -> EpicService.getInstallPath(item.gameId)
+            GameSource.AMAZON -> app.gamenative.service.amazon.AmazonService.getInstallPath(item.appId.removePrefix("AMAZON_"))
+        }
+        
+        if (gameFolderPath != null) {
+            val folder = File(gameFolderPath)
+            if (folder.exists()) {
+                val metadata = GameMetadataManager.read(folder)
+                val customPath = metadata?.customImagePath
+                if (!customPath.isNullOrEmpty()) {
+                    val file = File(customPath)
+                    if (file.exists()) {
+                        return "file://$customPath?t=${file.lastModified()}"
+                    }
+                }
+                
+                val artworkFile = File(folder, "custom_artwork.jpg")
+                if (artworkFile.exists()) {
+                    return "file://${artworkFile.absolutePath}?t=${artworkFile.lastModified()}"
+                }
+            }
+        }
+        return null
+    }
+
+    return remember(item.appId, isHero, imageRefreshCounter) {
+        val customArt = findCustomArtwork()
+        if (customArt != null) return@remember customArt
+
         when (item.gameSource) {
             GameSource.STEAM -> {
                 if (isHero) "https://cdn.cloudflare.steamstatic.com/steam/apps/${item.gameId}/library_hero.jpg"
@@ -1189,7 +1244,7 @@ internal fun LibraryFrontendPane(
         AnimatedWavyBackground(color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
 
         if (focusedItem != null) {
-            val artUrl = rememberFrontendArtUrl(focusedItem, isHero = true)
+            val artUrl = rememberFrontendArtUrl(focusedItem, isHero = true, imageRefreshCounter = state.imageRefreshCounter)
             if (artUrl.isNotEmpty()) {
                 val bgModifier = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                     Modifier.fillMaxSize().blur(40.dp)
@@ -1511,8 +1566,9 @@ internal fun LibraryFrontendPane(
                         ) {
                             if (page < tabItems.size) {
                                 val item = tabItems[page]
-                                val artUrl = rememberFrontendArtUrl(item, isHero = false)
+                                val artUrl = rememberFrontendArtUrl(item, isHero = false, imageRefreshCounter = state.imageRefreshCounter)
                                 val downloadProgress = state.downloadProgressMap[item.appId]
+
                                 val isDownloading = downloadProgress != null
                                 
                                 val animatedProgress by animateFloatAsState(
@@ -1717,8 +1773,9 @@ internal fun LibraryFrontendPane(
                                 items(count = tabItems.size, key = { tabItems[it].appId }) { index ->
                                     val item = tabItems[index]
                                     val isFocused = index == focusedGridIndex
-                                    val artUrl = rememberFrontendArtUrl(item, isHero = false)
+                                    val artUrl = rememberFrontendArtUrl(item, isHero = false, imageRefreshCounter = state.imageRefreshCounter)
                                     val focusScale by animateFloatAsState(
+
                                         targetValue = if (isFocused) 1.04f else 1f,
                                         animationSpec = tween(200),
                                         label = "gridFocusScale"

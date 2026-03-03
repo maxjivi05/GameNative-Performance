@@ -192,14 +192,50 @@ internal fun AppItem(
                     modifier = Modifier.clip(RoundedCornerShape(12.dp)),
                 ) {
                     fun findCustomArtwork(): String? {
-                        val gameFolderPath = CustomGameScanner.getFolderPathFromAppId(appInfo.appId)
-                        if (gameFolderPath != null) {
-                            val metadata = GameMetadataManager.read(File(gameFolderPath))
+                        // High Priority: Check the app-internal metadata folder first.
+                        val remoteMetadataDir = File(context.filesDir, "remote_games_metadata/${appInfo.appId}")
+                        if (remoteMetadataDir.exists()) {
+                            val metadata = GameMetadataManager.read(remoteMetadataDir)
                             val customPath = metadata?.customImagePath
                             if (!customPath.isNullOrEmpty()) {
                                 val file = File(customPath)
                                 if (file.exists()) {
+                                    Timber.tag("LibraryAppItem").d("Found custom image in metadata for ${appInfo.name}: $customPath")
                                     return "file://$customPath?t=${file.lastModified()}"
+                                }
+                            }
+                            
+                            val artworkFile = File(remoteMetadataDir, "custom_artwork.jpg")
+                            if (artworkFile.exists()) {
+                                Timber.tag("LibraryAppItem").d("Found direct custom_artwork.jpg for ${appInfo.name}")
+                                return "file://${artworkFile.absolutePath}?t=${artworkFile.lastModified()}"
+                            }
+                        }
+
+                        // Low Priority: Check the game install folder (if any)
+                        val gameFolderPath = when (appInfo.gameSource) {
+                            GameSource.CUSTOM_GAME -> CustomGameScanner.getFolderPathFromAppId(appInfo.appId)
+                            GameSource.STEAM -> SteamService.getAppDirPath(appInfo.gameId)
+                            GameSource.GOG -> GOGService.getInstallPath(appInfo.gameId.toString())
+                            GameSource.EPIC -> EpicService.getInstallPath(appInfo.gameId)
+                            GameSource.AMAZON -> app.gamenative.service.amazon.AmazonService.getInstallPath(appInfo.appId.removePrefix("AMAZON_"))
+                        }
+                        
+                        if (gameFolderPath != null) {
+                            val folder = File(gameFolderPath)
+                            if (folder.exists()) {
+                                val metadata = GameMetadataManager.read(folder)
+                                val customPath = metadata?.customImagePath
+                                if (!customPath.isNullOrEmpty()) {
+                                    val file = File(customPath)
+                                    if (file.exists()) {
+                                        return "file://$customPath?t=${file.lastModified()}"
+                                    }
+                                }
+                                
+                                val artworkFile = File(folder, "custom_artwork.jpg")
+                                if (artworkFile.exists()) {
+                                    return "file://${artworkFile.absolutePath}?t=${artworkFile.lastModified()}"
                                 }
                             }
                         }

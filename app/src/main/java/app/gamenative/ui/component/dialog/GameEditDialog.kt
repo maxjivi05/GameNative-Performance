@@ -552,6 +552,9 @@ fun GameEditDialog(
         message = androidx.compose.ui.res.stringResource(app.gamenative.R.string.settings_saving_restarting)
     )
     
+    // Render base dialogs from the screen model (e.g., Custom Image)
+    screenModel.BaseDialogs(libraryItem = libraryItem)
+    
     // Render any additional dialogs from the screen model (e.g., Uninstall confirmation)
     screenModel.AdditionalDialogs(
         libraryItem = libraryItem,

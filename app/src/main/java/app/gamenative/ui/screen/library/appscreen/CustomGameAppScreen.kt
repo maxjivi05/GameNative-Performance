@@ -19,6 +19,7 @@ import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.data.GameDisplayInfo
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.CustomGameScanner
+import app.gamenative.utils.GameMetadataManager
 import app.gamenative.utils.StorageUtils
 import com.winlator.container.ContainerData
 import com.winlator.container.ContainerManager
@@ -79,6 +80,56 @@ class CustomGameAppScreen : BaseAppScreen() {
             CustomGameScanner.getFolderPathFromAppId(libraryItem.appId)
         }
 
+        // Listen for image refresh events
+        var imageRefreshCounter by remember { mutableIntStateOf(0) }
+        DisposableEffect(libraryItem.appId) {
+            val listener: (AndroidEvent.CustomGameImagesFetched) -> Unit = { event ->
+                if (event.appId == libraryItem.appId) {
+                    imageRefreshCounter++
+                }
+            }
+            PluviaApp.events.on<AndroidEvent.CustomGameImagesFetched, Unit>(listener)
+            onDispose {
+                PluviaApp.events.off<AndroidEvent.CustomGameImagesFetched, Unit>(listener)
+            }
+        }
+
+        // Helper to find custom artwork
+        fun findCustomArtwork(): String? {
+            // High Priority: Internal metadata folder
+            val remoteMetadataDir = File(context.filesDir, "remote_games_metadata/${libraryItem.appId}")
+            if (remoteMetadataDir.exists()) {
+                val metadata = GameMetadataManager.read(remoteMetadataDir)
+                val customPath = metadata?.customImagePath
+                if (!customPath.isNullOrEmpty()) {
+                    val file = File(customPath)
+                    if (file.exists()) return "file://$customPath?t=${file.lastModified()}"
+                }
+                
+                val artworkFile = File(remoteMetadataDir, "custom_artwork.jpg")
+                if (artworkFile.exists()) return "file://${artworkFile.absolutePath}?t=${artworkFile.lastModified()}"
+            }
+
+            // Low Priority: Game folder
+            if (gameFolderPath != null) {
+                val folder = File(gameFolderPath)
+                if (folder.exists()) {
+                    val metadata = GameMetadataManager.read(folder)
+                    val customPath = metadata?.customImagePath
+                    if (!customPath.isNullOrEmpty()) {
+                        val file = File(customPath)
+                        if (file.exists()) return "file://$customPath?t=${file.lastModified()}"
+                    }
+                    
+                    val artworkFile = File(folder, "custom_artwork.jpg")
+                    if (artworkFile.exists()) return "file://${artworkFile.absolutePath}?t=${artworkFile.lastModified()}"
+                }
+            }
+            return null
+        }
+
+        val customArtwork = findCustomArtwork()
+
         // Helper function to find SteamGridDB images in the game folder
         fun findSteamGridDBImage(folder: File, imageType: String): String? {
             return folder.listFiles()?.firstOrNull { file ->
@@ -91,24 +142,24 @@ class CustomGameAppScreen : BaseAppScreen() {
 
         // Check for all SteamGridDB images in the game folder
         // Hero view uses horizontal grid (grid_hero)
-        val heroImageUrl = remember(gameFolderPath) {
-            gameFolderPath?.let { path ->
+        val heroImageUrl = remember(gameFolderPath, imageRefreshCounter) {
+            customArtwork ?: gameFolderPath?.let { path ->
                 val folder = File(path)
                 findSteamGridDBImage(folder, "grid_hero")
             }
         }
 
         // Capsule view uses vertical grid (grid_capsule)
-        val capsuleUrl = remember(gameFolderPath) {
-            gameFolderPath?.let { path ->
+        val capsuleUrl = remember(gameFolderPath, imageRefreshCounter) {
+            customArtwork ?: gameFolderPath?.let { path ->
                 val folder = File(path)
                 findSteamGridDBImage(folder, "grid_capsule")
             }
         }
 
         // Header view uses heroes endpoint (hero, but not grid_hero)
-        val headerUrl = remember(gameFolderPath) {
-            gameFolderPath?.let { path ->
+        val headerUrl = remember(gameFolderPath, imageRefreshCounter) {
+            customArtwork ?: gameFolderPath?.let { path ->
                 val folder = File(path)
                 // Find hero image but exclude grid_hero
                 folder.listFiles()?.firstOrNull { file ->

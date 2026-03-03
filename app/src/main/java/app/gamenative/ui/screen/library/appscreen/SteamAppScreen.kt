@@ -37,6 +37,7 @@ import app.gamenative.utils.BestConfigService
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.GameCompatibilityCache
 import app.gamenative.utils.GameCompatibilityService
+import app.gamenative.utils.GameMetadataManager
 import app.gamenative.utils.ManifestInstaller
 import app.gamenative.utils.MarkerUtils
 import app.gamenative.utils.StorageUtils
@@ -426,14 +427,63 @@ class SteamAppScreen : BaseAppScreen() {
             }
         }
 
+        // Listen for image refresh events
+        var imageRefreshCounter by remember { mutableIntStateOf(0) }
+        DisposableEffect(libraryItem.appId) {
+            val listener: (AndroidEvent.CustomGameImagesFetched) -> Unit = { event ->
+                if (event.appId == libraryItem.appId) {
+                    imageRefreshCounter++
+                }
+            }
+            PluviaApp.events.on<AndroidEvent.CustomGameImagesFetched, Unit>(listener)
+            onDispose {
+                PluviaApp.events.off<AndroidEvent.CustomGameImagesFetched, Unit>(listener)
+            }
+        }
+
+        // Helper to find custom artwork
+        fun findCustomArtwork(): String? {
+            // High Priority: Internal metadata folder
+            val remoteMetadataDir = File(context.filesDir, "remote_games_metadata/${libraryItem.appId}")
+            if (remoteMetadataDir.exists()) {
+                val metadata = GameMetadataManager.read(remoteMetadataDir)
+                val customPath = metadata?.customImagePath
+                if (!customPath.isNullOrEmpty()) {
+                    val file = File(customPath)
+                    if (file.exists()) return "file://$customPath?t=${file.lastModified()}"
+                }
+                
+                val artworkFile = File(remoteMetadataDir, "custom_artwork.jpg")
+                if (artworkFile.exists()) return "file://${artworkFile.absolutePath}?t=${artworkFile.lastModified()}"
+            }
+
+            // Low Priority: Game folder
+            val installPath = getAppDirPath(gameId)
+            if (installPath.isNotEmpty()) {
+                val folder = File(installPath)
+                if (folder.exists()) {
+                    val metadata = GameMetadataManager.read(folder)
+                    val customPath = metadata?.customImagePath
+                    if (!customPath.isNullOrEmpty()) {
+                        val file = File(customPath)
+                        if (file.exists()) return "file://$customPath?t=${file.lastModified()}"
+                    }
+                    
+                    val artworkFile = File(folder, "custom_artwork.jpg")
+                    if (artworkFile.exists()) return "file://${artworkFile.absolutePath}?t=${artworkFile.lastModified()}"
+                }
+            }
+            return null
+        }
+
         // Get hero image URL
-        val heroImageUrl = remember(appInfo.id) {
-            appInfo.getHeroUrl()
+        val heroImageUrl = remember(appInfo.id, imageRefreshCounter) {
+            findCustomArtwork() ?: appInfo.getHeroUrl()
         }
 
         // Get icon URL
-        val iconUrl = remember(appInfo.id) {
-            appInfo.iconUrl
+        val iconUrl = remember(appInfo.id, imageRefreshCounter) {
+            findCustomArtwork() ?: appInfo.iconUrl
         }
 
         // Get install location

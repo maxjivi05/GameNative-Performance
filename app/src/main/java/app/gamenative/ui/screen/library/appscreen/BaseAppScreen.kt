@@ -606,103 +606,8 @@ abstract class BaseAppScreen {
             androidx.compose.runtime.mutableStateOf(ContainerData())
         }
 
-        val customImagePicker = rememberLauncherForActivityResult(
-            contract = ActivityResultContracts.OpenDocument(),
-            onResult = { uri ->
-                if (uri != null) {
-                    CoroutineScope(Dispatchers.IO).launch {
-                        try {
-                            val gameFolderPath = getGameFolderPathForImageFetch(context, libraryItem)
-                            if (gameFolderPath != null) {
-                                val targetFile = File(gameFolderPath, "custom_artwork.jpg")
-                                context.contentResolver.openInputStream(uri)?.use { input ->
-                                    targetFile.outputStream().use { output ->
-                                        input.copyTo(output)
-                                    }
-                                }
-                                
-                                GameMetadataManager.update(
-                                    folder = File(gameFolderPath),
-                                    appId = libraryItem.gameId,
-                                    customImagePath = targetFile.absolutePath
-                                )
-                                
-                                withContext(Dispatchers.Main) {
-                                    Toast.makeText(context, "Custom image set", Toast.LENGTH_SHORT).show()
-                                    PluviaApp.events.emit(AndroidEvent.CustomGameImagesFetched(libraryItem.appId))
-                                }
-                            }
-                        } catch (e: Exception) {
-                            withContext(Dispatchers.Main) {
-                                Toast.makeText(context, "Failed to set custom image: ${e.message}", Toast.LENGTH_SHORT).show()
-                            }
-                        }
-                    }
-                }
-            }
-        )
-
-        if (showCustomImageDialog) {
-            CustomImageDialog(
-                onDismiss = { showCustomImageDialog = false },
-                onSelect = {
-                    customImagePicker.launch(arrayOf("image/*"))
-                    showCustomImageDialog = false
-                },
-                onReset = {
-                    CoroutineScope(Dispatchers.IO).launch {
-                        val gameFolderPath = getGameFolderPathForImageFetch(context, libraryItem)
-                        if (gameFolderPath != null) {
-                            val targetFile = File(gameFolderPath, "custom_artwork.jpg")
-                            if (targetFile.exists()) targetFile.delete()
-                            
-                            GameMetadataManager.update(
-                                folder = File(gameFolderPath),
-                                appId = libraryItem.gameId,
-                                customImagePath = ""
-                            )
-                            
-                            withContext(Dispatchers.Main) {
-                                Toast.makeText(context, "Image reset to default", Toast.LENGTH_SHORT).show()
-                                PluviaApp.events.emit(AndroidEvent.CustomGameImagesFetched(libraryItem.appId))
-                            }
-                        }
-                    }
-                    showCustomImageDialog = false
-                },
-                onFetch = {
-                    CoroutineScope(Dispatchers.IO).launch {
-                        try {
-                            val gameName = libraryItem.name
-                            val gameFolderPath = getGameFolderPathForImageFetch(context, libraryItem)
-
-                            if (gameFolderPath != null) {
-                                val folder = File(gameFolderPath)
-                                val appId = libraryItem.gameId
-                                GameMetadataManager.update(
-                                    folder = folder,
-                                    appId = appId,
-                                    steamgriddbFetched = false,
-                                )
-
-                                SteamGridDB.fetchGameImages(gameName, gameFolderPath)
-                                PluviaApp.events.emit(AndroidEvent.CustomGameImagesFetched(libraryItem.appId))
-                                onAfterFetchImages(context, libraryItem, gameFolderPath)
-
-                                withContext(Dispatchers.Main) {
-                                    Toast.makeText(context, context.getString(R.string.base_app_images_fetched), Toast.LENGTH_SHORT).show()
-                                }
-                            }
-                        } catch (e: Exception) {
-                            withContext(Dispatchers.Main) {
-                                Toast.makeText(context, "Fetch failed: ${e.message}", Toast.LENGTH_SHORT).show()
-                            }
-                        }
-                    }
-                    showCustomImageDialog = false
-                }
-            )
-        }
+        // Render base dialogs (Custom Image, etc.)
+        BaseDialogs(libraryItem)
 
         val onEditContainer: () -> Unit = {
             containerData = loadContainerData(context, libraryItem)
@@ -1146,6 +1051,125 @@ abstract class BaseAppScreen {
         onHasPartialDownloadChanged: ((Boolean) -> Unit)? = null,
     ): (() -> Unit)? {
         return null
+    }
+
+    /**
+     * Render base dialogs that should be available on all app screens.
+     */
+    @Composable
+    fun BaseDialogs(libraryItem: LibraryItem) {
+        val context = LocalContext.current
+        
+        // Helper to get a valid folder for storing custom artwork.
+        // We ALWAYS check for the remote_games_metadata folder first as it's the most reliable 
+        // place for custom metadata that we want to persist regardless of install state.
+        val getEffectiveGameFolder: () -> File = {
+            val remoteGamesDir = File(context.filesDir, "remote_games_metadata/${libraryItem.appId}")
+            if (!remoteGamesDir.exists()) remoteGamesDir.mkdirs()
+            remoteGamesDir
+        }
+
+        val customImagePicker = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.GetContent(),
+            onResult = { uri ->
+                if (uri != null) {
+                    Timber.tag("BaseAppScreen").d("Selected custom image URI: $uri")
+                    CoroutineScope(Dispatchers.IO).launch {
+                        try {
+                            val gameFolder = getEffectiveGameFolder()
+                            val targetFile = File(gameFolder, "custom_artwork.jpg")
+                            
+                            Timber.tag("BaseAppScreen").d("Copying custom image to: ${targetFile.absolutePath}")
+                            
+                            context.contentResolver.openInputStream(uri)?.use { input ->
+                                targetFile.outputStream().use { output ->
+                                    input.copyTo(output)
+                                }
+                            }
+                            
+                            if (targetFile.exists()) {
+                                Timber.tag("BaseAppScreen").d("Successfully saved custom artwork. Size: ${targetFile.length()} bytes")
+                                
+                                // Also update the metadata file to point to this image
+                                GameMetadataManager.update(
+                                    folder = gameFolder,
+                                    appId = libraryItem.gameId,
+                                    customImagePath = targetFile.absolutePath
+                                )
+                                
+                                withContext(Dispatchers.Main) {
+                                    Toast.makeText(context, "Custom image set", Toast.LENGTH_SHORT).show()
+                                    PluviaApp.events.emit(AndroidEvent.CustomGameImagesFetched(libraryItem.appId))
+                                }
+                            } else {
+                                Timber.tag("BaseAppScreen").e("Failed to save custom artwork: target file does not exist after copy")
+                            }
+                        } catch (e: Exception) {
+                            Timber.tag("BaseAppScreen").e(e, "Error saving custom image")
+                            withContext(Dispatchers.Main) {
+                                Toast.makeText(context, "Failed to set custom image: ${e.message}", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
+                }
+            }
+        )
+
+        if (showCustomImageDialog) {
+            CustomImageDialog(
+                onDismiss = { showCustomImageDialog = false },
+                onSelect = {
+                    customImagePicker.launch("image/*")
+                    showCustomImageDialog = false
+                },
+                onReset = {
+                    CoroutineScope(Dispatchers.IO).launch {
+                        val gameFolder = getEffectiveGameFolder()
+                        val targetFile = File(gameFolder, "custom_artwork.jpg")
+                        if (targetFile.exists()) targetFile.delete()
+                        
+                        GameMetadataManager.update(
+                            folder = gameFolder,
+                            appId = libraryItem.gameId,
+                            customImagePath = ""
+                        )
+                        
+                        withContext(Dispatchers.Main) {
+                            Toast.makeText(context, "Image reset to default", Toast.LENGTH_SHORT).show()
+                            PluviaApp.events.emit(AndroidEvent.CustomGameImagesFetched(libraryItem.appId))
+                        }
+                    }
+                    showCustomImageDialog = false
+                },
+                onFetch = {
+                    CoroutineScope(Dispatchers.IO).launch {
+                        try {
+                            val gameName = libraryItem.name
+                            val gameFolder = getEffectiveGameFolder()
+                            val appId = libraryItem.gameId
+
+                            GameMetadataManager.update(
+                                folder = gameFolder,
+                                appId = appId,
+                                steamgriddbFetched = false,
+                            )
+
+                            SteamGridDB.fetchGameImages(gameName, gameFolder.absolutePath)
+                            withContext(Dispatchers.Main) {
+                                PluviaApp.events.emit(AndroidEvent.CustomGameImagesFetched(libraryItem.appId))
+                                onAfterFetchImages(context, libraryItem, gameFolder.absolutePath)
+                                Toast.makeText(context, context.getString(R.string.base_app_images_fetched), Toast.LENGTH_SHORT).show()
+                            }
+                        } catch (e: Exception) {
+                            withContext(Dispatchers.Main) {
+                                Toast.makeText(context, "Fetch failed: ${e.message}", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
+                    showCustomImageDialog = false
+                }
+            )
+        }
     }
 
     /**

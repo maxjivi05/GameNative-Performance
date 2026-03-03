@@ -6,8 +6,10 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
@@ -15,14 +17,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import app.gamenative.PluviaApp
 import app.gamenative.R
 import app.gamenative.data.AmazonGame
 import app.gamenative.data.LibraryItem
+import app.gamenative.events.AndroidEvent
 import app.gamenative.service.amazon.AmazonConstants
 import app.gamenative.service.amazon.AmazonService
 import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.data.GameDisplayInfo
 import app.gamenative.ui.enums.AppOptionMenuType
+import app.gamenative.utils.GameMetadataManager
 import app.gamenative.utils.ContainerUtils
 import com.winlator.container.ContainerData
 import kotlinx.coroutines.CoroutineScope
@@ -30,6 +35,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
+import java.io.File
 import java.time.LocalDate
 import java.time.ZonedDateTime
 import java.util.Locale
@@ -130,6 +136,55 @@ class AmazonAppScreen : BaseAppScreen() {
                 "gameId=${productId.hashCode()} libraryItem.gameId=${libraryItem.gameId}"
         )
 
+        // Listen for image refresh events
+        var imageRefreshCounter by remember { mutableIntStateOf(0) }
+        androidx.compose.runtime.DisposableEffect(libraryItem.appId) {
+            val listener: (AndroidEvent.CustomGameImagesFetched) -> Unit = { event ->
+                if (event.appId == libraryItem.appId) {
+                    imageRefreshCounter++
+                }
+            }
+            PluviaApp.events.on<AndroidEvent.CustomGameImagesFetched, Unit>(listener)
+            onDispose {
+                PluviaApp.events.off<AndroidEvent.CustomGameImagesFetched, Unit>(listener)
+            }
+        }
+
+        // Helper to find custom artwork
+        fun findCustomArtwork(): String? {
+            // High Priority: Internal metadata folder
+            val remoteMetadataDir = File(context.filesDir, "remote_games_metadata/${libraryItem.appId}")
+            if (remoteMetadataDir.exists()) {
+                val metadata = GameMetadataManager.read(remoteMetadataDir)
+                val customPath = metadata?.customImagePath
+                if (!customPath.isNullOrEmpty()) {
+                    val file = File(customPath)
+                    if (file.exists()) return "file://$customPath?t=${file.lastModified()}"
+                }
+                
+                val artworkFile = File(remoteMetadataDir, "custom_artwork.jpg")
+                if (artworkFile.exists()) return "file://${artworkFile.absolutePath}?t=${artworkFile.lastModified()}"
+            }
+
+            // Low Priority: Game folder
+            val installPath = AmazonService.getInstallPath(productId)
+            if (installPath != null) {
+                val folder = File(installPath)
+                if (folder.exists()) {
+                    val metadata = GameMetadataManager.read(folder)
+                    val customPath = metadata?.customImagePath
+                    if (!customPath.isNullOrEmpty()) {
+                        val file = File(customPath)
+                        if (file.exists()) return "file://$customPath?t=${file.lastModified()}"
+                    }
+                    
+                    val artworkFile = File(folder, "custom_artwork.jpg")
+                    if (artworkFile.exists()) return "file://${artworkFile.absolutePath}?t=${artworkFile.lastModified()}"
+                }
+            }
+            return null
+        }
+
         var game by remember(productId) { mutableStateOf<AmazonGame?>(null) }
 
         // Refresh key — incremented when install status changes so we re-fetch from DB.
@@ -170,12 +225,16 @@ class AmazonAppScreen : BaseAppScreen() {
 
         val g = game
 
+        val customArtwork = findCustomArtwork()
+        
         // Artwork — use heroUrl for the backdrop, artUrl/iconHash for the icon
-        val heroImageUrl = g?.heroUrl?.takeIf { it.isNotEmpty() }
+        val heroImageUrl = customArtwork
+            ?: g?.heroUrl?.takeIf { it.isNotEmpty() }
             ?: g?.artUrl?.takeIf { it.isNotEmpty() }   // fall back to art if no hero
             ?: libraryItem.iconHash.takeIf { it.isNotEmpty() }
 
-        val iconUrl = g?.artUrl?.takeIf { it.isNotEmpty() }
+        val iconUrl = customArtwork
+            ?: g?.artUrl?.takeIf { it.isNotEmpty() }
             ?: libraryItem.iconHash.takeIf { it.isNotEmpty() }
 
         // Metadata

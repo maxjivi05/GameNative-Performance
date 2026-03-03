@@ -53,13 +53,13 @@ object GameMetadataManager {
                 
                 // Parse full metadata
                 val appId = json.optInt("appId", -1)
-                if (appId <= 0) {
+                if (appId == -1 && !json.has("appId")) {
                     return null
                 }
                 
                 val steamgriddbFetched = json.optBoolean("steamgriddbFetched", false)
                 val releaseDate = json.optLong("releaseDate", -1).takeIf { it > 0 }
-                val customImagePath = json.optString("customImagePath", null).takeIf { it?.isNotEmpty() == true }
+                val customImagePath = json.optString("customImagePath").takeIf { it.isNotEmpty() }
                 
                 GameMetadata(
                     appId = appId,

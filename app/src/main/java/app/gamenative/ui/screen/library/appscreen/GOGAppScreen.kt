@@ -5,6 +5,9 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
+import app.gamenative.PluviaApp
+import app.gamenative.events.AndroidEvent
+import app.gamenative.utils.GameMetadataManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import app.gamenative.R
@@ -95,6 +98,55 @@ class GOGAppScreen : BaseAppScreen() {
         // Extract numeric gameId for GOGService calls
         val gameId = libraryItem.gameId.toString()
 
+        // Listen for image refresh events
+        var imageRefreshCounter by remember { mutableIntStateOf(0) }
+        DisposableEffect(libraryItem.appId) {
+            val listener: (AndroidEvent.CustomGameImagesFetched) -> Unit = { event ->
+                if (event.appId == libraryItem.appId) {
+                    imageRefreshCounter++
+                }
+            }
+            PluviaApp.events.on<AndroidEvent.CustomGameImagesFetched, Unit>(listener)
+            onDispose {
+                PluviaApp.events.off<AndroidEvent.CustomGameImagesFetched, Unit>(listener)
+            }
+        }
+
+        // Helper to find custom artwork
+        fun findCustomArtwork(): String? {
+            // High Priority: Internal metadata folder
+            val remoteMetadataDir = File(context.filesDir, "remote_games_metadata/${libraryItem.appId}")
+            if (remoteMetadataDir.exists()) {
+                val metadata = GameMetadataManager.read(remoteMetadataDir)
+                val customPath = metadata?.customImagePath
+                if (!customPath.isNullOrEmpty()) {
+                    val file = File(customPath)
+                    if (file.exists()) return "file://$customPath?t=${file.lastModified()}"
+                }
+                
+                val artworkFile = File(remoteMetadataDir, "custom_artwork.jpg")
+                if (artworkFile.exists()) return "file://${artworkFile.absolutePath}?t=${artworkFile.lastModified()}"
+            }
+
+            // Low Priority: Game folder
+            val installPath = GOGService.getInstallPath(gameId)
+            if (installPath != null) {
+                val folder = File(installPath)
+                if (folder.exists()) {
+                    val metadata = GameMetadataManager.read(folder)
+                    val customPath = metadata?.customImagePath
+                    if (!customPath.isNullOrEmpty()) {
+                        val file = File(customPath)
+                        if (file.exists()) return "file://$customPath?t=${file.lastModified()}"
+                    }
+                    
+                    val artworkFile = File(folder, "custom_artwork.jpg")
+                    if (artworkFile.exists()) return "file://${artworkFile.absolutePath}?t=${artworkFile.lastModified()}"
+                }
+            }
+            return null
+        }
+
         // Add a refresh trigger to re-fetch game data when install status changes
         var refreshTrigger by remember { mutableStateOf(0) }
 
@@ -148,10 +200,11 @@ class GOGAppScreen : BaseAppScreen() {
             0L
         }
 
+        val customArtwork = findCustomArtwork()
         val displayInfo = GameDisplayInfo(
             name = game?.title ?: libraryItem.name,
-            iconUrl = game?.iconUrl ?: libraryItem.iconHash,
-            heroImageUrl = game?.imageUrl ?: game?.iconUrl ?: libraryItem.iconHash,
+            iconUrl = customArtwork ?: game?.iconUrl ?: libraryItem.iconHash,
+            heroImageUrl = customArtwork ?: game?.imageUrl ?: game?.iconUrl ?: libraryItem.iconHash,
             gameId = libraryItem.gameId, // Use gameId property which handles conversion
             appId = libraryItem.appId,
             releaseDate = releaseDateTimestamp,
