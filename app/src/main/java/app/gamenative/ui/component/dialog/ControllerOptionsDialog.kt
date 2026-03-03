@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -44,7 +45,7 @@ fun ControllerOptionsDialog(
 ) {
     val items = listOf(
         ControllerOption(stringResource(R.string.edit_controls), Icons.Default.Edit, onEditOnScreen),
-        ControllerOption("Select ICP", Icons.Default.List, onSelectICP),
+        ControllerOption("Select ICP", Icons.AutoMirrored.Filled.List, onSelectICP),
         ControllerOption("Import ICP", Icons.Default.FileDownload, onImportICP),
         ControllerOption("Export ICP", Icons.Default.FileUpload, onExportICP),
         ControllerOption(stringResource(R.string.controller_manager), Icons.Default.Gamepad, onControllerManager),
@@ -58,20 +59,20 @@ fun ControllerOptionsDialog(
     ) {
         Surface(
             modifier = Modifier
-                .widthIn(max = 520.dp)
-                .fillMaxHeight(0.85f)
+                .widthIn(max = 560.dp) // Slightly wider for 3 columns
+                .wrapContentHeight()
                 .padding(16.dp),
             shape = RoundedCornerShape(28.dp),
             color = MaterialTheme.colorScheme.surface,
             tonalElevation = 8.dp,
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
         ) {
-            Column(modifier = Modifier.fillMaxSize()) {
+            Column(modifier = Modifier.fillMaxWidth()) {
                 // Header
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     IconButton(
@@ -83,14 +84,14 @@ fun ControllerOptionsDialog(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(R.string.button_back),
-                            modifier = Modifier.size(24.dp),
+                            modifier = Modifier.size(22.dp),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
 
                     Text(
                         text = "Controller",
-                        style = MaterialTheme.typography.titleLarge,
+                        style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
@@ -98,15 +99,13 @@ fun ControllerOptionsDialog(
 
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
 
-                // Options Grid
+                // Options Grid - 3 columns
                 LazyVerticalGrid(
-                    columns = GridCells.Fixed(2),
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth(),
-                    contentPadding = PaddingValues(16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    columns = GridCells.Fixed(3),
+                    modifier = Modifier.fillMaxWidth(),
+                    contentPadding = PaddingValues(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(items) { item ->
                         ControllerOptionItem(item)
@@ -117,7 +116,7 @@ fun ControllerOptionsDialog(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
+                        .padding(bottom = 12.dp, start = 16.dp, end = 16.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     TextButton(
@@ -125,7 +124,7 @@ fun ControllerOptionsDialog(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp)
                     ) {
-                        Text(stringResource(R.string.close))
+                        Text(stringResource(R.string.close), style = MaterialTheme.typography.labelLarge)
                     }
                 }
             }
@@ -139,37 +138,38 @@ private fun ControllerOptionItem(item: ControllerOption) {
 
     Surface(
         onClick = item.onClick,
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(16.dp),
         color = if (isFocused) MaterialTheme.colorScheme.primaryContainer 
-                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
         border = BorderStroke(
             width = 2.dp,
             color = if (isFocused) MaterialTheme.colorScheme.primary else Color.Transparent
         ),
         modifier = Modifier
             .fillMaxWidth()
-            .height(100.dp)
+            .height(88.dp) // Shrunk from 100.dp
             .onFocusChanged { isFocused = it.isFocused }
             .focusable()
     ) {
         Column(
-            modifier = Modifier.padding(12.dp),
+            modifier = Modifier.padding(8.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
             Icon(
                 imageVector = item.icon,
                 contentDescription = null,
-                modifier = Modifier.size(32.dp),
+                modifier = Modifier.size(26.dp), // Shrunk from 32.dp
                 tint = if (isFocused) MaterialTheme.colorScheme.onPrimaryContainer 
                        else MaterialTheme.colorScheme.onSurfaceVariant
             )
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(6.dp))
             Text(
                 text = item.title,
-                style = MaterialTheme.typography.labelMedium,
+                style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp), // Slightly smaller font
                 textAlign = TextAlign.Center,
                 maxLines = 2,
+                lineHeight = 12.sp,
                 overflow = TextOverflow.Ellipsis,
                 color = if (isFocused) MaterialTheme.colorScheme.onPrimaryContainer 
                        else MaterialTheme.colorScheme.onSurfaceVariant
