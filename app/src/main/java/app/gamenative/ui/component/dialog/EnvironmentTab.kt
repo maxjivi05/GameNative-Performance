@@ -37,7 +37,7 @@ import com.winlator.core.envvars.EnvVarSelectionType
 fun EnvironmentTabContent(state: ContainerConfigState) {
     val config = state.config.value
     val envVars = EnvVars(config.envVars)
-    SettingsGroup() {
+    app.gamenative.ui.component.settings.FrontendAwareSettingsGroupNoScope() {
         if (config.envVars.isNotEmpty()) {
             SettingsEnvVars(
                 colors = settingsTileColors(),

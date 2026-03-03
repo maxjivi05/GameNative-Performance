@@ -1,7 +1,9 @@
 .gradle/
+app/.cxx/
 build/
 tmp/
 *.apk
 local.properties
 modified.txt
 Summary.txt
+local.properties

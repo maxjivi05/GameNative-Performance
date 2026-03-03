@@ -51,6 +51,7 @@ public class InputControlsView extends View {
     private static final byte MOUSE_WHEEL_DELTA = 120;
     private boolean editMode = false;
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint outlinePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Path path = new Path();
     private final ColorFilter colorFilter = new PorterDuffColorFilter(0xffffffff, PorterDuff.Mode.SRC_IN);
     private final Point cursor = new Point();
@@ -68,6 +69,7 @@ public class InputControlsView extends View {
     private Timer mouseMoveTimer;
     private final PointF mouseMoveOffset = new PointF();
     private boolean showTouchscreenControls = true;
+    private boolean showJoysticks = true;
 
     private Handler timeoutHandler; // Reference to the activity's timeout handler
     private Runnable hideControlsRunnable; // Runnable to hide the controls
@@ -87,11 +89,34 @@ public class InputControlsView extends View {
         invalidate(); // Redraw the view with the new focus setting
     }
 
+    public void setJoysticksVisible(boolean visible) {
+        this.showJoysticks = visible;
+        invalidate();
+    }
 
+    private void initPaints() {
+        outlinePaint.setStyle(Paint.Style.STROKE);
+        outlinePaint.setStrokeWidth(2.0f);
+        outlinePaint.setColor(Color.BLACK);
+        
+        // Add subtle shadow to the main paint
+        paint.setShadowLayer(4.0f, 2.0f, 2.0f, Color.argb(100, 0, 0, 0));
+        
+        overlayOpacity = app.gamenative.PrefManager.getTouchTransparency();
+        
+        app.gamenative.PluviaApp.events.onJava(kotlin.jvm.JvmClassMappingKt.getKotlinClass(app.gamenative.events.AndroidEvent.TouchTransparencyChanged.class), new app.gamenative.events.EventDispatcher.JavaEventListener() {
+            @Override
+            public void onEvent(Object event) {
+                overlayOpacity = ((app.gamenative.events.AndroidEvent.TouchTransparencyChanged)event).getAlpha();
+                postInvalidate();
+            }
+        });
+    }
 
     @SuppressLint("ResourceType")
     public InputControlsView(Context context) {
         super(context);
+        initPaints();
         setClickable(true);
         setFocusable(true);
         setFocusableInTouchMode(true);
@@ -105,6 +130,7 @@ public class InputControlsView extends View {
     @SuppressLint("ResourceType")
     public InputControlsView(Context context, Handler timeoutHandler, Runnable hideControlsRunnable) {
         super(context);
+        initPaints();
         this.timeoutHandler = timeoutHandler; // Store the reference to timeout handler
         this.hideControlsRunnable = hideControlsRunnable; // Store the reference to the hide controls runnable
         setClickable(true);
@@ -119,6 +145,7 @@ public class InputControlsView extends View {
 
     public InputControlsView(Context context, boolean focusOnStick) {
         super(context);
+        initPaints();
         setClickable(true);
         setFocusable(true);
         setFocusableInTouchMode(true);
@@ -136,6 +163,14 @@ public class InputControlsView extends View {
         preferences = PreferenceManager.getDefaultSharedPreferences(this.getContext());
     }
 
+
+    public boolean isShowJoysticks() {
+        return showJoysticks;
+    }
+
+    public float getOverlayOpacity() {
+        return overlayOpacity;
+    }
 
     public void setEditMode(boolean editMode) {
         this.editMode = editMode;
@@ -413,7 +448,7 @@ public class InputControlsView extends View {
                         );
                     }
                 }
-            }, 0, 1000 / 60); // 60 FPS
+            }, 0, 1000 / 120); // 120 FPS for lower-latency mouse movement
         }
     }
 
@@ -508,6 +543,9 @@ public class InputControlsView extends View {
 
 
         if (!editMode && profile != null) {
+            // ONLY handle if assigned to Slot 0 (P1)
+            if (com.winlator.inputcontrols.ControllerManager.getInstance().getSlotForDevice(event.getDeviceId()) != 0) return false;
+
             // Retrieve the associated controller for this event
             ExternalController controller = profile.getController(event.getDeviceId());
 
@@ -534,8 +572,8 @@ public class InputControlsView extends View {
                 // Process joystick inputs for mouse movement and other bindings
                 processJoystickInput(controller);
 
-                // Return true to indicate the motion event was handled
-                return true;
+                // Return false to allow fallthrough to WinHandler for Slot 0
+                return false;
             }
         }
 
@@ -664,6 +702,9 @@ public class InputControlsView extends View {
 
     public boolean onKeyEvent(KeyEvent event) {
         if (profile != null && event.getRepeatCount() == 0) {
+            // ONLY handle if assigned to Slot 0 (P1)
+            if (com.winlator.inputcontrols.ControllerManager.getInstance().getSlotForDevice(event.getDeviceId()) != 0) return false;
+
             ExternalController controller = profile.getController(event.getDeviceId());
             if (controller != null) {
                 ExternalControllerBinding controllerBinding = controller.getControllerBinding(event.getKeyCode());
@@ -676,7 +717,7 @@ public class InputControlsView extends View {
                     else if (action == KeyEvent.ACTION_UP) {
                         handleInputEvent(controllerBinding.getBinding(), false);
                     }
-                    return true;
+                    return false;
                 }
             }
         }
@@ -718,12 +759,8 @@ public class InputControlsView extends View {
                 state.dpad[binding.ordinal() - Binding.GAMEPAD_DPAD_UP.ordinal()] = isActionDown;
             }
 
-            if (winHandler != null) {
-                ExternalController controller = winHandler.getCurrentController();
-                if (controller != null) controller.state.copy(state);
-                winHandler.sendGamepadState();
-                winHandler.sendVirtualGamepadState(state);
-            }
+            // Immediately poke shared memory to update the controller state in-game
+            if (winHandler != null) winHandler.pokeSharedMemory();
         }
         else {
             if (binding == Binding.MOUSE_MOVE_LEFT || binding == Binding.MOUSE_MOVE_RIGHT) {

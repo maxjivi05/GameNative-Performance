@@ -1,0 +1,76 @@
+# GameNative Source Code Analysis: Config & API Usage Findings
+
+This report details the various online APIs and GitHub repositories used by the GameNative application to download game configurations, chip-specific settings, drivers, and other components.
+
+---
+
+## 1. Game & Chip Specific Configurations (Best Config Service)
+This is the primary mechanism for optimizing games for specific GPUs (chips).
+
+*   **API URL:** `https://gamenative-best-config-worker.gamenative.workers.dev/api/best-config`
+*   **Source File:** `app/src/main/java/app/gamenative/utils/BestConfigService.kt`
+*   **Description:** Sends the `gameName` and `gpuName` (GPU Renderer string) to a Cloudflare Worker. It returns a JSON configuration containing optimal settings such as:
+    *   Container variant (Bionic/Glibc)
+    *   Graphics driver and version
+    *   DXVK/VKD3D versions and configurations
+    *   Wincomponents and Environment variables
+    *   Box64/FEXCore presets
+*   **Usage:** Automatically applied during container setup or manually via "Use Known Config" in the game menu.
+
+## 2. Component Manifests & Repositories
+The app uses several manifests to track and download external components like drivers and Wine versions.
+
+*   **Main Component Manifest:**
+    *   **URL:** `https://raw.githubusercontent.com/maxjivi05/GameNative-Performance/refs/heads/main/manifest.json`
+    *   **Source File:** `app/src/main/java/app/gamenative/utils/ManifestRepository.kt`
+    *   **Description:** Central manifest for all downloadable components.
+
+*   **MTR (Mesa Turnip) Components:**
+    *   **Manifest URL:** `https://raw.githubusercontent.com/maxjivi05/Components/main/contents.json`
+    *   **Drivers API:** `https://api.github.com/repos/maxjivi05/Components/contents/Drivers`
+    *   **Source Files:** `ContentsManagerDialog.kt`, `ComponentsManagerDialog.kt`
+    *   **Description:** Lists available content profiles and drivers for Adreno GPUs.
+
+*   **GameNative Landing Page (Driver Manifest):**
+    *   **URL:** `https://raw.githubusercontent.com/utkarshdalal/gamenative-landing-page/refs/heads/main/data/manifest.json`
+    *   **Source File:** `ComponentsManagerDialog.kt`
+    *   **Description:** Used to discover and download drivers from the official landing page repository.
+
+## 3. Game Compatibility & Run Data
+*   **API URL:** `https://api.gamenative.app/api/game-runs`
+*   **Source File:** `app/src/main/java/app/gamenative/utils/GameCompatibilityService.kt`
+*   **Description:** Fetches crowd-sourced compatibility information and performance reports for games.
+
+## 4. GOG Remote Configurations
+*   **API URL:** `https://remote-config.gog.com/components/galaxy_client/clients/$clientId?component_version=2.0.45`
+*   **Source File:** `app/src/main/java/app/gamenative/service/gog/GOGManager.kt`
+*   **Description:** Fetches cloud save locations and specific game configurations for GOG titles.
+
+## 5. Core System Components & Fallbacks
+Used for downloading the base image files (ImageFS) and patches.
+
+*   **Primary URL:** `https://downloads.gamenative.app/`
+*   **Fallback URL:** `https://pub-9fcd5294bd0d4b85a9d73615bf98f3b5.r2.dev/` (Cloudflare R2 Bucket)
+*   **Source File:** `app/src/main/java/app/gamenative/service/SteamService.kt` (fetchFileWithFallback)
+
+## 6. Community Wine/Proton Builds
+The app allows downloading various specialized builds of Wine and Proton.
+
+*   **GitHub Repositories:**
+    *   `https://api.github.com/repos/GameNative/proton-wine`
+    *   `https://api.github.com/repos/Xnick417x/Winlator-Bionic-Nightly-wcp`
+    *   `https://api.github.com/repos/K11MCH1/Winlator101`
+*   **Source File:** `app/src/main/java/app/gamenative/ui/screen/settings/ComponentsManagerDialog.kt`
+
+## 7. Game Metadata & Assets
+*   **SteamGridDB:** `https://www.steamgriddb.com/api/v2` (Fetches game images/posters)
+*   **PCGamingWiki:** `https://pcgamingwiki.com/w/api.php` (Fetches technical info like Direct3D versions)
+*   **Source Files:** `SteamGridDB.kt`, `SteamUtils.kt`
+
+## 8. App Lifecycle & Updates
+*   **Update Check API:** `https://api.gamenative.app/api/update-check`
+*   **APK Download:** `https://downloads.gamenative.app/`
+*   **Source Files:** `Constants.kt`, `UpdateInstaller.kt`
+
+---
+*Report generated on Monday, March 2, 2026*

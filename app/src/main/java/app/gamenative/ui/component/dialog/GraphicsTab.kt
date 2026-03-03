@@ -29,7 +29,7 @@ import androidx.compose.ui.platform.LocalContext
 @Composable
 fun GraphicsTabContent(state: ContainerConfigState) {
     val context = LocalContext.current
-    SettingsGroup() {
+    app.gamenative.ui.component.settings.FrontendAwareSettingsGroupNoScope() {
         if (state.config.value.containerVariant.equals(Container.BIONIC, ignoreCase = true)) {
             // Bionic: Graphics Driver (Wrapper/Wrapper-v2)
             SettingsListDropdown(

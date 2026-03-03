@@ -1,5 +1,6 @@
 package app.gamenative
 
+import android.hardware.input.InputManager
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
@@ -9,6 +10,8 @@ import android.content.res.Configuration
 import android.graphics.Color.TRANSPARENT
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.view.KeyEvent
 import android.view.MotionEvent
@@ -32,6 +35,7 @@ import coil.ImageLoader
 import coil.disk.DiskCache
 import coil.memory.MemoryCache
 import coil.request.CachePolicy
+import okhttp3.OkHttpClient
 import app.gamenative.events.AndroidEvent
 import app.gamenative.service.SteamService
 import app.gamenative.service.gog.GOGService
@@ -55,7 +59,28 @@ import okio.Path.Companion.toOkioPath
 import timber.log.Timber
 
 @AndroidEntryPoint
-class MainActivity : ComponentActivity() {
+class MainActivity : ComponentActivity(), InputManager.InputDeviceListener {
+
+    private val inputDeviceListenerHandler = Handler(Looper.getMainLooper())
+
+    override fun onInputDeviceAdded(deviceId: Int) {
+        val device = android.view.InputDevice.getDevice(deviceId)
+        if (device != null && !device.isVirtual && ControllerManager.isGameController(device)) {
+            Timber.d("Controller detected: ${device.name}")
+            // Delay slightly to ensure device is fully initialized by the system
+            inputDeviceListenerHandler.postDelayed({
+                val winHandler = PluviaApp.xServerView?.getxServer()?.winHandler
+                com.winlator.contentdialog.ControllerAssignmentDialog.show(this, winHandler)
+            }, 500)
+        }
+    }
+
+    override fun onInputDeviceRemoved(deviceId: Int) {
+        // Optional: refresh assignments when a controller is removed
+        ControllerManager.getInstance().scanForDevices()
+    }
+
+    override fun onInputDeviceChanged(deviceId: Int) {}
 
     companion object {
         private var totalIndex = 0
@@ -88,6 +113,9 @@ class MainActivity : ComponentActivity() {
         fun hasPendingLaunchRequest(): Boolean {
             return pendingLaunchRequest != null
         }
+
+        @Volatile
+        var wasLaunchedViaExternalIntent: Boolean = false
     }
 
     private val onSetSystemUi: (AndroidEvent.SetSystemUIVisibility) -> Unit = {
@@ -159,6 +187,8 @@ class MainActivity : ComponentActivity() {
 
         // Initialize the controller management system
         ControllerManager.getInstance().init(getApplicationContext());
+        val im = getSystemService(Context.INPUT_SERVICE) as InputManager
+        im.registerInputDeviceListener(this, inputDeviceListenerHandler)
 
         ContainerUtils.setContainerDefaults(applicationContext)
 
@@ -201,7 +231,17 @@ class MainActivity : ComponentActivity() {
 
                 // val logger = if (BuildConfig.DEBUG) DebugLogger() else null
 
+                val okHttpClient = OkHttpClient.Builder()
+                    .addInterceptor { chain ->
+                        if (!NetworkMonitor.hasInternet.value) {
+                            throw java.io.IOException("Offline: Image loading blocked by NetworkMonitor")
+                        }
+                        chain.proceed(chain.request())
+                    }
+                    .build()
+
                 ImageLoader.Builder(context)
+                    .okHttpClient(okHttpClient)
                     .memoryCachePolicy(CachePolicy.ENABLED)
                     .memoryCache(memoryCache)
                     .diskCachePolicy(CachePolicy.ENABLED)
@@ -230,6 +270,7 @@ class MainActivity : ComponentActivity() {
             val launchRequest = IntentLaunchManager.parseLaunchIntent(intent)
             if (launchRequest != null) {
                 Timber.d("[IntentLaunch]: Received external launch intent for app ${launchRequest.appId}")
+                wasLaunchedViaExternalIntent = true
 
                 // If already logged in, emit event immediately
                 // Otherwise store for processing after login
@@ -249,6 +290,7 @@ class MainActivity : ComponentActivity() {
                     Timber.d("[IntentLaunch]: User not logged in, stored pending launch request for app ${launchRequest.appId}")
                 }
             } else {
+                wasLaunchedViaExternalIntent = false
                 Timber.d("[IntentLaunch]: parseLaunchIntent returned null")
             }
         } catch (e: Exception) {
@@ -258,6 +300,9 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
+
+        val im = getSystemService(Context.INPUT_SERVICE) as InputManager
+        im.unregisterInputDeviceListener(this)
 
         PluviaApp.events.emit(AndroidEvent.ActivityDestroyed)
 

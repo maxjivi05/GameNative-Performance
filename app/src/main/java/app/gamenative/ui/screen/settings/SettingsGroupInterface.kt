@@ -118,6 +118,7 @@ private suspend fun handleAmazonAuthentication(
             Timber.i("[SettingsAmazon]: Starting AmazonService and triggering immediate library sync")
             AmazonService.start(context)
             AmazonService.triggerLibrarySync(context)
+            PluviaApp.events.emit(AndroidEvent.StoreAuthChanged)
             onSuccess()
             onLoadingChange(false)
             onDialogClose()
@@ -168,6 +169,7 @@ private suspend fun handleGogAuthentication(
             Timber.i("[SettingsGOG]: Starting GOGService and triggering immediate library sync")
             GOGService.start(context)
             GOGService.triggerLibrarySync(context)
+            PluviaApp.events.emit(AndroidEvent.StoreAuthChanged)
 
             // Authentication succeeded - manual sync triggered
             onSuccess(0)
@@ -220,6 +222,7 @@ private suspend fun handleEpicAuthentication(
             Timber.i("[SettingsEpic]: Starting EpicService and triggering immediate library sync")
             EpicService.start(context)
             EpicService.triggerLibrarySync(context)
+            PluviaApp.events.emit(AndroidEvent.StoreAuthChanged)
 
             onSuccess()
             onLoadingChange(false)

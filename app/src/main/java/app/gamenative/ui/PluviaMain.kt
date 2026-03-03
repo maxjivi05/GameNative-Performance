@@ -39,6 +39,7 @@ import androidx.navigation.navDeepLink
 import app.gamenative.BuildConfig
 import app.gamenative.Constants
 import app.gamenative.MainActivity
+import app.gamenative.NetworkMonitor
 import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
 import app.gamenative.R
@@ -484,9 +485,14 @@ fun PluviaMain(
         }
     }
 
-    // Timeout if stuck in connecting state for 10 seconds so that its not in loading state forever
+    // skip connection attempt immediately if no internet, otherwise timeout after 10s
     LaunchedEffect(isConnecting) {
         if (isConnecting) {
+            if (!NetworkMonitor.hasInternet.value) {
+                Timber.d("No internet, skipping connection attempt")
+                isConnecting = false
+                return@LaunchedEffect
+            }
             Timber.d("Started connecting, will timeout in 10s")
             delay(10000)
             Timber.d("Timeout reached, isSteamConnected=${state.isSteamConnected}")
@@ -755,16 +761,23 @@ fun PluviaMain(
         DialogType.SAVE_CONTAINER_CONFIG -> {
             onConfirmClick = {
                 // Save the container config permanently
-                pendingSaveAppId?.let { appId ->
-                    IntentLaunchManager.getEffectiveContainerConfig(context, appId)?.let { config ->
-                        ContainerUtils.applyToContainer(context, appId, config)
-                        Timber.i("[PluviaMain]: Saved container configuration for app $appId")
-                    }
-                    // Clear the temporary override after saving
-                    IntentLaunchManager.clearTemporaryOverride(appId)
-                }
+                val saveAppId = pendingSaveAppId
                 pendingSaveAppId = null
                 setMessageDialogState(MessageDialogState(false))
+                if (saveAppId != null) {
+                    scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                        try {
+                            IntentLaunchManager.getEffectiveContainerConfig(context, saveAppId)?.let { config ->
+                                ContainerUtils.applyToContainer(context, saveAppId, config)
+                                Timber.i("[PluviaMain]: Saved container configuration for app $saveAppId")
+                            }
+                            // Clear the temporary override after saving
+                            IntentLaunchManager.clearTemporaryOverride(saveAppId)
+                        } catch (e: Exception) {
+                            Timber.e(e, "Failed to save container config for $saveAppId")
+                        }
+                    }
+                }
             }
             onDismissClick = {
                 // Discard the temporary config and restore original
@@ -848,6 +861,12 @@ fun PluviaMain(
             visible = state.loadingDialogVisible,
             progress = state.loadingDialogProgress,
             message = state.loadingDialogMessage,
+        )
+
+        LoadingDialog(
+            visible = state.isExiting,
+            progress = state.exitingProgress,
+            message = state.exitingMessage,
         )
 
         MessageDialog(
@@ -969,7 +988,13 @@ fun PluviaMain(
                                 ?.route // ← this is the screen’s route string
 
                             if (currentRoute == PluviaScreen.XServer.route) {
-                                navController.popBackStack()
+                                if (MainActivity.wasLaunchedViaExternalIntent) {
+                                    Timber.d("[IntentLaunch]: Finishing activity to return to external launcher")
+                                    MainActivity.wasLaunchedViaExternalIntent = false
+                                    (context as? android.app.Activity)?.finish()
+                                } else {
+                                    navController.popBackStack()
+                                }
                             }
                         }
                     },
@@ -1155,7 +1180,8 @@ fun preLaunchApp(
             setLoadingProgress(0f)
             ManifestInstaller.installManifestEntry(
                 context, request.entry, request.isDriver, request.contentType,
-            ) { progress -> setLoadingProgress(progress) }
+                onProgress = { progress -> setLoadingProgress(progress) },
+            )
         }
 
         val loadingMessage = if (container.containerVariant.equals(Container.GLIBC)) {
@@ -1184,10 +1210,7 @@ fun preLaunchApp(
 
         // Kill all potential lingering wine processes from Android side
         try {
-            Runtime.getRuntime().exec("pkill -9 wineserver").waitFor()
-            Runtime.getRuntime().exec("pkill -9 box64").waitFor()
-            Runtime.getRuntime().exec("pkill -9 box86").waitFor()
-            Runtime.getRuntime().exec("pkill -9 libpulseaudio.so").waitFor()
+            com.winlator.core.ProcessHelper.killAllSubProcesses()
             delay(300)
         } catch (e: Exception) {}
 

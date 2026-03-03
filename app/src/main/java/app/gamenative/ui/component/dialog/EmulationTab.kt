@@ -1,10 +1,14 @@
 package app.gamenative.ui.component.dialog
 
+import androidx.compose.foundation.layout.Row
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.Modifier
 import app.gamenative.R
+import app.gamenative.ui.component.settings.frontendFullWidth
 import app.gamenative.ui.component.settings.SettingsListDropdown
 import app.gamenative.ui.theme.settingsTileColors
 import com.alorma.compose.settings.ui.SettingsGroup
@@ -19,14 +23,15 @@ fun EmulationTabContent(state: ContainerConfigState) {
     val wineIsX8664 = config.wineVersion.contains("x86_64", true)
     val wineIsArm64Ec = config.wineVersion.contains("arm64ec", true)
 
-    SettingsGroup() {
+    app.gamenative.ui.component.settings.FrontendAwareSettingsGroupNoScope() {
         if (config.containerVariant.equals(Container.BIONIC, ignoreCase = true)) {
-            if (wineIsArm64Ec) {
-                SettingsGroup() {
+            Row(modifier = Modifier.frontendFullWidth()) {
+                if (wineIsArm64Ec) {
                     val fexcoreIndex = state.fexcoreOptions.ids.indexOfFirst { it == config.fexcoreVersion }.coerceAtLeast(0)
                     SettingsListDropdown(
+                        modifier = Modifier.weight(1f),
                         colors = settingsTileColors(),
-                        title = { Text(text = stringResource(R.string.fexcore_version)) },
+                        title = { Text(text = stringResource(R.string.fexcore_version), softWrap = false, overflow = TextOverflow.Ellipsis) },
                         value = fexcoreIndex,
                         items = state.fexcoreOptions.labels,
                         itemMuted = state.fexcoreOptions.muted,
@@ -47,35 +52,37 @@ fun EmulationTabContent(state: ContainerConfigState) {
                         },
                     )
                 }
-            }
 
-            SettingsListDropdown(
-                colors = settingsTileColors(),
-                title = { Text(text = stringResource(R.string.emulator_64bit)) },
-                value = state.emulator64Index.value,
-                items = state.emulatorEntries,
-                enabled = false,
-                onItemSelected = { },
-            )
-            LaunchedEffect(wineIsX8664, wineIsArm64Ec) {
-                state.emulator64Index.value = if (wineIsX8664) 1 else 0
-            }
+                SettingsListDropdown(
+                    modifier = Modifier.weight(1f),
+                    colors = settingsTileColors(),
+                    title = { Text(text = stringResource(R.string.emulator_64bit), softWrap = false, overflow = TextOverflow.Ellipsis) },
+                    value = state.emulator64Index.value,
+                    items = state.emulatorEntries,
+                    enabled = false,
+                    onItemSelected = { },
+                )
+                LaunchedEffect(wineIsX8664, wineIsArm64Ec) {
+                    state.emulator64Index.value = if (wineIsX8664) 1 else 0
+                }
 
-            SettingsListDropdown(
-                colors = settingsTileColors(),
-                title = { Text(text = stringResource(R.string.emulator_32bit)) },
-                value = state.emulator32Index.value,
-                items = state.emulatorEntries,
-                enabled = when {
-                    wineIsX8664 -> false
-                    wineIsArm64Ec -> true
-                    else -> true
-                },
-                onItemSelected = { idx ->
-                    state.emulator32Index.value = idx
-                    state.config.value = config.copy(emulator = state.emulatorEntries[idx])
-                },
-            )
+                SettingsListDropdown(
+                    modifier = Modifier.weight(1f),
+                    colors = settingsTileColors(),
+                    title = { Text(text = stringResource(R.string.emulator_32bit), softWrap = false, overflow = TextOverflow.Ellipsis) },
+                    value = state.emulator32Index.value,
+                    items = state.emulatorEntries,
+                    enabled = when {
+                        wineIsX8664 -> false
+                        wineIsArm64Ec -> true
+                        else -> true
+                    },
+                    onItemSelected = { idx ->
+                        state.emulator32Index.value = idx
+                        state.config.value = config.copy(emulator = state.emulatorEntries[idx])
+                    },
+                )
+            }
             LaunchedEffect(wineIsX8664) {
                 if (wineIsX8664) {
                     state.emulator32Index.value = 1
@@ -93,6 +100,7 @@ fun EmulationTabContent(state: ContainerConfigState) {
                 }
             }
         }
+
         val box64OptionList = state.getVersionsForBox64()
         val box64Index = box64OptionList.ids.indexOfFirst { it == config.box64Version }.coerceAtLeast(0)
         val box64ManifestMap = if (config.wineVersion.contains("arm64ec", true)) {

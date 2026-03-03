@@ -114,9 +114,12 @@ internal fun LibraryListPane(
     onGoOnline: () -> Unit,
     onRefresh: () -> Unit,
     onSourceToggle: (GameSource) -> Unit,
+    onAioStoreToggle: () -> Unit = {},
     onAddCustomGame: () -> Unit = {},
     onFocusChanged: (LibraryItem?) -> Unit = {},
     isOffline: Boolean = false,
+    isAnyDialogOpen: Boolean = false,
+    onFrontendTabChanged: (Boolean) -> Unit = {},
 ) {
     val context = LocalContext.current
     val snackBarHost = remember { SnackbarHostState() }
@@ -204,11 +207,16 @@ internal fun LibraryListPane(
                     onAddCustomGame = onAddCustomGame,
                     onViewChanged = onViewChanged,
                     onModalBottomSheet = onModalBottomSheet,
-                                    onNavigateRoute = onNavigateRoute,
-                                    onEdit = onEdit,
-                                    onSearchQuery = onSearchQuery,
-                                    onFocusChanged = onFocusChanged,
-                                )
+                    onNavigateRoute = onNavigateRoute,
+                    onEdit = onEdit,
+                    onSearchQuery = onSearchQuery,
+                    onFocusChanged = onFocusChanged,
+                    onRefresh = onRefresh,
+                    isAnyDialogOpen = isAnyDialogOpen,
+                    onPauseDownload = {},
+                    onCancelDownload = {},
+                    onFrontendTabChanged = onFrontendTabChanged,
+                )
                             } else {                Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -481,6 +489,8 @@ internal fun LibraryListPane(
                             showEpic = state.showEpicInLibrary,
                             showAmazon = state.showAmazonInLibrary,
                             onSourceToggle = onSourceToggle,
+                            aioStoreEnabled = state.aioStoreEnabled,
+                            onAioStoreToggle = onAioStoreToggle,
                         )
                     },
                 )

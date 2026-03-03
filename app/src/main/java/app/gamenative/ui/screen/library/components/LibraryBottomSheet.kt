@@ -52,6 +52,8 @@ fun LibraryBottomSheet(
     showEpic: Boolean,
     showAmazon: Boolean,
     onSourceToggle: (app.gamenative.data.GameSource) -> Unit,
+    aioStoreEnabled: Boolean = true,
+    onAioStoreToggle: () -> Unit = {},
 ) {
     Column(
         modifier = Modifier
@@ -145,6 +147,18 @@ fun LibraryBottomSheet(
                     Icon(
                         imageVector = Icons.Filled.Amazon,
                         contentDescription = "Amazon",
+                        modifier = Modifier.size(24.dp)
+                    )
+                },
+            )
+            FlowFilterChip(
+                onClick = { onAioStoreToggle() },
+                label = { Text(text = "AIO Store") },
+                selected = aioStoreEnabled,
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Filled.Folder,
+                        contentDescription = "AIO Store",
                         modifier = Modifier.size(24.dp)
                     )
                 },

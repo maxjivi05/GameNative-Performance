@@ -57,18 +57,16 @@ class GOGAppScreen : BaseAppScreen() {
             return result
         }
 
-        private val customPathPickerRequests = mutableStateMapOf<String, Boolean>()
-
         fun requestCustomPathPicker(appId: String) {
-            customPathPickerRequests[appId] = true
+            BaseAppScreen.requestCustomPathPicker(appId)
         }
 
         fun clearCustomPathPickerRequest(appId: String) {
-            customPathPickerRequests.remove(appId)
+            BaseAppScreen.clearCustomPathPickerRequest(appId)
         }
 
         fun shouldShowCustomPathPicker(appId: String): Boolean {
-            return customPathPickerRequests[appId] == true
+            return BaseAppScreen.shouldShowCustomPathPicker(appId)
         }
 
         /**

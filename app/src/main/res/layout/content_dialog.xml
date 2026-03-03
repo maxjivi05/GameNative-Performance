@@ -3,14 +3,14 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
-    android:orientation="vertical"
-    android:padding="16dp">
+    android:orientation="vertical">
 
     <LinearLayout
         android:id="@+id/LLTitleBar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
+        android:padding="16dp"
         android:visibility="gone">
 
         <LinearLayout
@@ -44,7 +44,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:textSize="18sp"
-        android:layout_marginBottom="8dp"
+        android:layout_margin="16dp"
         android:visibility="gone" />
 
     <EditText
@@ -52,6 +52,7 @@
         android:id="@+id/EditText"
         android:layout_width="280dp"
         android:layout_gravity="center_horizontal"
+        android:layout_margin="16dp"
         android:visibility="gone" />
 
     <ListView
@@ -74,6 +75,7 @@
         android:layout_height="wrap_content"
         android:layout_gravity="center_horizontal"
         android:layout_marginTop="8dp"
+        android:layout_marginBottom="16dp"
         android:text="Extra Option"
         android:visibility="gone" />
 
@@ -81,7 +83,8 @@
         android:id="@+id/LLBottomBar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical">
+        android:orientation="vertical"
+        android:padding="16dp">
 
         <View style="@style/HorizontalLine" />
 

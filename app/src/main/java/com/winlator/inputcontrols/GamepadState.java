@@ -66,4 +66,17 @@ public class GamepadState {
         this.buttons = other.buttons;
         System.arraycopy(other.dpad, 0, this.dpad, 0, 4);
     }
+
+    public void merge(GamepadState other) {
+        if (Math.abs(other.thumbLX) > Math.abs(this.thumbLX)) this.thumbLX = other.thumbLX;
+        if (Math.abs(other.thumbLY) > Math.abs(this.thumbLY)) this.thumbLY = other.thumbLY;
+        if (Math.abs(other.thumbRX) > Math.abs(this.thumbRX)) this.thumbRX = other.thumbRX;
+        if (Math.abs(other.thumbRY) > Math.abs(this.thumbRY)) this.thumbRY = other.thumbRY;
+        if (other.triggerL > this.triggerL) this.triggerL = other.triggerL;
+        if (other.triggerR > this.triggerR) this.triggerR = other.triggerR;
+        this.buttons |= other.buttons;
+        for (int i = 0; i < 4; i++) {
+            if (other.dpad[i]) this.dpad[i] = true;
+        }
+    }
 }

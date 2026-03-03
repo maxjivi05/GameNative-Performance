@@ -131,14 +131,20 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
             if (pid != -1) {
                 Process.killProcess(pid);
                 Log.d("BionicProgramLauncherComponent", "Stopped process " + pid);
-                List<ProcessHelper.ProcessInfo> subProcesses = ProcessHelper.listSubProcesses();
-                for (ProcessHelper.ProcessInfo subProcess : subProcesses) {
-                    Process.killProcess(subProcess.pid);
-                }
+                pid = -1;
                 SteamService.setKeepAlive(false);
             }
             PerformanceTuner.stopRootPerformanceMode();
+            // Flush wineserver registry to disk BEFORE killing sub-processes.
+            // wineserver -k tells wineserver to save all registry hives and exit gracefully.
+            // Previously, sub-processes (including wineserver) were killed first, so
+            // wineserver -k had nothing to flush and winecfg changes were lost.
             execShellCommand("wineserver -k");
+            // Now clean up any remaining sub-processes
+            List<ProcessHelper.ProcessInfo> subProcesses = ProcessHelper.listSubProcesses();
+            for (ProcessHelper.ProcessInfo subProcess : subProcesses) {
+                Process.killProcess(subProcess.pid);
+            }
         }
     }
 
@@ -203,14 +209,16 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
     private int execGuestProgram() {
         // Get the number of enabled players directly from ControllerManager.
         final int enabledPlayerCount = com.winlator.inputcontrols.ControllerManager.getInstance().getEnabledPlayerCount();
+        Context context = environment.getContext();
+        String filesDir = context.getFilesDir().getAbsolutePath();
         for (int i = 0; i < 4; i++) {
             String memPath;
             if (i == 0) {
                 // Player 1 uses the original, non-numbered path that is known to work.
-                memPath = "/data/data/app.gamenative/files/imagefs/tmp/gamepad.mem";
+                memPath = filesDir + "/imagefs/tmp/gamepad.mem";
             } else {
                 // Players 2, 3, 4 use a 1-based index.
-                memPath = "/data/data/app.gamenative/files/imagefs/tmp/gamepad" + i + ".mem";
+                memPath = filesDir + "/imagefs/tmp/gamepad" + i + ".mem";
             }
 
             File memFile = new File(memPath);
@@ -221,7 +229,6 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
                 Log.e("EVSHIM_HOST", "Failed to create mem file for player index "+i, e);
             }
         }
-        Context context = environment.getContext();
         ImageFs imageFs = ImageFs.find(context);
         File rootDir = imageFs.getRootDir();
 
@@ -261,7 +268,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         // Setting up essential environment variables for Wine
         envVars.put("HOME", imageFs.home_path);
         envVars.put("USER", ImageFs.USER);
-        envVars.put("TMPDIR", rootDir.getPath() + "/usr/tmp");
+        envVars.put("TMPDIR", rootDir.getPath() + "/tmp");
         envVars.put("DISPLAY", ":0");
 
         String winePath = imageFs.getWinePath() + "/bin";
@@ -322,7 +329,26 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
 
         envVars.put("LD_PRELOAD", ld_preload);
 
+        String nativeLibDir = context.getApplicationInfo().nativeLibraryDir;
+        String box64LdPreload = "";
+        String hookImplPath = nativeLibDir + "/libhook_impl.so";
+        String redirectHookPath = nativeLibDir + "/libfile_redirect_hook.so";
+
+        if (new File(hookImplPath).exists()) box64LdPreload += hookImplPath;
+        if (new File(redirectHookPath).exists()) {
+            if (!box64LdPreload.isEmpty()) box64LdPreload += ":";
+            box64LdPreload += redirectHookPath;
+        }
+
+        if (!box64LdPreload.isEmpty()) {
+            envVars.put("BOX64_LD_PRELOAD", box64LdPreload);
+        }
+
+        String currentBox64LibPath = envVars.get("BOX64_LD_LIBRARY_PATH");
+        envVars.put("BOX64_LD_LIBRARY_PATH", nativeLibDir + (currentBox64LibPath != null && !currentBox64LibPath.isEmpty() ? ":" + currentBox64LibPath : ""));
+
         envVars.put("EVSHIM_SHM_NAME", "controller-shm0");
+        envVars.put("EVSHIM_DATA_DIR", "/data/data/" + app.gamenative.BuildConfig.APPLICATION_ID);
 
         // Check for specific shared memory libraries
 //        if ((new File(imageFs.getLibDir(), "libandroid-sysvshm.so")).exists()){

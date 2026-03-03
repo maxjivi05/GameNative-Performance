@@ -27,11 +27,25 @@ public abstract class GPUInformation {
         System.loadLibrary("extras");
     }
 
+    // Cache parsed GPU cards JSON to avoid re-parsing on every call
+    private static JSONArray cachedGpuCards = null;
+
+    private static synchronized JSONArray getGpuCards(Context context) {
+        if (cachedGpuCards == null) {
+            try {
+                String gpuNameList = FileUtils.readString(context, "gpu_cards.json");
+                cachedGpuCards = new JSONArray(gpuNameList);
+            } catch (JSONException e) {
+                cachedGpuCards = new JSONArray();
+            }
+        }
+        return cachedGpuCards;
+    }
+
     public static String getDeviceIdFromGPUName(Context context, String gpuName) {
-        String gpuNameList = FileUtils.readString(context, "gpu_cards.json");
         String deviceId = "";
         try {
-            JSONArray jsonArray = new JSONArray(gpuNameList);
+            JSONArray jsonArray = getGpuCards(context);
             for (int i = 0; i < jsonArray.length(); i++) {
                 JSONObject jobj = jsonArray.getJSONObject(i);
                 if (jobj.getString("name").contains(gpuName)) {
@@ -45,10 +59,9 @@ public abstract class GPUInformation {
     }
 
     public static String getVendorIdFromGPUName(Context context, String gpuName) {
-        String gpuNameList = FileUtils.readString(context, "gpu_cards.json");
         String vendorId = "";
         try {
-            JSONArray jsonArray = new JSONArray(gpuNameList);
+            JSONArray jsonArray = getGpuCards(context);
             for (int i = 0; i < jsonArray.length(); i++) {
                 JSONObject jobj = jsonArray.getJSONObject(i);
                 if (jobj.getString("name").contains(gpuName)) {
@@ -69,46 +82,48 @@ public abstract class GPUInformation {
         gpuInfo.put("version", "");
 
         (new Thread(() -> {
-            int[] attribList = new int[]{
-                    EGL10.EGL_SURFACE_TYPE, EGL10.EGL_PBUFFER_BIT,
-                    EGL10.EGL_RENDERABLE_TYPE, EGL14.EGL_OPENGL_ES2_BIT,
-                    EGL10.EGL_RED_SIZE, 8,
-                    EGL10.EGL_GREEN_SIZE, 8,
-                    EGL10.EGL_BLUE_SIZE, 8,
-                    EGL10.EGL_ALPHA_SIZE, 0,
-                    EGL10.EGL_NONE
-            };
-            EGLConfig[] configs = new EGLConfig[1];
-            int[] configCounts = new int[1];
+            try {
+                int[] attribList = new int[]{
+                        EGL10.EGL_SURFACE_TYPE, EGL10.EGL_PBUFFER_BIT,
+                        EGL10.EGL_RENDERABLE_TYPE, EGL14.EGL_OPENGL_ES2_BIT,
+                        EGL10.EGL_RED_SIZE, 8,
+                        EGL10.EGL_GREEN_SIZE, 8,
+                        EGL10.EGL_BLUE_SIZE, 8,
+                        EGL10.EGL_ALPHA_SIZE, 0,
+                        EGL10.EGL_NONE
+                };
+                EGLConfig[] configs = new EGLConfig[1];
+                int[] configCounts = new int[1];
 
-            EGL10 egl = (EGL10) EGLContext.getEGL();
-            EGLDisplay eglDisplay = egl.eglGetDisplay(EGL10.EGL_DEFAULT_DISPLAY);
+                EGL10 egl = (EGL10) EGLContext.getEGL();
+                EGLDisplay eglDisplay = egl.eglGetDisplay(EGL10.EGL_DEFAULT_DISPLAY);
 
-            int[] version = new int[2];
-            egl.eglInitialize(eglDisplay, version);
-            egl.eglChooseConfig(eglDisplay, attribList, configs, 1, configCounts);
+                int[] version = new int[2];
+                egl.eglInitialize(eglDisplay, version);
+                egl.eglChooseConfig(eglDisplay, attribList, configs, 1, configCounts);
 
-            attribList = new int[]{EGL14.EGL_CONTEXT_CLIENT_VERSION, 2, EGL10.EGL_NONE};
-            EGLContext eglContext = egl.eglCreateContext(eglDisplay, configs[0], EGL10.EGL_NO_CONTEXT, attribList);
+                attribList = new int[]{EGL14.EGL_CONTEXT_CLIENT_VERSION, 2, EGL10.EGL_NONE};
+                EGLContext eglContext = egl.eglCreateContext(eglDisplay, configs[0], EGL10.EGL_NO_CONTEXT, attribList);
 
-            egl.eglMakeCurrent(eglDisplay, EGL10.EGL_NO_SURFACE, EGL10.EGL_NO_SURFACE, eglContext);
+                egl.eglMakeCurrent(eglDisplay, EGL10.EGL_NO_SURFACE, EGL10.EGL_NO_SURFACE, eglContext);
 
-            GL10 gl = (GL10) eglContext.getGL();
-            String gpuRenderer = Objects.toString(gl.glGetString(GL10.GL_RENDERER), "");
-            String gpuVendor = Objects.toString(gl.glGetString(GL10.GL_VENDOR), "");
-            String gpuVersion = Objects.toString(gl.glGetString(GL10.GL_VERSION), "");
+                GL10 gl = (GL10) eglContext.getGL();
+                String gpuRenderer = Objects.toString(gl.glGetString(GL10.GL_RENDERER), "");
+                String gpuVendor = Objects.toString(gl.glGetString(GL10.GL_VENDOR), "");
+                String gpuVersion = Objects.toString(gl.glGetString(GL10.GL_VERSION), "");
 
-            gpuInfo.put("renderer", gpuRenderer);
-            gpuInfo.put("vendor", gpuVendor);
-            gpuInfo.put("version", gpuVersion);
+                gpuInfo.put("renderer", gpuRenderer);
+                gpuInfo.put("vendor", gpuVendor);
+                gpuInfo.put("version", gpuVersion);
 
-            PrefManager.init(context);
-            PrefManager.putString("gpu_renderer", gpuRenderer);
-            PrefManager.putString("gpu_vendor", gpuVendor);
-            PrefManager.putString("gpu_version", gpuVersion);
-
-            synchronized (thread) {
-                thread.notify();
+                PrefManager.init(context);
+                PrefManager.putString("gpu_renderer", gpuRenderer);
+                PrefManager.putString("gpu_vendor", gpuVendor);
+                PrefManager.putString("gpu_version", gpuVersion);
+            } finally {
+                synchronized (thread) {
+                    thread.notify();
+                }
             }
         })).start();
 

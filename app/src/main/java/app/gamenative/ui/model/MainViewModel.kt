@@ -206,6 +206,10 @@ class MainViewModel @Inject constructor(
         _state.update { it.copy(bootingSplashText = value) }
     }
 
+    fun setExitingState(visible: Boolean, message: String = "Exiting...", progress: Float = -1f) {
+        _state.update { it.copy(isExiting = visible, exitingMessage = message, exitingProgress = progress) }
+    }
+
     fun setCurrentScreen(currentScreen: String?) {
         val screen = when (currentScreen) {
             PluviaScreen.LoginUser.route -> PluviaScreen.LoginUser
@@ -277,6 +281,7 @@ class MainViewModel @Inject constructor(
 
     fun exitSteamApp(context: Context, appId: String) {
         viewModelScope.launch {
+            setExitingState(true, "Exiting...")
             app.gamenative.utils.LocalPlaytimeManager.endSession(context, appId)
             Timber.tag("Exit").i("Exiting, getting feedback for appId: $appId")
             bootingSplashTimeoutJob?.cancel()
@@ -294,12 +299,11 @@ class MainViewModel @Inject constructor(
             if (gameSource == GameSource.AMAZON) {
                 // Record playtime for Amazon games (Amazon has no cloud save API)
                 Timber.tag("Amazon").i("Amazon Game exited for $appId — recording playtime")
-                viewModelScope.launch(Dispatchers.IO) {
-                    try {
-                        app.gamenative.service.amazon.AmazonService.recordSessionPlaytime()
-                    } catch (e: Exception) {
-                        Timber.tag("Amazon").e(e, "Exception during Amazon playtime recording for $appId")
-                    }
+                setExitingState(true, "Recording Amazon playtime...")
+                try {
+                    app.gamenative.service.amazon.AmazonService.recordSessionPlaytime()
+                } catch (e: Exception) {
+                    Timber.tag("Amazon").e(e, "Exception during Amazon playtime recording for $appId")
                 }
             }
 
@@ -312,18 +316,28 @@ class MainViewModel @Inject constructor(
                 prefixToPath = { prefix ->
                     PathType.from(prefix).toAbsPath(context, gameId, SteamService.userSteamId!!.accountID)
                 },
+                setLoadingMessage = { setExitingState(true, "Exiting...\n$it") },
+                setLoadingProgress = { setExitingState(true, _state.value.exitingMessage, it) }
             )
+
+            // Final cleanup of all processes in the container
+            setExitingState(true, "Exiting...\nCleaning up resources...", -1f)
+            com.winlator.core.ProcessHelper.killAllSubProcesses()
+
+            // Ensure the dialog stays on screen for at least 2 seconds for visibility
+            setExitingState(true, "Exiting...\nComplete!", 1f)
+            delay(2000)
+
+            setExitingState(false)
 
             // Prompt user to save temporary container configuration if one was applied
             if (hadTemporaryOverride) {
                 PluviaApp.events.emit(AndroidEvent.PromptSaveContainerConfig(appId))
                 // Dialog handler in PluviaMain manages the save/discard logic
             }
-
+            
             // After app closes, check if we need to show the feedback dialog
             try {
-                // Do not show the Feedback form for non-steam games until we can support.
-                val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
                 if (gameSource == GameSource.STEAM) {
                     val container = ContainerUtils.getContainer(context, appId)
 

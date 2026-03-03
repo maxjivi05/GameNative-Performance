@@ -112,19 +112,15 @@ fun GameManagerDialog(
         onDismissRequest()
     }
 
-    val launcher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocumentTree()
-    ) { uri ->
-        if (uri != null) {
-            val path = getPathFromTreeUri(uri)
-            if (path != null) {
-                val selectedIds = selectedAppIds
-                    .filter { selectedId -> selectedId.key in enabledAppIds.filter { enabledId -> enabledId.value } }
-                    .filter { selectedId -> selectedId.value }.keys.toList()
-                onInstallCustom?.invoke(selectedIds, path)
-            }
+    val folderPicker = app.gamenative.ui.component.picker.rememberDownloadFolderPicker(
+        onPathSelected = { path ->
+            val selectedIds = selectedAppIds
+                .filter { selectedId -> selectedId.key in enabledAppIds.filter { enabledId -> enabledId.value } }
+                .filter { selectedId -> selectedId.value }.keys.toList()
+            onInstallCustom?.invoke(selectedIds, path)
         }
-    }
+    )
+
     val installedDlcIds = installedApp?.dlcDepots.orEmpty()
 
     val indirectDlcAppIds = remember(gameId) {
@@ -530,7 +526,7 @@ fun GameManagerDialog(
                                         Row(verticalAlignment = Alignment.CenterVertically) {
                                             if (onInstallCustom != null) {
                                                 IconButton(
-                                                    onClick = { launcher.launch(null) }
+                                                    onClick = { folderPicker.launchPicker() }
                                                 ) {
                                                     Icon(
                                                         imageVector = Icons.Default.FolderOpen,

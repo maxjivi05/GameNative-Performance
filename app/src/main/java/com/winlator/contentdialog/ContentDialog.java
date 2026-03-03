@@ -1,6 +1,6 @@
 package com.winlator.contentdialog;
 
-import android.app.Dialog;
+import androidx.appcompat.app.AppCompatDialog;
 import android.content.Context;
 import android.util.SparseBooleanArray;
 import android.view.LayoutInflater;
@@ -21,7 +21,7 @@ import com.winlator.core.Callback;
 
 import java.util.ArrayList;
 
-public class ContentDialog extends Dialog {
+public class ContentDialog extends AppCompatDialog {
     private Runnable onConfirmCallback;
     private Runnable onCancelCallback;
     private final View contentView;
@@ -41,6 +41,9 @@ public class ContentDialog extends Dialog {
 
     public ContentDialog(@NonNull Context context, int layoutResId) {
         super(context, R.style.ContentDialog);
+        if (getWindow() != null) {
+            getWindow().setBackgroundDrawableResource(R.drawable.content_dialog_background);
+        }
         contentView = LayoutInflater.from(context).inflate(R.layout.content_dialog, null);
 
         if (layoutResId > 0) {

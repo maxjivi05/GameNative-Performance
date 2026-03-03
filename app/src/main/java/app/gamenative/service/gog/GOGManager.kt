@@ -27,6 +27,8 @@ import app.gamenative.utils.Net
 import app.gamenative.utils.StorageUtils
 import com.winlator.container.Container
 import com.winlator.core.envvars.EnvVars
+import com.winlator.core.FileUtils as WinlatorFileUtils
+import app.gamenative.service.gog.api.GOGManifestUtils
 import com.winlator.xenvironment.components.GuestProgramLauncherComponent
 import com.winlator.core.WineRegistryEditor
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -335,26 +337,25 @@ class GOGManager @Inject constructor(
                         if (detectedGame != null) {
                             // Update database with installation info
                             val existingGame = getGameFromDbById(detectedGame.id)
-                            if (existingGame != null && !existingGame.isInstalled) {
+                            if (existingGame != null) {
                                 val updatedGame = existingGame.copy(
-                                    isInstalled = true,
+                                    isInstalled = detectedGame.isInstalled,
                                     installPath = detectedGame.installPath,
                                     installSize = detectedGame.installSize,
                                 )
-                                updateGame(updatedGame)
-                                autoConfigureContainer(updatedGame)
-                                detectedCount++
-                                Timber.i("Detected existing installation: ${existingGame.title} at ${installDir.absolutePath}")
-                            } else if (existingGame != null) {
-                                // Even if already marked installed, ensure container is configured
-                                if (existingGame.installPath.isEmpty() && detectedGame.installPath.isNotEmpty()) {
-                                     val updatedGame = existingGame.copy(installPath = detectedGame.installPath)
-                                     updateGame(updatedGame)
-                                     autoConfigureContainer(updatedGame)
-                                } else {
-                                     autoConfigureContainer(existingGame)
+                                if (existingGame.isInstalled != updatedGame.isInstalled ||
+                                    existingGame.installPath != updatedGame.installPath) {
+                                    updateGame(updatedGame)
+                                    if (updatedGame.isInstalled) {
+                                        autoConfigureContainer(updatedGame)
+                                    }
+                                    detectedCount++
+                                    Timber.i("Detected GOG installation: ${existingGame.title} (complete=${updatedGame.isInstalled}) at ${installDir.absolutePath}")
+                                } else if (updatedGame.isInstalled) {
+                                    // Even if already marked installed, ensure container is configured
+                                    autoConfigureContainer(updatedGame)
+                                    Timber.d("Game ${existingGame.title} already marked as installed")
                                 }
-                                Timber.d("Game ${existingGame.title} already marked as installed")
                             }
                         }
                     } catch (e: Exception) {
@@ -399,8 +400,10 @@ class GOGManager @Inject constructor(
                     val game = getGameFromDbById(gameId)
                     if (game != null) {
                         val installSize = FileUtils.calculateDirectorySize(installDir)
+                        val isComplete = MarkerUtils.hasMarker(installDir.absolutePath, Marker.DOWNLOAD_COMPLETE_MARKER)
+                        Timber.d("Detected game directory: ${game.title} (id=$gameId, complete=$isComplete)")
                         return game.copy(
-                            isInstalled = true,
+                            isInstalled = isComplete,
                             installPath = installDir.absolutePath,
                             installSize = installSize,
                         )
@@ -425,9 +428,10 @@ class GOGManager @Inject constructor(
 
                 if (hasContent) {
                     val installSize = FileUtils.calculateDirectorySize(installDir)
-                    Timber.d("Matched directory '$dirName' to game '${game.title}'")
+                    val isComplete = MarkerUtils.hasMarker(installDir.absolutePath, Marker.DOWNLOAD_COMPLETE_MARKER)
+                    Timber.d("Matched directory '$dirName' to game '${game.title}' (complete=$isComplete)")
                     return game.copy(
-                        isInstalled = true,
+                        isInstalled = isComplete,
                         installPath = installDir.absolutePath,
                         installSize = installSize,
                     )
@@ -524,7 +528,10 @@ class GOGManager @Inject constructor(
                 val gameId = libraryItem.gameId.toString()
                 
                 // Cancel active download if any
-                GOGService.cancelDownload(gameId)
+                GOGService.getDownloadInfo(gameId)?.let {
+                    it.cancel()
+                    it.awaitCompletion()
+                }
 
                 val installPath = getAppDirPath(libraryItem.appId)
                 val installDir = File(installPath)
@@ -588,13 +595,30 @@ class GOGManager @Inject constructor(
 
             val isInstalled = isDownloadComplete && !isDownloadInProgress
 
+            // Check if directory exists even if not complete
+            val hasDirectory = File(appDirPath).exists() && File(appDirPath).isDirectory
+
             // Update database if status changed
             val gameId = libraryItem.gameId.toString()
             val game = runBlocking { getGameFromDbById(gameId) }
-            if (game != null && isInstalled != game.isInstalled) {
-                val installPath = if (isInstalled) getGameInstallPath(gameId, libraryItem.name) else ""
-                val updatedGame = game.copy(isInstalled = isInstalled, installPath = installPath)
-                runBlocking { gogGameDao.update(updatedGame) }
+            if (game != null) {
+                var updatedGame = game
+                var changed = false
+
+                if (isInstalled != game.isInstalled) {
+                    updatedGame = updatedGame.copy(isInstalled = isInstalled)
+                    changed = true
+                }
+
+                // If we have a directory but no installPath in DB, update it
+                if (hasDirectory && game.installPath.isEmpty()) {
+                    updatedGame = updatedGame.copy(installPath = appDirPath)
+                    changed = true
+                }
+
+                if (changed) {
+                    runBlocking { gogGameDao.update(updatedGame) }
+                }
             }
 
             return isInstalled
@@ -1265,6 +1289,10 @@ class GOGManager @Inject constructor(
         val game = runBlocking { getGameFromDbById(gameId.toString()) }
 
         if (game != null) {
+            // Respect the custom install path if one is stored in the database
+            if (game.installPath.isNotEmpty()) {
+                return game.installPath
+            }
             return GOGConstants.getGameInstallPath(game.title)
         }
 
@@ -1274,5 +1302,85 @@ class GOGManager @Inject constructor(
 
     fun getGameInstallPath(gameId: String, gameTitle: String): String {
         return GOGConstants.getGameInstallPath(gameTitle)
+    }
+
+    /**
+     * Creates the GOG scriptinterpreter rootdir symlink when present. /DIR and /supportDir use
+     * A:\_CommonRedist\ISI\rootdir; rootdir must be a symlink to the actual game install root so
+     * it resolves correctly when the drive is mounted.
+     */
+    fun ensureScriptInterpreterRootDirSymlink(gameInstallDir: File) {
+        val commonRedistDir = File(gameInstallDir, "_CommonRedist")
+        val isiDir = File(commonRedistDir, "ISI")
+        if (isiDir.isDirectory) {
+            val rootDirLink = File(isiDir, "rootdir")
+            if (!rootDirLink.exists() || !WinlatorFileUtils.isSymlink(rootDirLink)) {
+                WinlatorFileUtils.symlink(gameInstallDir, rootDirLink)
+                Timber.tag("GOG").d(
+                    "Created scriptinterpreter rootdir symlink: ${rootDirLink.absolutePath} -> ${gameInstallDir.absolutePath}",
+                )
+            }
+        }
+    }
+
+    /**
+     * Returns command parts to run GOG scriptinterpreter.exe for each product (when required by
+     * _gog_manifest.json). Used by pre-launch steps to prepend to the game launch command so it runs
+     * in the same Wine session. Returns empty list if not needed or not available.
+     */
+    fun getScriptInterpreterPartsForLaunch(appId: String): List<String> {
+        val gameId = ContainerUtils.extractGameIdFromContainerId(appId)
+        val game = runBlocking { getGameFromDbById(gameId.toString()) } ?: return emptyList()
+        val computedPath = getGameInstallPath(gameId.toString(), game.title)
+        val gameInstallPath = when {
+            game.installPath.isNotEmpty() && File(game.installPath).exists() -> game.installPath
+            else -> computedPath
+        }
+        val gameInstallDir = File(gameInstallPath)
+        if (!GOGManifestUtils.needsScriptInterpreter(gameInstallDir)) return emptyList()
+        val root = GOGManifestUtils.readLocalManifest(gameInstallDir) ?: return emptyList()
+        val isiRelativePath = "_CommonRedist/ISI/scriptinterpreter.exe"
+        if (!File(gameInstallPath, isiRelativePath).exists()) return emptyList()
+
+        ensureScriptInterpreterRootDirSymlink(gameInstallDir)
+
+        val isiRelativePathWin = isiRelativePath.replace('/', '\\')
+        val gameDriveLetter = "A"
+        val buildId = root.optString("buildId", "")
+        val versionName = root.optString("versionName", "")
+        val langCode = root.optString("language", "en").let { if (it.length <= 2) "$it-US" else it }
+        val language = "English"
+        val productsArray = root.optJSONArray("products") ?: return emptyList()
+
+        val parts = mutableListOf<String>()
+        for (i in 0 until productsArray.length()) {
+            val product = productsArray.getJSONObject(i)
+            val productId = product.optString("productId", "")
+            if (productId.isEmpty()) continue
+
+            val exePathWin = "$gameDriveLetter:\\$isiRelativePathWin"
+            // HACK: /DIR and /supportDir point to a "rootdir" folder inside ISI, which is a symlink
+            // to the actual game install root (created during redist download). This gives
+            // scriptinterpreter a full path with drive + folder name while still resolving
+            // to the game directory that the drive letter is mapped to.
+            val dirAndSupport = "$gameDriveLetter:\\_CommonRedist\\ISI\\rootdir"
+            val args = listOf(
+                "/VERYSILENT",
+                "/DIR=$dirAndSupport",
+                "/Language=$language",
+                "/LANG=$language",
+                "/ProductId=$productId",
+                "/buildId=$buildId",
+                "/versionName=$versionName",
+                "/lang-code=$langCode",
+                "/supportDir=$dirAndSupport",
+                "/nodesktopshorctut",
+                "/nodesktopshortcut",
+            ).joinToString(" ")
+
+            parts.add("$exePathWin $args")
+        }
+
+        return parts
     }
 }

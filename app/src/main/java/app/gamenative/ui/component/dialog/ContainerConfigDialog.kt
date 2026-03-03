@@ -48,6 +48,9 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import android.view.KeyEvent
+import app.gamenative.events.AndroidEvent
+import app.gamenative.PluviaApp
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -73,6 +76,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.tooling.preview.Preview
 import app.gamenative.R
+import androidx.compose.foundation.layout.ime
 import app.gamenative.ui.component.dialog.state.MessageDialogState
 import app.gamenative.ui.component.settings.SettingsCPUList
 import app.gamenative.ui.component.settings.SettingsCenteredLabel
@@ -168,6 +172,7 @@ fun ContainerConfigDialog(
 @Composable
 fun ContainerConfigScreen(
     default: Boolean = false,
+    isFrontend: Boolean = false,
     title: String,
     initialConfig: ContainerData,
     onDismissRequest: () -> Unit,
@@ -254,6 +259,7 @@ fun ContainerConfigScreen(
     var showManifestDownloadDialog by remember { mutableStateOf(false) }
     var manifestDownloadProgress by remember { mutableStateOf(-1f) }
     var manifestDownloadLabel by remember { mutableStateOf("") }
+    var manifestDownloadStage by remember { mutableStateOf("") }
     var versionsLoaded by remember { mutableStateOf(false) }
     val showCustomResolutionDialogRef = remember { mutableStateOf(false) }
     var showCustomResolutionDialog by showCustomResolutionDialogRef
@@ -301,7 +307,9 @@ fun ContainerConfigScreen(
     val installedLists = availability?.installed
 
     val isBionicVariant = config.containerVariant.equals(Container.BIONIC, ignoreCase = true)
-    val manifestDownloadMessage = if (manifestDownloadLabel.isNotEmpty()) {
+    val manifestDownloadMessage = if (manifestDownloadStage.isNotEmpty() && manifestDownloadLabel.isNotEmpty()) {
+        "$manifestDownloadStage $manifestDownloadLabel…"
+    } else if (manifestDownloadLabel.isNotEmpty()) {
         stringResource(R.string.manifest_downloading_item, manifestDownloadLabel)
     } else {
         stringResource(R.string.downloading)
@@ -433,6 +441,11 @@ fun ContainerConfigScreen(
                             manifestDownloadProgress = clamped
                         }
                     },
+                    onStage = { stage ->
+                        installScope.launch(Dispatchers.Main.immediate) {
+                            manifestDownloadStage = stage
+                        }
+                    },
                 )
                 if (result.success) {
                     refreshInstalledLists()
@@ -444,6 +457,7 @@ fun ContainerConfigScreen(
                 showManifestDownloadDialog = false
                 manifestDownloadProgress = -1f
                 manifestDownloadLabel = ""
+                manifestDownloadStage = ""
             }
         }
     }
@@ -1155,17 +1169,20 @@ fun ContainerConfigScreen(
             onConfirmClick = onDismissRequest,
         )
 
-    ContainerConfigContent(
-        title = title,
-        config = config,
-        initialConfig = initialConfig,
-        state = state,
-        onDismissCheck = onDismissCheck,
-        onSave = onSave,
-        nonzeroResolutionError = nonzeroResolutionError,
-        aspectResolutionError = aspectResolutionError,
-        default = default,
-    )
+    androidx.compose.runtime.CompositionLocalProvider(app.gamenative.ui.component.settings.LocalIsFrontend provides isFrontend) {
+        ContainerConfigContent(
+            title = title,
+            config = config,
+            initialConfig = initialConfig,
+            state = state,
+            onDismissCheck = onDismissCheck,
+            onSave = onSave,
+            nonzeroResolutionError = nonzeroResolutionError,
+            aspectResolutionError = aspectResolutionError,
+            default = default,
+            isFrontend = isFrontend,
+        )
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -1180,6 +1197,7 @@ fun ContainerConfigContent(
     nonzeroResolutionError: String,
     aspectResolutionError: String,
     default: Boolean,
+    isFrontend: Boolean = false,
 ) {
     val scrollState = rememberScrollState()
 
@@ -1221,6 +1239,55 @@ fun ContainerConfigContent(
             stringResource(R.string.container_config_tab_drives),
             stringResource(R.string.container_config_tab_advanced)
         )
+
+        val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
+        val density = androidx.compose.ui.platform.LocalDensity.current
+        val isImeVisible = androidx.compose.foundation.layout.WindowInsets.ime.getBottom(density) > 0
+        val coroutineScope = rememberCoroutineScope()
+
+        DisposableEffect(isFrontend, tabs.size, isImeVisible) {
+            val keyListener: (AndroidEvent.KeyEvent) -> Boolean = { event ->
+                if (isFrontend && event.event.action == KeyEvent.ACTION_DOWN) {
+                    when (event.event.keyCode) {
+                        KeyEvent.KEYCODE_BUTTON_L1 -> {
+                            selectedTab = if (selectedTab > 0) selectedTab - 1 else tabs.size - 1
+                            true
+                        }
+                        KeyEvent.KEYCODE_BUTTON_R1 -> {
+                            selectedTab = if (selectedTab < tabs.size - 1) selectedTab + 1 else 0
+                            true
+                        }
+                        KeyEvent.KEYCODE_BUTTON_A -> {
+                            coroutineScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                                try {
+                                    android.app.Instrumentation().sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_DPAD_CENTER)
+                                } catch (e: Exception) {}
+                            }
+                            true
+                        }
+                        KeyEvent.KEYCODE_BUTTON_B -> {
+                            if (isImeVisible) {
+                                focusManager.clearFocus()
+                                true
+                            } else {
+                                onDismissCheck()
+                                true
+                            }
+                        }
+                        else -> false
+                    }
+                } else false
+            }
+            if (isFrontend) {
+                PluviaApp.events.on<AndroidEvent.KeyEvent, Boolean>(keyListener)
+            }
+            onDispose {
+                if (isFrontend) {
+                    PluviaApp.events.off<AndroidEvent.KeyEvent, Boolean>(keyListener)
+                }
+            }
+        }
+
         Column(
             modifier = Modifier
                 .padding(

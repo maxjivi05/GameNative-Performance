@@ -164,7 +164,8 @@ data class GOGManifestMeta(
     val installDirectory: String,
     val depots: List<Depot>,
     val dependencies: List<String>,
-    val products: List<Product>
+    val products: List<Product>,
+    val scriptInterpreter: Boolean = false
 ) {
     companion object {
         fun fromJson(json: JSONObject): GOGManifestMeta {
@@ -200,7 +201,8 @@ data class GOGManifestMeta(
                 installDirectory = json.optString("installDirectory", ""),
                 depots = depots,
                 dependencies = dependencies,
-                products = products
+                products = products,
+                scriptInterpreter = json.optBoolean("scriptInterpreter", false)
             )
         }
     }
@@ -263,13 +265,17 @@ data class Depot(
  */
 data class Product(
     val productId: String,
-    val name: String
+    val name: String,
+    val temp_executable: String? = null,
+    val temp_arguments: String? = null
 ) {
     companion object {
         fun fromJson(json: JSONObject): Product {
             return Product(
                 productId = json.optString("productId", ""),
-                name = json.optString("name", "")
+                name = json.optString("name", ""),
+                temp_executable = json.optString("temp_executable", ""),
+                temp_arguments = json.optString("temp_arguments", "")
             )
         }
     }

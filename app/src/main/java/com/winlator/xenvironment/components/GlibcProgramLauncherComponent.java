@@ -122,14 +122,19 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
                 Process.killProcess(pid);
                 Log.d("GlibcProgramLauncherComponent", "Stopped process " + pid);
                 pid = -1;
-                List<ProcessHelper.ProcessInfo> subProcesses = ProcessHelper.listSubProcesses();
-                for (ProcessHelper.ProcessInfo subProcess : subProcesses) {
-                    Process.killProcess(subProcess.pid);
-                }
                 SteamService.setKeepAlive(false);
             }
             PerformanceTuner.stopRootPerformanceMode();
+            // Flush wineserver registry to disk BEFORE killing sub-processes.
+            // wineserver -k tells wineserver to save all registry hives and exit gracefully.
+            // Previously, sub-processes (including wineserver) were killed first, so
+            // wineserver -k had nothing to flush and winecfg changes were lost.
             execShellCommand("wineserver -k");
+            // Now clean up any remaining sub-processes
+            List<ProcessHelper.ProcessInfo> subProcesses = ProcessHelper.listSubProcesses();
+            for (ProcessHelper.ProcessInfo subProcess : subProcesses) {
+                Process.killProcess(subProcess.pid);
+            }
         }
     }
 
@@ -208,14 +213,16 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
     private int execGuestProgram() {
         // Get the number of enabled players directly from ControllerManager.
         final int enabledPlayerCount = com.winlator.inputcontrols.ControllerManager.getInstance().getEnabledPlayerCount();
+        Context context = environment.getContext();
+        String filesDir = context.getFilesDir().getAbsolutePath();
         for (int i = 0; i < 4; i++) {
             String memPath;
             if (i == 0) {
                 // Player 1 uses the original, non-numbered path that is known to work.
-                memPath = "/data/data/app.gamenative/files/imagefs/tmp/gamepad.mem";
+                memPath = filesDir + "/imagefs/tmp/gamepad.mem";
             } else {
                 // Players 2, 3, 4 use a 1-based index.
-                memPath = "/data/data/app.gamenative/files/imagefs/tmp/gamepad" + i + ".mem";
+                memPath = filesDir + "/imagefs/tmp/gamepad" + i + ".mem";
             }
 
             File memFile = new File(memPath);
@@ -227,9 +234,9 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
             }
         }
 
-        Context context = environment.getContext();
         ImageFs imageFs = ImageFs.find(context);
         File rootDir = imageFs.getRootDir();
+        String nativeLibDir = context.getApplicationInfo().nativeLibraryDir;
 
         PrefManager.init(context);
         boolean enableBox86_64Logs = PrefManager.getBoolean("enable_box86_64_logs", true);
@@ -251,17 +258,19 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
         envVars.put("LD_LIBRARY_PATH", imageFs.getRootDir().getPath() + "/usr/lib");
         
         if (wineInfo != null && wineInfo.isArm64EC()) {
-            envVars.put("BOX64_LD_LIBRARY_PATH", imageFs.getRootDir().getPath() + "/usr/lib/aarch64-linux-gnu");
+            envVars.put("BOX64_LD_LIBRARY_PATH", nativeLibDir + ":" + imageFs.getRootDir().getPath() + "/usr/lib/aarch64-linux-gnu");
             envVars.put("VK_LAYER_PATH", imageFs.getRootDir().getPath() + "/usr/share/vulkan/implicit_layer.d" + ":" + imageFs.getRootDir().getPath() + "/usr/share/vulkan/explicit_layer.d");
             envVars.put("XDG_DATA_DIRS", imageFs.getRootDir().getPath() + "/usr/share");
             envVars.put("EVSHIM_SHM_ID", "1");
             envVars.put("EVSHIM_SHM_NAME", "controller-shm0");
         } else {
-            envVars.put("BOX64_LD_LIBRARY_PATH", imageFs.getRootDir().getPath() + "/usr/lib/x86_64-linux-gnu");
+            envVars.put("BOX64_LD_LIBRARY_PATH", nativeLibDir + ":" + imageFs.getRootDir().getPath() + "/usr/lib/x86_64-linux-gnu");
         }
         
         envVars.put("ANDROID_SYSVSHM_SERVER", imageFs.getRootDir().getPath() + UnixSocketConfig.SYSVSHM_SERVER_PATH);
         envVars.put("FONTCONFIG_PATH", imageFs.getRootDir().getPath() + "/usr/etc/fonts");
+        envVars.put("ALSA_CONFIG_PATH", imageFs.getRootDir().getPath() + "/usr/share/alsa/alsa.conf" + ":" + imageFs.getRootDir().getPath() + "/usr/etc/alsa/conf.d/android_aserver.conf");
+        envVars.put("ALSA_PLUGIN_DIR", imageFs.getRootDir().getPath() + "/usr/lib/alsa-lib");
 
         if ((new File(imageFs.getGlibc64Dir(), "libandroid-sysvshm.so")).exists() ||
                 (new File(imageFs.getGlibc32Dir(), "libandroid-sysvshm.so")).exists
@@ -419,6 +428,8 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
         
         envVars.put("ANDROID_SYSVSHM_SERVER", imageFs.getRootDir().getPath() + UnixSocketConfig.SYSVSHM_SERVER_PATH);
         envVars.put("FONTCONFIG_PATH", imageFs.getRootDir().getPath() + "/usr/etc/fonts");
+        envVars.put("ALSA_CONFIG_PATH", imageFs.getRootDir().getPath() + "/usr/share/alsa/alsa.conf" + ":" + imageFs.getRootDir().getPath() + "/usr/etc/alsa/conf.d/android_aserver.conf");
+        envVars.put("ALSA_PLUGIN_DIR", imageFs.getRootDir().getPath() + "/usr/lib/alsa-lib");
 
         if ((new File(imageFs.getGlibc64Dir(), "libandroid-sysvshm.so")).exists() ||
                 (new File(imageFs.getGlibc32Dir(), "libandroid-sysvshm.so")).exists

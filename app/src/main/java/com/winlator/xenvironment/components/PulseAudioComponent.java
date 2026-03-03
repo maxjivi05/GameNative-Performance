@@ -125,6 +125,7 @@ public class PulseAudioComponent extends EnvironmentComponent {
         envVars.put("LD_LIBRARY_PATH", "/system/lib64:"+nativeLibraryDir+":"+modulesDir);
         envVars.put("HOME", workingDir);
         envVars.put("TMPDIR", XEnvironment.getTmpDir(context));
+        envVars.put("PULSE_MODULE_PATH", modulesDir.getPath());
 
 
         String command = nativeLibraryDir+"/libpulseaudio.so";

@@ -78,6 +78,10 @@ import app.gamenative.ui.theme.settingsTileColors
 import app.gamenative.enums.Marker
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.CustomGameScanner
+import app.gamenative.utils.InstallDepsLauncher
+import app.gamenative.utils.LaunchSteps
+import app.gamenative.utils.launchdependencies.GameLaunchStep
+import app.gamenative.gamefixes.GameFixesRegistry
 import app.gamenative.utils.MarkerUtils
 import app.gamenative.utils.SteamTokenLogin
 import app.gamenative.utils.SteamUtils
@@ -325,6 +329,7 @@ fun XServerScreen(
     }
     var isKeyboardVisible = false
     val areControlsVisible = remember { mutableStateOf(PluviaApp.editMode) }
+    val areJoysticksVisible = remember { mutableStateOf(true) }
     var isEditMode by remember { mutableStateOf(PluviaApp.editMode) }
     // Snapshot of element positions before entering edit mode (for cancel behavior)
     var elementPositionsSnapshot by remember { mutableStateOf<Map<com.winlator.inputcontrols.ControlElement, Pair<Int, Int>>>(emptyMap()) }
@@ -433,9 +438,23 @@ fun XServerScreen(
             context,
             areControlsVisible.value,
             isGamePaused,
+            areJoysticksVisible.value,
             object : NavigationDialog.NavigationListener {
                 override fun onNavigationItemSelected(itemId: Int) {
                     when (itemId) {
+                        NavigationDialog.ACTION_TOUCH_MENU -> {
+                            NavigationDialog.showTouchMenu(context, this)
+                        }
+
+                        NavigationDialog.ACTION_TOUCH_TRANSPARENCY -> {
+                            NavigationDialog.showTouchTransparencyDialog(context)
+                        }
+
+                        NavigationDialog.ACTION_SHOW_JOYSTICKS -> {
+                            areJoysticksVisible.value = !areJoysticksVisible.value
+                            PluviaApp.inputControlsView?.setJoysticksVisible(areJoysticksVisible.value)
+                        }
+
                         NavigationDialog.ACTION_PAUSE_GAME -> {
                             isGamePaused = !isGamePaused
                             PluviaApp.isManuallyPaused = isGamePaused
@@ -591,7 +610,11 @@ fun XServerScreen(
                             if (performanceHUD == null) {
                                 performanceHUD = PerformanceHUD(context)
                                 performanceHUD?.let { hud ->
-                                    targetLayout?.addView(hud)
+                                    val lp = FrameLayout.LayoutParams(
+                                        FrameLayout.LayoutParams.WRAP_CONTENT,
+                                        FrameLayout.LayoutParams.WRAP_CONTENT
+                                    )
+                                    targetLayout?.addView(hud, lp)
                                     hud.bringToFront()
                                 }
                             } else {
@@ -704,6 +727,10 @@ fun XServerScreen(
             .fillMaxSize()
             .pointerHoverIcon(PointerIcon(0))
             .pointerInteropFilter { event ->
+                // Let PerformanceHUD handle touch first (drag/tap to reposition/toggle layout)
+                val hudHandled = performanceHUD?.handleTouchEvent(event) == true
+                if (hudHandled) return@pointerInteropFilter true
+
                 val overlayHandled = swapInputOverlay
                     ?.takeIf { it.visibility == View.VISIBLE }
                     ?.dispatchTouchEvent(event) == true
@@ -947,7 +974,12 @@ fun XServerScreen(
                                 firstTimeBoot,
                                 vkbasaltConfig,
                             )
-                            changeWineAudioDriver(xServerState.value.audioDriver, container, ImageFs.find(context))
+                            changeWineAudioDriver(
+                                xServerState.value.audioDriver,
+                                container,
+                                ImageFs.find(context),
+                                wineVersionChanged,
+                            )
                             setImagefsContainerVariant(context, container)
                             PluviaApp.xEnvironment = setupXEnvironment(
                                 context,
@@ -1931,6 +1963,13 @@ private fun setupXEnvironment(
     }
 
     if (container != null) {
+        // Apply game fixes (e.g. extra VCRedists) before launch steps so VcRedistLaunchStep can see them.
+        try {
+            GameFixesRegistry.applyFor(context, appId)
+        } catch (e: Exception) {
+            Timber.tag("GameFixes").w(e, "Game fixes failed before launch")
+        }
+
         if (container.startupSelection == Container.STARTUP_SELECTION_AGGRESSIVE) {
             if (container.containerVariant.equals(Container.BIONIC)){
                 Timber.d("Incorrect startup selection detected. Reverting to essential startup selection")
@@ -1942,14 +1981,55 @@ private fun setupXEnvironment(
             }
         }
 
+        val gameSource = when {
+            appId.startsWith("STEAM_") -> GameSource.STEAM
+            appId.startsWith("GOG_") -> GameSource.GOG
+            appId.startsWith("EPIC_") -> GameSource.EPIC
+            appId.startsWith("AMAZON_") -> GameSource.AMAZON
+            else -> GameSource.CUSTOM_GAME
+        }
+
         val wow64Mode = container.isWoW64Mode
         guestProgramLauncherComponent.setContainer(container);
         guestProgramLauncherComponent.setWineInfo(xServerState.value.wineInfo);
-        val guestExecutable = "wine explorer /desktop=shell," + xServer.screenInfo + " " +
+
+        val gameTerminationCallback: (Int) -> Unit = { status ->
+            // 137=SIGKILL, 143=SIGTERM — normal quit signals
+            if (status != 0 && status != 137 && status != 143) {
+                Timber.e("Guest program terminated with status: $status")
+                onGameLaunchError?.invoke("Game terminated with error status: $status")
+            }
+            PluviaApp.events.emit(AndroidEvent.GuestProgramTerminated)
+        }
+
+        val fullGameCommand = "wine explorer /desktop=shell," + xServer.screenInfo + " " +
             getWineStartCommand(context, appId, container, bootToContainer, testGraphics, appLaunchInfo, envVars, guestProgramLauncherComponent) +
             (if (container.execArgs.isNotEmpty()) " " + container.execArgs else "")
+
+        val launcher = object : InstallDepsLauncher {
+            override fun setGuestExecutable(executable: String) = guestProgramLauncherComponent.setGuestExecutable(executable)
+            override fun setPreUnpack(block: (() -> Unit)?) = guestProgramLauncherComponent.setPreUnpack(block)
+            override fun execShellCommand(command: String) {
+                guestProgramLauncherComponent.execShellCommand(command)
+            }
+            override fun setTerminationCallback(callback: ((Int) -> Unit)?) {
+                guestProgramLauncherComponent.setTerminationCallback(if (callback != null) Callback { callback(it) } else null)
+            }
+            override fun start() = guestProgramLauncherComponent.start()
+        }
+
+        LaunchSteps.start(
+            launcher,
+            GameLaunchStep({ fullGameCommand }, gameTerminationCallback),
+            context,
+            appId,
+            container,
+            gameSource,
+            xServer.screenInfo.toString(),
+            container.execArgs,
+        )
+
         guestProgramLauncherComponent.isWoW64Mode = wow64Mode
-        guestProgramLauncherComponent.guestExecutable = guestExecutable
         // Set steam type for selecting appropriate box64rc
         guestProgramLauncherComponent.setSteamType(container.getSteamType())
 
@@ -2028,7 +2108,7 @@ private fun setupXEnvironment(
         options.reflectorMode = audioDriver == "alsa-reflector"
         environment.addComponent(ALSAServerComponent(UnixSocketConfig.createSocket(imageFs.getRootDir().getPath(), UnixSocketConfig.ALSA_SERVER_PATH), options))
     } else if (audioDriver == "pulseaudio") {
-        envVars.put("PULSE_SERVER", imageFs.getRootDir().getPath() + UnixSocketConfig.PULSE_SERVER_PATH)
+        envVars.put("PULSE_SERVER", "unix:" + imageFs.getRootDir().getPath() + UnixSocketConfig.PULSE_SERVER_PATH)
         environment.addComponent(PulseAudioComponent(UnixSocketConfig.createSocket(imageFs.getRootDir().getPath(), UnixSocketConfig.PULSE_SERVER_PATH)))
     }
 
@@ -2052,15 +2132,6 @@ private fun setupXEnvironment(
     }
 
     guestProgramLauncherComponent.envVars = envVars
-    guestProgramLauncherComponent.setTerminationCallback { status ->
-        // 137=SIGKILL, 143=SIGTERM — normal quit signals
-        if (status != 0 && status != 137 && status != 143) {
-            Timber.e("Guest program terminated with status: $status")
-            onGameLaunchError?.invoke("Game terminated with error status: $status")
-            navigateBack()
-        }
-        PluviaApp.events.emit(AndroidEvent.GuestProgramTerminated)
-    }
     environment.addComponent(guestProgramLauncherComponent)
 
     FEXCoreManager.ensureAppConfigOverrides(context)
@@ -2208,7 +2279,7 @@ private fun getWineStartCommand(
         // For Epic games, get the launch command
         Timber.tag("XServerScreen").i("Launching Epic game: $gameId")
         val game = runBlocking {
-            EpicService.getInstance()?.epicManager?.getGameById(gameId.toInt())
+            EpicService.getInstance()?.epicManager?.getGameById(gameId)
         }
 
         if (game == null || !game.isInstalled || game.installPath.isEmpty()) {
@@ -2216,9 +2287,18 @@ private fun getWineStartCommand(
             return "\"explorer.exe\""
         }
 
-        // Get the executable path
-        val exePath = runBlocking {
-            EpicService.getInstance()?.epicManager?.getInstalledExe(game.id) ?: ""
+        // Use container's configured executable path if available, otherwise auto-detect and persist
+        val exePath = if (container != null && container.executablePath.isNotEmpty()) {
+            container.executablePath
+        } else {
+            val detectedPath = runBlocking {
+                EpicService.getInstance()?.epicManager?.getInstalledExe(game.id) ?: ""
+            }
+            if (detectedPath.isNotEmpty() && container != null) {
+                container.executablePath = detectedPath
+                container.saveData()
+            }
+            detectedPath
         }
 
         if (exePath.isEmpty()) {
@@ -2233,15 +2313,48 @@ private fun getWineStartCommand(
         // The container setup in ContainerUtils maps the game install path to A: drive
         val epicCommand = "A:\\$relativePath".replace("/", "\\")
 
+        // Get Epic launch parameters (auth tokens) at launch time
+        Timber.tag("XServerScreen").d("Building Epic launch parameters for ${game.appName}...")
+        val runArguments: List<String> = runBlocking {
+            val result = EpicService.buildLaunchParameters(context, game, false)
+            if (result.isFailure) {
+                Timber.tag("XServerScreen").e(result.exceptionOrNull(), "Failed to build Epic launch parameters")
+            }
+            val params = result.getOrNull() ?: listOf()
+            Timber.tag("XServerScreen").i("Got ${params.size} Epic launch parameters")
+            params
+        }
+
         // Set working directory to the folder containing the executable
         val executableDir = game.installPath + "/" + relativePath.substringBeforeLast("/", "")
         guestProgramLauncherComponent.workingDir = File(executableDir)
 
-        Timber.tag("XServerScreen").i("Epic launch command (initial): \"$epicCommand\"")
+        Timber.tag("XServerScreen").i("Epic launch command: \"$epicCommand\"")
 
-        // Return basic command without params initially.
-        // The full params with fresh token will be injected in unpackExecutableFile (preUnpack)
-        return "winhandler.exe \"$epicCommand\""
+        val launchCommand = if (runArguments.isNotEmpty()) {
+            val args = runArguments.joinToString(" ") { arg ->
+                if (arg.contains("=") && arg.substringAfter("=").contains(" ")) {
+                    val (key, value) = arg.split("=", limit = 2)
+                    "$key=\"$value\""
+                } else if (arg.contains(" ")) {
+                    "\"$arg\""
+                } else {
+                    arg
+                }
+            }
+            "winhandler.exe \"$epicCommand\" $args"
+        } else {
+            Timber.tag("XServerScreen").w("No Epic launch parameters available, launching without authentication")
+            "winhandler.exe \"$epicCommand\""
+        }
+
+        // Log command with sensitive auth tokens redacted
+        val redactedCommand = launchCommand
+            .replace(Regex("-AUTH_PASSWORD=(\"[^\"]*\"|[^ ]+)"), "-AUTH_PASSWORD=[REDACTED]")
+            .replace(Regex("-epicovt=(\"[^\"]*\"|[^ ]+)"), "-epicovt=[REDACTED]")
+        Timber.tag("XServerScreen").i("Epic launch command: $redactedCommand")
+
+        return launchCommand
     } else if (gameSource == GameSource.AMAZON) {
         // For Amazon games, get install path using the product ID string (not the Int gameId)
         val productId = appId.removePrefix("AMAZON_").substringBefore("(")
@@ -2552,16 +2665,7 @@ private fun getSteamlessTarget(
 
 private fun cleanupProcesses() {
     try {
-        val cmds = arrayOf(
-            "pkill -9 wineserver",
-            "pkill -9 box64",
-            "pkill -9 box86",
-            "pkill -9 libpulseaudio.so",
-            "pkill -9 -f winhandler.exe"
-        )
-        for (cmd in cmds) {
-            Runtime.getRuntime().exec(cmd).waitFor()
-        }
+        com.winlator.core.ProcessHelper.killAllSubProcesses()
     } catch (e: Exception) {
         Timber.e(e, "Failed to kill processes")
     }
@@ -2609,189 +2713,6 @@ private fun exit(winHandler: WinHandler?, environment: XEnvironment?, frameRatin
     navigateBack()
 }
 
-/**
- * Helper data class to hold redistributable installation context
- */
-private data class RedistContext(
-    val commonRedistDir: File,
-    val driveLetter: Char,
-    val guestProgramLauncherComponent: GuestProgramLauncherComponent
-)
-
-/**
- * Gets the _CommonRedist directory and drive letter for the game
- * @return RedistContext if valid, null otherwise
- */
-private fun getRedistDirectory(
-    appId: String,
-    container: Container,
-    guestProgramLauncherComponent: GuestProgramLauncherComponent
-): RedistContext? {
-    val steamAppId = ContainerUtils.extractGameIdFromContainerId(appId)
-    val gameDirPath = SteamService.getAppDirPath(steamAppId)
-    val commonRedistDir = File(gameDirPath, "_CommonRedist")
-
-    if (!commonRedistDir.exists() || !commonRedistDir.isDirectory()) {
-        Timber.tag("installRedist").i("_CommonRedist directory not found at ${commonRedistDir.absolutePath}")
-        return null
-    }
-
-    // Get the drive letter for the game directory
-    val drives = container.drives
-    val driveIndex = drives.indexOf(gameDirPath)
-    val driveLetter = if (driveIndex > 1) {
-        drives[driveIndex - 2]
-    } else {
-        Timber.tag("installRedist").e("Could not locate game drive for redistributables")
-        return null
-    }
-
-    return RedistContext(commonRedistDir, driveLetter, guestProgramLauncherComponent)
-}
-
-private fun installVcRedist(context: RedistContext) {
-        val vcredistDir = File(context.commonRedistDir, "vcredist")
-        if (vcredistDir.exists() && vcredistDir.isDirectory()) {
-            vcredistDir.walkTopDown()
-                .filter { it.isFile && it.name.equals("VC_redist.x64.exe", ignoreCase = true) }
-                .forEach { exeFile ->
-                    try {
-                        val relativePath = exeFile.relativeTo(context.commonRedistDir).path.replace('/', '\\')
-                        val drive = context.driveLetter
-                        val winePath = "$drive:\\_CommonRedist\\$relativePath"
-                        PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Installing Visual C++ Redistributables..."))
-                        Timber.i("Installing vcredist: $winePath")
-                        val cmd = "wine $winePath /quiet /norestart && wineserver -k"
-                        val output = context.guestProgramLauncherComponent.execShellCommand(cmd)
-                        Timber.i("vcredist installation output: $output")
-                    } catch (e: Exception) {
-                        Timber.e(e, "Failed to install vcredist ${exeFile.name}")
-                    }
-                }
-        }
-}
-
-/**
- * Installs OpenAL redistributables (oalinst.exe) (https://www.openal.org/)
- * Helps with 3D audio implementations between 2001-2010
- */
-private fun installOpenAL(context: RedistContext) {
-    val openalDir = File(context.commonRedistDir, "OpenAL")
-    if (!openalDir.exists() || !openalDir.isDirectory()) return
-
-    val openalInstaller = openalDir.walkTopDown()
-        .filter { it.isFile &&
-            (it.name.equals("oalinst.exe", ignoreCase = true) ||
-             it.name.startsWith("OpenAL", ignoreCase = true)) &&
-            it.name.endsWith(".exe", ignoreCase = true) }
-        .firstOrNull()
-
-    openalInstaller?.let { exeFile ->
-        try {
-            val relativePath = exeFile.relativeTo(context.commonRedistDir).path.replace('/', '\\')
-            val winePath = "${context.driveLetter}:\\_CommonRedist\\$relativePath"
-            PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Installing OpenAL..."))
-            Timber.i("Installing OpenAL: $winePath")
-            val cmd = "wine $winePath /s && wineserver -k"
-            val output = context.guestProgramLauncherComponent.execShellCommand(cmd)
-            Timber.i("OpenAL installation output: $output")
-        } catch (e: Exception) {
-            Timber.e(e, "Failed to install OpenAL ${exeFile.name}")
-        }
-    }
-}
-
-private fun installPhysX(context: RedistContext) {
-    val physxDir = File(context.commonRedistDir, "PhysX")
-    if (physxDir.exists() && physxDir.isDirectory()) {
-        physxDir.walkTopDown()
-            .filter { it.isFile && it.name.startsWith("PhysX", ignoreCase = true) &&
-                        it.name.endsWith(".msi", ignoreCase = true) }
-            .forEach { msiFile ->
-                try {
-                    val relativePath = msiFile.relativeTo(context.commonRedistDir).path.replace('/', '\\')
-                    val drive = context.driveLetter
-                    val winePath = "$drive:\\_CommonRedist\\$relativePath"
-                    PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Installing PhysX..."))
-                    Timber.i("Installing PhysX: $winePath")
-                    val cmd = "wine msiexec /i $winePath /quiet /norestart && wineserver -k"
-                    val output = context.guestProgramLauncherComponent.execShellCommand(cmd)
-                    Timber.i("PhysX installation output: $output")
-                } catch (e: Exception) {
-                    Timber.e(e, "Failed to install PhysX ${msiFile.name}")
-                }
-            }
-    }
-}
-
-private fun installXNAFramework(context: RedistContext) {
-    val xnaDir = File(context.commonRedistDir, "xnafx")
-    if (xnaDir.exists() && xnaDir.isDirectory()) {
-        xnaDir.walkTopDown()
-            .filter { it.isFile && it.name.startsWith("xna", ignoreCase = true) &&
-                        it.name.endsWith(".msi", ignoreCase = true) }
-            .forEach { msiFile ->
-                try {
-                    val relativePath = msiFile.relativeTo(context.commonRedistDir).path.replace('/', '\\')
-                    val drive = context.driveLetter
-                    val winePath = "$drive:\\_CommonRedist\\$relativePath"
-                    PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Installing XNA Framework..."))
-                    Timber.i("Installing XNA: $winePath")
-                    val cmd = "wine msiexec /i $winePath /quiet /norestart && wineserver -k"
-                    val output = context.guestProgramLauncherComponent.execShellCommand(cmd)
-                    Timber.i("XNA installation output: $output")
-                } catch (e: Exception) {
-                    Timber.e(e, "Failed to install XNA ${msiFile.name}")
-                }
-            }
-    }
-}
-
-/**
- * Installs redistributables from _CommonRedist folder
- * if shared depots are present and the redistributable executables exist.
- */
-private fun installRedistributables(
-    context: Context,
-    container: Container,
-    appId: String,
-    guestProgramLauncherComponent: GuestProgramLauncherComponent,
-    imageFs: ImageFs,
-) {
-    try {
-        val steamAppId = ContainerUtils.extractGameIdFromContainerId(appId)
-
-        // Get shared depots to determine if redistributables are needed
-        val downloadableDepots = SteamService.getDownloadableDepots(steamAppId)
-        val sharedDepots = downloadableDepots.filter { (_, depotInfo) ->
-            val manifest = depotInfo.manifests["public"]
-            manifest == null || manifest.gid == 0L
-        }
-
-        if (sharedDepots.isEmpty()) {
-            Timber.tag("installRedist").i("No shared depots found, skipping redistributable installation")
-            return
-        }
-
-        Timber.tag("installRedist").i("Found ${sharedDepots.size} shared depot(s), checking for redistributables")
-
-        // Get redistributable directory context
-        val redistContext = getRedistDirectory(appId, container, guestProgramLauncherComponent) ?: run {
-            Timber.tag("installRedist").i("Could not set up redistributable context, skipping installation")
-            return
-        }
-
-        installVcRedist(redistContext)
-        installOpenAL(redistContext)
-        installPhysX(redistContext)
-        installXNAFramework(redistContext)
-
-        Timber.tag("installRedist").i("Finished checking for redistributables")
-    } catch (e: Exception) {
-        Timber.tag("installRedist").e(e, "Error in installRedistributables: ${e.message}")
-    }
-}
-
 private fun unpackExecutableFile(
     context: Context,
     needsUnpacking: Boolean,
@@ -2820,13 +2741,6 @@ private fun unpackExecutableFile(
             Timber.i("Result of mono command " + output)
         } catch (e: Exception) {
             Timber.e("Error during mono installation: $e")
-        }
-
-        // Install redistributables if shared depots are present
-        try {
-            installRedistributables(context, container, appId, guestProgramLauncherComponent, imageFs)
-        } catch (e: Exception) {
-            Timber.tag("installRedist").e(e, "Error installing redistributables: ${e.message}")
         }
     }
     if (!needsUnpacking){
@@ -2977,57 +2891,7 @@ private fun unpackExecutableFile(
         Timber.e("Error during unpacking: $e")
         onError?.invoke("Error during unpacking: ${e.message}")
     } finally {
-        // Late binding for Epic Games parameters to ensure fresh exchange token
-        if (ContainerUtils.extractGameSourceFromContainerId(appId) == GameSource.EPIC) {
-            val gameId = ContainerUtils.extractGameIdFromContainerId(appId)
-            Timber.i("Performing late parameter injection for Epic game $gameId")
-            
-            try {
-                val game = runBlocking {
-                    EpicService.getInstance()?.epicManager?.getGameById(gameId.toInt())
-                }
-                
-                if (game != null) {
-                    Timber.tag("XServerScreen").d("Fetching fresh Epic launch parameters...")
-                    val runArguments: List<String> = runBlocking {
-                        val result = EpicService.buildLaunchParameters(context, game, false)
-                        if (result.isFailure) {
-                            Timber.tag("XServerScreen").e(result.exceptionOrNull(), "Failed to build Epic launch parameters")
-                        }
-                        result.getOrNull() ?: listOf()
-                    }
-                    
-                    if (runArguments.isNotEmpty()) {
-                        val currentCmd = guestProgramLauncherComponent.guestExecutable
-                        // Current cmd format: "wine explorer /desktop=shell,WxH winhandler.exe \"A:\Path\To.exe\""
-                        // We need to append args to the end
-                        
-                        val argsStr = runArguments.joinToString(" ") { arg ->
-                            if (arg.contains("=") && arg.substringAfter("=").contains(" ")) {
-                                val (key, value) = arg.split("=", limit = 2)
-                                "$key=\"$value\""
-                            } else if (arg.contains(" ")) {
-                                "\"$arg\""
-                            } else {
-                                arg
-                            }
-                        }
-                        
-                        val newCmd = "$currentCmd $argsStr"
-                        
-                        // Log with redaction
-                        val redacted = newCmd
-                            .replace(Regex("-AUTH_PASSWORD=(\"[^\"]*\"|[^ ]+)"), "-AUTH_PASSWORD=[REDACTED]")
-                            .replace(Regex("-epicovt=(\"[^\"]*\"|[^ ]+)"), "-epicovt=[REDACTED]")
-                            
-                        Timber.tag("XServerScreen").i("Updating guest command with fresh token: $redacted")
-                        guestProgramLauncherComponent.guestExecutable = newCmd
-                    }
-                }
-            } catch (e: Exception) {
-                Timber.e(e, "Error during late Epic parameter injection")
-            }
-        }
+        // no-op
     }
 }
 
@@ -3165,6 +3029,10 @@ private fun setupWineSystemFiles(
         containerDataChanged = true
     }
 
+    // Always ensure windows.gaming.input is disabled - it causes crashes in some games.
+    // This covers existing containers that were created before the override was added.
+    WineUtils.ensureDisabledDllOverrides(container)
+
     WineStartMenuCreator.create(context, container)
     WineUtils.createDosdevicesSymlinks(container)
 
@@ -3243,7 +3111,7 @@ private fun refreshComponentsFiles(context: Context) {
     val pulseDir = File(context.filesDir, "pulseaudio")
     FileUtils.delete(pulseDir)
     pulseDir.mkdirs()
-    TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context.assets, "pulseaudio-gamenative.tzst", pulseDir)
+    TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context.assets, "pulseaudio.tzst", pulseDir)
 }
 private fun extractDXWrapperFiles(
     context: Context,
@@ -3637,13 +3505,6 @@ private fun extractGraphicsDriverFiles(
             if (!envVars.has("MESA_VK_WSI_PRESENT_MODE")) envVars.put("MESA_VK_WSI_PRESENT_MODE", "mailbox")
             envVars.put("vblank_mode", "0")
 
-            if (!GPUInformation.isAdreno6xx(context) && !GPUInformation.isAdreno710_720_732(context)) {
-                val userEnvVars = EnvVars(container.envVars)
-                val tuDebug = userEnvVars.get("TU_DEBUG")
-                if (!tuDebug.contains("sysmem")) userEnvVars.put("TU_DEBUG", (if (!tuDebug.isEmpty()) "$tuDebug," else "") + "sysmem")
-                container.envVars = userEnvVars.toString()
-            }
-
             if (changed) {
                 TarCompressorUtils.extract(
                     TarCompressorUtils.Type.ZSTD,
@@ -3915,12 +3776,12 @@ private fun readLibraryNameFromExtractedDir(destinationDir: File): String? {
         null
     }
 }
-private fun changeWineAudioDriver(audioDriver: String, container: Container, imageFs: ImageFs) {
-    if (audioDriver != container.getExtra("audioDriver")) {
+private fun changeWineAudioDriver(audioDriver: String, container: Container, imageFs: ImageFs, force: Boolean = false) {
+    if (force || audioDriver != container.getExtra("audioDriver")) {
         val rootDir = imageFs.rootDir
         val userRegFile = File(rootDir, ImageFs.WINEPREFIX + "/user.reg")
         WineRegistryEditor(userRegFile).use { registryEditor ->
-            if (audioDriver == "alsa") {
+            if (audioDriver == "alsa" || audioDriver == "alsa-reflector") {
                 registryEditor.setStringValue("Software\\Wine\\Drivers", "Audio", "alsa")
             } else if (audioDriver == "pulseaudio") {
                 registryEditor.setStringValue("Software\\Wine\\Drivers", "Audio", "pulse")

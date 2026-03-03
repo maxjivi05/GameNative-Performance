@@ -63,7 +63,7 @@
     <style name="PopupMenu" parent="@android:style/Widget.PopupMenu">
         <item name="android:popupBackground">@drawable/content_dialog_background</item>
     </style>
-    <style name="ContentDialog" parent="@android:style/Theme.Dialog">
+    <style name="ContentDialog" parent="Theme.AppCompat.Dialog">
         <item name="android:windowNoTitle">true</item>
         <item name="android:windowFullscreen">true</item>
         <item name="android:windowBackground">@drawable/content_dialog_background</item>

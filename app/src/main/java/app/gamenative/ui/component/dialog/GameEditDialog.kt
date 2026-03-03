@@ -56,6 +56,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import app.gamenative.PluviaApp
 import app.gamenative.R
+import androidx.compose.foundation.layout.ime
 import com.winlator.container.Container
 import app.gamenative.data.LibraryItem
 import app.gamenative.events.AndroidEvent
@@ -120,6 +121,7 @@ fun GameEditDialog(
     }
 
     var containerData by remember { mutableStateOf(ContainerData()) }
+    var isSavingConfig by remember { mutableStateOf(false) }
     
     // Launchers for actions
     val exportFrontendLauncher = rememberLauncherForActivityResult(
@@ -225,8 +227,13 @@ fun GameEditDialog(
         }
     }
 
+    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val isImeVisible = androidx.compose.foundation.layout.WindowInsets.ime.getBottom(density) > 0
+
     // Controller input handling for Dialog
-    DisposableEffect(currentView, focusedIndex, filteredMenuOptions.size) {
+    DisposableEffect(currentView, focusedIndex, filteredMenuOptions.size, isImeVisible) {
+        
         val keyListener: (AndroidEvent.KeyEvent) -> Boolean = { event ->
             if (event.event.action == android.view.KeyEvent.ACTION_DOWN) {
                 when (event.event.keyCode) {
@@ -272,15 +279,27 @@ fun GameEditDialog(
                         if (currentView == EditView.MENU) {
                             filteredMenuOptions.getOrNull(focusedIndex)?.onClick?.invoke()
                             true
-                        } else false
+                        } else {
+                            // Translate to Enter for standard Compose components in settings view
+                            coroutineScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                                try {
+                                    android.app.Instrumentation().sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_DPAD_CENTER)
+                                } catch (e: Exception) {}
+                            }
+                            true
+                        }
                     }
                     KeyEvent.KEYCODE_BUTTON_B -> { // Back
-                        if (currentView == EditView.SETTINGS) {
+                        if (isImeVisible) {
+                            focusManager.clearFocus()
+                            true
+                        } else if (currentView == EditView.SETTINGS) {
                             currentView = EditView.MENU
+                            true
                         } else {
                             onDismiss()
+                            true
                         }
-                        true
                     }
                     else -> false
                 }
@@ -504,11 +523,21 @@ fun GameEditDialog(
                         // We override onDismissRequest to go back to MENU
                         ContainerConfigScreen(
                             title = "${libraryItem.name} Config",
+                            isFrontend = isFrontend,
                             initialConfig = containerData,
                             onDismissRequest = { currentView = EditView.MENU },
                             onSave = { config ->
-                                screenModel.saveContainerConfig(context, libraryItem, config)
-                                currentView = EditView.MENU
+                                isSavingConfig = true
+                                coroutineScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                                    try {
+                                        screenModel.saveContainerConfig(context, libraryItem, config)
+                                    } catch (e: Exception) {
+                                        timber.log.Timber.e(e, "Failed to save container config for ${libraryItem.appId}")
+                                    } finally {
+                                        isSavingConfig = false
+                                        currentView = EditView.MENU
+                                    }
+                                }
                             }
                         )
                     }
@@ -516,6 +545,12 @@ fun GameEditDialog(
             }
         }
     }
+
+    app.gamenative.ui.component.dialog.LoadingDialog(
+        visible = isSavingConfig,
+        progress = -1f,
+        message = androidx.compose.ui.res.stringResource(app.gamenative.R.string.settings_saving_restarting)
+    )
     
     // Render any additional dialogs from the screen model (e.g., Uninstall confirmation)
     screenModel.AdditionalDialogs(
@@ -574,13 +609,18 @@ fun GameEditDialog(
             },
             onReset = {
                 showContainerDialog = false
-                // Reset logic - access via screenModel? screenModel.resetContainerToDefaults is protected.
-                // We might need to duplicate it or expose it.
-                // For now, let's use ContainerUtils directly.
-                val container = ContainerUtils.getOrCreateContainer(context, libraryItem.appId)
-                val defaults = ContainerUtils.getDefaultContainerData().copy(drives = container.drives)
-                ContainerUtils.applyToContainer(context, libraryItem.appId, defaults)
-                Toast.makeText(context, "Container reset to defaults", Toast.LENGTH_SHORT).show()
+                coroutineScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                    try {
+                        val container = ContainerUtils.getOrCreateContainer(context, libraryItem.appId)
+                        val defaults = ContainerUtils.getDefaultContainerData().copy(drives = container.drives)
+                        ContainerUtils.applyToContainer(context, libraryItem.appId, defaults)
+                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                            Toast.makeText(context, "Container reset to defaults", Toast.LENGTH_SHORT).show()
+                        }
+                    } catch (e: Exception) {
+                        timber.log.Timber.e(e, "Failed to reset container to defaults for ${libraryItem.appId}")
+                    }
+                }
             },
             onTestGraphics = onTestGraphics
         )

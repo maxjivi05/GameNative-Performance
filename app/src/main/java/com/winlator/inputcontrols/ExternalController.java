@@ -52,6 +52,10 @@ public class ExternalController {
     private boolean invertRightY = false;
     private boolean useSquareDeadzoneLeft;
 
+    // Cached MotionRange flat values to avoid per-event device lookups
+    private final HashMap<Integer, Float> cachedFlats = new HashMap<>();
+    private int cachedFlatsDeviceId = -1;
+
     public String getName() {
         return name;
     }
@@ -338,8 +342,8 @@ public class ExternalController {
         float r = event.getAxisValue(MotionEvent.AXIS_RTRIGGER) == 0f ? event.getAxisValue(MotionEvent.AXIS_GAS) : event.getAxisValue(MotionEvent.AXIS_RTRIGGER);
         state.triggerL = l;
         state.triggerR = r;
-        state.setPressed(IDX_BUTTON_L2, l == 1.0f);
-        state.setPressed(IDX_BUTTON_R2, r == 1.0f);
+        state.setPressed(IDX_BUTTON_L2, l > 0.5f);
+        state.setPressed(IDX_BUTTON_R2, r > 0.5f);
     }
 
     public boolean isXboxController() {
@@ -509,8 +513,8 @@ public class ExternalController {
                 processTriggerButton(event);
             else if (triggerType == TRIGGER_IS_BUTTON && isXboxController())
                 processXboxTriggerButton(event);
-            int historySize = event.getHistorySize();
-            for (int i = 0; i < historySize; i++) processJoystickInput(event, i);
+            // Only process current values — history samples just overwrite each other
+            // and add unnecessary latency (each calls getCenteredAxis 4-6 times)
             processJoystickInput(event, -1);
             return true;
         }
@@ -652,11 +656,25 @@ public class ExternalController {
             return Math.abs(value) == 1.0f ? value : 0.0f;
         }
 
-        InputDevice device = event.getDevice();
-        InputDevice.MotionRange range = device.getMotionRange(axis, event.getSource());
-        if (range == null) return 0.0f;
+        // Cache flat values per device to avoid expensive getMotionRange() on every event
+        int evDeviceId = event.getDeviceId();
+        if (evDeviceId != cachedFlatsDeviceId) {
+            cachedFlats.clear();
+            cachedFlatsDeviceId = evDeviceId;
+        }
 
-        float flat = range.getFlat();
+        Float cachedFlat = cachedFlats.get(axis);
+        float flat;
+        if (cachedFlat != null) {
+            flat = cachedFlat;
+        } else {
+            InputDevice device = event.getDevice();
+            InputDevice.MotionRange range = device.getMotionRange(axis, event.getSource());
+            if (range == null) return 0.0f;
+            flat = range.getFlat();
+            cachedFlats.put(axis, flat);
+        }
+
         float value = historyPos < 0 ? event.getAxisValue(axis) : event.getHistoricalAxisValue(axis, historyPos);
 
         if (Math.abs(value) <= flat) return 0.0f;

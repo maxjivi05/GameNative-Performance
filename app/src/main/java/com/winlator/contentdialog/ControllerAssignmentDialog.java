@@ -56,13 +56,7 @@ public class ControllerAssignmentDialog {
     // ---------- Impl ---------------------------------------------------------
 
     private ControllerAssignmentDialog(Activity activity, int initialPlayerCount, WinHandler winHandler) {
-        boolean dark = PreferenceManager.getDefaultSharedPreferences(activity)
-                .getBoolean("dark_mode", false);
-
-        ContextThemeWrapper themed =
-                new ContextThemeWrapper(activity, dark ? R.style.ContentDialog : R.style.AppTheme);
-
-        this.dialog = new ContentDialog(themed, R.layout.controller_assignment_dialog);
+        this.dialog = new ContentDialog(activity, R.layout.controller_assignment_dialog);
         this.dialog.setTitle(R.string.controller_manager);
 
         this.controllerManager = ControllerManager.getInstance();
@@ -74,8 +68,10 @@ public class ControllerAssignmentDialog {
 
         restartRequiredView = dialog.getContentView().findViewById(R.id.TVRestartRequired);
 
-        if (dark) {
-            View root = dialog.getContentView();
+        // Apply theme colors safely
+        View root = dialog.getContentView();
+        if (root != null) {
+            root.setBackgroundColor(0xFF1A1A2E);
             if (root instanceof ViewGroup) setTextColorForDialog((ViewGroup) root, 0xFFFFFFFF);
         }
 
@@ -223,7 +219,7 @@ public class ControllerAssignmentDialog {
             View child = viewGroup.getChildAt(i);
             if (child instanceof ViewGroup) {
                 setTextColorForDialog((ViewGroup) child, color);
-            } else if (child instanceof TextView) {
+            } else if (child instanceof TextView || child instanceof Button) {
                 ((TextView) child).setTextColor(color);
             }
         }

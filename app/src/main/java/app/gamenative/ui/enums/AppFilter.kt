@@ -69,6 +69,12 @@ enum class AppFilter(
             if (appFilter.contains(DEMO)) {
                 output.add(AppType.demo)
             }
+            
+            // If none of the specific type filters are selected, it usually means 
+            // the user wants to see nothing of those types (strict filtering).
+            // However, to maintain some default behavior if no filters are set, 
+            // we could either return empty (show nothing) or all (show everything).
+            // The prompt says "ensure none of them are being shown ... unless they're enabled".
             return output
         }
 

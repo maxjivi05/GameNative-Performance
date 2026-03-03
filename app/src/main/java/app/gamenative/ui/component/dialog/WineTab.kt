@@ -15,7 +15,7 @@ import com.winlator.core.StringUtils
 fun WineTabContent(state: ContainerConfigState) {
     val config = state.config.value
     val gpuCardsValues = state.gpuCards.values.toList()
-    SettingsGroup() {
+    app.gamenative.ui.component.settings.FrontendAwareSettingsGroupNoScope() {
         SettingsListDropdown(
             colors = settingsTileColors(),
             title = { Text(text = stringResource(R.string.renderer)) },

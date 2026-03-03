@@ -86,17 +86,12 @@ fun EpicGameManagerDialog(
     val displayInfo = onGetDisplayInfo(context)
     val gameId = displayInfo.gameId
 
-    val launcher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocumentTree()
-    ) { uri ->
-        if (uri != null) {
-            val path = getPathFromTreeUri(uri)
-            if (path != null) {
-                // Store the path instead of installing immediately
-                selectedCustomPath = path
-            }
+    val folderPicker = app.gamenative.ui.component.picker.rememberDownloadFolderPicker(
+        onPathSelected = { path ->
+            // Store the path instead of installing immediately
+            selectedCustomPath = path
         }
-    }
+    )
 
     LaunchedEffect(visible) {
         scrollState.animateScrollTo(0)
@@ -376,7 +371,7 @@ fun EpicGameManagerDialog(
                                 )
 
                                 IconButton(
-                                    onClick = { launcher.launch(null) }
+                                    onClick = { folderPicker.launchPicker() }
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.FolderOpen,

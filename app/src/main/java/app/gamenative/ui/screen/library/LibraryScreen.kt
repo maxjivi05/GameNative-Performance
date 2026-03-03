@@ -112,6 +112,8 @@ fun HomeLibraryScreen(
         }
     }
 
+    val isAnyDialogOpen = editedLibraryItem != null || state.modalBottomSheet
+
     LibraryScreenContent(
         state = state,
         listState = viewModel.listState,
@@ -130,9 +132,11 @@ fun HomeLibraryScreen(
         onLogout = onLogout,
         onGoOnline = onGoOnline,
         onSourceToggle = viewModel::onSourceToggle,
+        onAioStoreToggle = viewModel::onAioStoreToggle,
         onAddCustomGameFolder = viewModel::addCustomGameFolder,
         onFocusChanged = { if (isFrontend) focusedFrontendItem = it },
         isOffline = isOffline,
+        isAnyDialogOpen = isAnyDialogOpen,
     )
 
     if (editedLibraryItem != null) {
@@ -174,15 +178,18 @@ private fun LibraryScreenContent(
     onLogout: () -> Unit,
     onGoOnline: () -> Unit,
     onSourceToggle: (GameSource) -> Unit,
+    onAioStoreToggle: () -> Unit = {},
     onAddCustomGameFolder: (String) -> Unit,
     onFocusChanged: (LibraryItem?) -> Unit = {},
     isOffline: Boolean = false,
+    isAnyDialogOpen: Boolean = false,
 ) {
     val context = LocalContext.current
     var selectedAppId by remember { mutableStateOf<String?>(null) }
     // Keep a stable reference to the selected item so detail view doesn't disappear during list refresh/pagination.
     var selectedLibraryItem by remember { mutableStateOf<LibraryItem?>(null) }
     val filterFabExpanded by remember { derivedStateOf { listState.firstVisibleItemIndex == 0 } }
+    var frontendOnDownloadsTab by remember { mutableStateOf(false) }
 
     // Dialog state for add custom game prompt
     var showAddCustomGameDialog by remember { mutableStateOf(false) }
@@ -226,6 +233,11 @@ private fun LibraryScreenContent(
     }
 
     val isFrontend = state.libraryLayout == app.gamenative.ui.enums.PaneType.FRONTEND
+
+    // Reset downloads tab flag when leaving frontend mode
+    LaunchedEffect(isFrontend) {
+        if (!isFrontend) frontendOnDownloadsTab = false
+    }
 
     // When in Frontend mode, force landscape. Otherwise follow system.
     LaunchedEffect(isFrontend) {
@@ -296,9 +308,12 @@ private fun LibraryScreenContent(
                 onGoOnline = onGoOnline,
                 onRefresh = onRefresh,
                 onSourceToggle = onSourceToggle,
+                onAioStoreToggle = onAioStoreToggle,
                 onAddCustomGame = onAddCustomGameClick,
                 onFocusChanged = onFocusChanged,
                 isOffline = isOffline,
+                isAnyDialogOpen = isAnyDialogOpen,
+                onFrontendTabChanged = { isDownloads -> frontendOnDownloadsTab = isDownloads },
             )
         } else {
             LibraryDetailPane(
@@ -321,7 +336,7 @@ private fun LibraryScreenContent(
             )
         }
 
-        if (selectedLibraryItem == null) {
+        if (selectedLibraryItem == null && !frontendOnDownloadsTab) {
             val isFrontend = state.libraryLayout == app.gamenative.ui.enums.PaneType.FRONTEND
             Box(
                 modifier = Modifier
@@ -330,9 +345,13 @@ private fun LibraryScreenContent(
             ) {
                 if (!state.isSearching) {
                     ExtendedFloatingActionButton(
-                        text = { Text(text = if (isFrontend) stringResource(R.string.library_layout_title) else stringResource(R.string.library_filters)) },
+                        text = {
+                            if (!isFrontend) {
+                                Text(text = stringResource(R.string.library_filters))
+                            }
+                        },
                         icon = { Icon(imageVector = Icons.Default.FilterList, contentDescription = null) },
-                        expanded = filterFabExpanded,
+                        expanded = if (isFrontend) false else filterFabExpanded,
                         onClick = { onModalBottomSheet(true) },
                         containerColor = MaterialTheme.colorScheme.primary,
                         contentColor = MaterialTheme.colorScheme.onPrimary,

@@ -20,5 +20,8 @@ data class MainState(
     val bootToContainer: Boolean = false,
     val testGraphics: Boolean = false,
     val showBootingSplash: Boolean = false,
-    val bootingSplashText: String = "Booting...",
+    val bootingSplashText: String = "Launching game...",
+    val isExiting: Boolean = false,
+    val exitingMessage: String = "Exiting...",
+    val exitingProgress: Float = -1f,
 )

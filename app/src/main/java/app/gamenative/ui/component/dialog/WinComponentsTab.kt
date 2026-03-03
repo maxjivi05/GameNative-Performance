@@ -11,7 +11,7 @@ import com.winlator.core.KeyValueSet
 @Composable
 fun WinComponentsTabContent(state: ContainerConfigState) {
     val config = state.config.value
-    SettingsGroup() {
+    app.gamenative.ui.component.settings.FrontendAwareSettingsGroupNoScope() {
         for (wincomponent in KeyValueSet(config.wincomponents)) {
             val compId = wincomponent[0]
             val compNameRes = winComponentsItemTitleRes(compId)

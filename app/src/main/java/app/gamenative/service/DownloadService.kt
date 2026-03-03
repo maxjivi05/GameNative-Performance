@@ -36,6 +36,15 @@ object DownloadService {
         baseExternalAppDirPath = extFiles?.parentFile?.path ?: ""
     }
 
+    fun getAllDownloads(): List<Pair<String, app.gamenative.data.DownloadInfo>> {
+        val list = mutableListOf<Pair<String, app.gamenative.data.DownloadInfo>>()
+        app.gamenative.service.SteamService.getAllDownloads().forEach { (id, info) -> list.add(app.gamenative.data.GameSource.STEAM.name + "_$id" to info) }
+        app.gamenative.service.epic.EpicService.getAllDownloads().forEach { (id, info) -> list.add("EPIC_$id" to info) }
+        app.gamenative.service.gog.GOGService.getAllDownloads().forEach { (id, info) -> list.add("GOG_$id" to info) }
+        app.gamenative.service.amazon.AmazonService.getAllDownloads().forEach { (id, info) -> list.add("AMAZON_$id" to info) }
+        return list
+    }
+
     fun getDownloadDirectoryApps (): MutableList<String> {
         // What apps have folders in the download area?
         // Isn't checking for "complete" marker - incomplete is accepted

@@ -94,6 +94,20 @@ object PrefManager {
     fun setFloat(key: String, value: Float): Unit =
         setPref(floatPreferencesKey(key), value)
 
+    fun getControlsOpacity(): Float =
+        getPref(floatPreferencesKey("controls_opacity"), 1.0f)
+
+    @JvmStatic
+    fun setControlsOpacity(opacity: Float) {
+        setPref(floatPreferencesKey("controls_opacity"), opacity)
+    }
+
+    @JvmStatic
+    fun getTouchTransparency(): Float = getPref(floatPreferencesKey("controls_opacity"), 1.0f)
+
+    @JvmStatic
+    fun setTouchTransparency(alpha: Float) = setControlsOpacity(alpha)
+
     @Suppress("SameParameterValue")
     private fun <T> getPref(key: Preferences.Key<T>, defaultValue: T): T = runBlocking {
         dataStore.data.first()[key] ?: defaultValue
@@ -572,8 +586,8 @@ object PrefManager {
     private val LIBRARY_LAYOUT = intPreferencesKey("library_layout")
     var libraryLayout: PaneType
         get() {
-            val value = getPref(LIBRARY_LAYOUT, PaneType.UNDECIDED.ordinal)
-            return PaneType.entries.getOrNull(value) ?: PaneType.UNDECIDED
+            val value = getPref(LIBRARY_LAYOUT, PaneType.FRONTEND.ordinal)
+            return PaneType.entries.getOrNull(value) ?: PaneType.FRONTEND
         }
         set(value) {
             setPref(LIBRARY_LAYOUT, value.ordinal)
@@ -930,4 +944,16 @@ object PrefManager {
     var rootPerformanceMode: Boolean
         get() = getPref(ROOT_PERFORMANCE_MODE, false)
         set(value) = setPref(ROOT_PERFORMANCE_MODE, value)
+
+    // Maximum number of concurrent game downloads (queue system)
+    private val MAX_CONCURRENT_DOWNLOADS = intPreferencesKey("max_concurrent_downloads")
+    var maxConcurrentDownloads: Int
+        get() = getPref(MAX_CONCURRENT_DOWNLOADS, 1)
+        set(value) = setPref(MAX_CONCURRENT_DOWNLOADS, value.coerceIn(1, 5))
+
+    // AIO Store toggle: true = single "Store" tab, false = individual store tabs
+    private val AIO_STORE_ENABLED = booleanPreferencesKey("aio_store_enabled")
+    var aioStoreEnabled: Boolean
+        get() = getPref(AIO_STORE_ENABLED, true)
+        set(value) = setPref(AIO_STORE_ENABLED, value)
 }

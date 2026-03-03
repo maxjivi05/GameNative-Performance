@@ -13,6 +13,10 @@ class EventDispatcher {
         val once: Boolean = false,
     )
 
+    interface JavaEventListener {
+        fun onEvent(event: Any)
+    }
+
     inline fun <reified E : Event<T>, T> on(noinline listener: (E) -> T) {
         addListener<E, T>(listener, false)
     }
@@ -56,6 +60,16 @@ class EventDispatcher {
     }
     fun clearAllListeners() {
         listeners.clear()
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    fun onJava(eventClass: KClass<out Event<*>>, listener: JavaEventListener) {
+        val eventListener = EventListener<Event<Any?>, Any?>({ event ->
+            listener.onEvent(event!!)
+            null
+        }, false)
+        val typedListener = Pair(listener.toString(), eventListener as EventListener<Event<*>, *>)
+        listeners.getOrPut(eventClass) { mutableListOf() }.add(typedListener)
     }
 
     inline fun <reified E : Event<T>, reified T> emit(event: E, noinline resultAggregator: ((Array<T>) -> T)? = null): T? {

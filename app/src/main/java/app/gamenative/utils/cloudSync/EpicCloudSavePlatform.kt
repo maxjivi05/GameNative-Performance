@@ -57,6 +57,7 @@ internal object EpicCloudSavePlatform : CloudSavePlatform {
         gameId: Int,
         isOffline: Boolean,
         prefixToPath: (String) -> String,
+        callbacks: CloudSaveCallbacks,
     ) {
         if (isOffline) {
             Timber.tag("Epic").i("[Cloud Saves] Skipping upload for $appId (isOffline=true)")

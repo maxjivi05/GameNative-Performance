@@ -8,6 +8,7 @@ import app.gamenative.service.gog.api.DepotFile
 import app.gamenative.service.gog.api.FileChunk
 import app.gamenative.service.gog.api.GOGApiClient
 import app.gamenative.service.gog.api.GOGManifestParser
+import app.gamenative.service.gog.api.GOGManifestUtils
 import app.gamenative.utils.Net
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.ByteArrayOutputStream
@@ -21,6 +22,8 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.withContext
 import okhttp3.Request
+import org.json.JSONArray
+import org.json.JSONObject
 import timber.log.Timber
 
 /**
@@ -381,8 +384,11 @@ class GOGDownloadManager @Inject constructor(
                 if (dependencyResult.isFailure){
                     Timber.tag("GOG").w("Failed to install Dependencies: ${dependencyResult.exceptionOrNull()?.message}")
                 }
-
             }
+
+            // Step 10.5: Save manifest for post-launch setup (GOG Script Interpreter)
+            val effectiveLanguage = parser.getEffectiveLanguageFromDepots(languageDepots, language)
+            saveManifestToGameDir(installPath, gameManifest, selectedBuild.buildId, selectedBuild.versionName, effectiveLanguage)
 
             // Step 11: Cleanup
             chunkCacheDir.deleteRecursively()
@@ -442,11 +448,51 @@ class GOGDownloadManager @Inject constructor(
             Result.failure(e)
         }
     }
+/**
+ * Saves manifest data needed for post-install setup (scriptinterpreter) to
+ * installPath/_gog_manifest.json. Used on first launch.
+ */
+private fun saveManifestToGameDir(
+    installPath: File,
+    gameManifest: app.gamenative.service.gog.api.GOGManifestMeta,
+    buildId: String,
+    versionName: String,
+    language: String,
+) {
+    try {
+        val productsArray = JSONArray()
+        gameManifest.products.forEach { p ->
+            productsArray.put(
+                JSONObject().apply {
+                    put("productId", p.productId)
+                    put("name", p.name)
+                    put("temp_executable", p.temp_executable ?: "")
+                    put("temp_arguments", p.temp_arguments ?: "")
+                },
+            )
+        }
+        val root = JSONObject().apply {
+            put("version", 2)
+            put("baseProductId", gameManifest.baseProductId)
+            put("scriptInterpreter", gameManifest.scriptInterpreter)
+            put("products", productsArray)
+            put("buildId", buildId)
+            put("versionName", versionName)
+            put("language", language)
+        }
+        val file = File(installPath, GOGManifestUtils.MANIFEST_FILE_NAME)
+        file.writeText(root.toString())
+        Timber.tag("GOG").d("Saved setup manifest to ${file.absolutePath} (scriptInterpreter=${gameManifest.scriptInterpreter})")
+    } catch (e: Exception) {
+        Timber.tag("GOG").w(e, "Failed to save GOG setup manifest")
+    }
+}
 
-    /**
-     * Download all chunks from CDN with parallel execution
-     *
-     * @param chunkUrlMap Map of chunk MD5 hash to secure CDN URL
+/**
+ * Download all chunks from CDN with parallel execution
+ *
+ * @param chunkUrlMap Map of chunk MD5 hash to secure CDN URL
+...
      * @param chunkCacheDir Directory to cache downloaded chunks
      * @param downloadInfo Progress tracker
      * @param chunkHashes List of all chunk hashes needed

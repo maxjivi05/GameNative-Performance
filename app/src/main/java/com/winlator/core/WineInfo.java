@@ -19,6 +19,8 @@ import app.gamenative.R;
 
 public class WineInfo implements Parcelable {
     public static final WineInfo MAIN_WINE_VERSION = new WineInfo("wine", "9.2", "x86_64");
+    // Matches: type-version[-subversion]-arch
+    // Examples: proton-10.0-4-arm64ec, proton-9.0-arm64ec, wine-9.2-x86_64
     private static final Pattern pattern = Pattern.compile("^(wine|proton|Proton)\\-([0-9\\.]+)(?:\\-([0-9\\.]+))?\\-(x86|x86_64|arm64ec)(?:\\-([0-9]+))?$");
     public final String version;
     public final String type;
@@ -147,33 +149,84 @@ public class WineInfo implements Parcelable {
         ImageFs imageFs = ImageFs.find(context);
         String path = "";
 
-        Log.d("WineInfo", "Creating WineInfo from identifier " + identifier);
+        Log.d("WineInfo", "Creating WineInfo from identifier: " + identifier);
 
         if (identifier.equals(MAIN_WINE_VERSION.identifier())) return new WineInfo(MAIN_WINE_VERSION.type, MAIN_WINE_VERSION.version, MAIN_WINE_VERSION.arch, null);
 
+        // Look up installed content profile by the original identifier
         ContentProfile wineProfile = contentsManager.getProfileByEntryName(identifier);
 
+        // If content manager found a profile, strip the trailing version code suffix
+        // (e.g., "proton-10.0-4-arm64ec-0" -> "proton-10.0-4-arm64ec")
+        // for regex matching below
+        String regexInput = identifier;
         if (wineProfile != null && (wineProfile.type == ContentProfile.ContentType.CONTENT_TYPE_WINE || wineProfile.type == ContentProfile.ContentType.CONTENT_TYPE_PROTON)) {
-            identifier = identifier.substring(0, identifier.length() - 2).toLowerCase();
+            // The entry name format is "verName-verCode", so strip from the LAST dash
+            int lastDash = identifier.lastIndexOf('-');
+            if (lastDash > 0) {
+                String possibleVerCode = identifier.substring(lastDash + 1);
+                try {
+                    Integer.parseInt(possibleVerCode);
+                    // It's a numeric version code suffix, strip it
+                    regexInput = identifier.substring(0, lastDash).toLowerCase();
+                } catch (NumberFormatException e) {
+                    // Not a version code, use identifier as-is
+                    regexInput = identifier.toLowerCase();
+                }
+            }
         }
 
-        Matcher matcher = pattern.matcher(identifier);
+        Matcher matcher = pattern.matcher(regexInput);
 
         if (matcher.find()) {
+            String matchedType = matcher.group(1);
+            String matchedVersion = matcher.group(2);
+            String matchedSubversion = matcher.group(3); // may be null
+            String matchedArch = matcher.group(4);
+
+            // Reconstruct the full identifier for path lookups
+            String fullId = matchedType.toLowerCase() + "-" + matchedVersion
+                    + (matchedSubversion != null ? "-" + matchedSubversion : "")
+                    + "-" + matchedArch;
+
+            Log.d("WineInfo", "Parsed: type=" + matchedType + ", version=" + matchedVersion
+                    + ", subversion=" + matchedSubversion + ", arch=" + matchedArch
+                    + ", fullId=" + fullId);
+
+            // Check bundled wine versions
             String[] wineVersions = context.getResources().getStringArray(R.array.bionic_wine_entries);
             for (String wineVersion : wineVersions) {
-                if (wineVersion.contains(identifier)) {
-                    path = imageFs.getRootDir().getPath() + "/opt/" + identifier;
+                if (wineVersion.equals(fullId)) {
+                    path = imageFs.getRootDir().getPath() + "/opt/" + fullId;
                     break;
                 }
             }
 
-            if (wineProfile != null && (wineProfile.type == ContentProfile.ContentType.CONTENT_TYPE_WINE || wineProfile.type == ContentProfile.ContentType.CONTENT_TYPE_PROTON))
+            // Check content manager install path (takes priority over bundled)
+            if (wineProfile != null && (wineProfile.type == ContentProfile.ContentType.CONTENT_TYPE_WINE || wineProfile.type == ContentProfile.ContentType.CONTENT_TYPE_PROTON)) {
                 path = contentsManager.getInstallDir(context, wineProfile).getPath();
+            }
 
-            return new WineInfo(matcher.group(1), matcher.group(2), matcher.group(4), path);
+            // Fallback: check if the directory exists on disk even without a profile
+            // (handles manually placed or previously installed wine versions)
+            if (path.isEmpty()) {
+                File optDir = new File(imageFs.getRootDir(), "/opt/" + fullId);
+                if (optDir.exists() && optDir.isDirectory()) {
+                    File binCheck = new File(optDir, "bin");
+                    if (binCheck.exists()) {
+                        path = optDir.getPath();
+                        Log.d("WineInfo", "Found wine installation on disk at: " + path);
+                    }
+                }
+            }
+
+            Log.d("WineInfo", "Resolved path: " + (path.isEmpty() ? "(empty)" : path));
+            return new WineInfo(matchedType, matchedVersion, matchedSubversion, matchedArch, path);
         }
-        else return new WineInfo(MAIN_WINE_VERSION.type, MAIN_WINE_VERSION.version, MAIN_WINE_VERSION.arch, null);
+        else {
+            Log.w("WineInfo", "Failed to parse identifier: " + regexInput + " (original: " + identifier + ")");
+            return new WineInfo(MAIN_WINE_VERSION.type, MAIN_WINE_VERSION.version, MAIN_WINE_VERSION.arch, null);
+        }
     }
 
     public static boolean isMainWineVersion(String wineVersion) {

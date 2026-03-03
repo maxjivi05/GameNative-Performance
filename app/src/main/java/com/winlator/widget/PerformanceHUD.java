@@ -4,16 +4,18 @@ import android.app.ActivityManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.os.BatteryManager;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.Process;
 import android.util.AttributeSet;
-import android.view.Choreographer;
 import android.view.GestureDetector;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewConfiguration;
+import android.view.ViewGroup;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -23,6 +25,8 @@ import androidx.annotation.Nullable;
 
 import app.gamenative.R;
 
+import com.winlator.renderer.GLRenderer;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
@@ -30,60 +34,75 @@ import java.io.RandomAccessFile;
 import java.util.Locale;
 
 public class PerformanceHUD extends FrameLayout {
+    private static final String PREFS_NAME = "performance_hud_prefs";
+    private static final String PREF_X = "hud_x";
+    private static final String PREF_Y = "hud_y";
+    private static final String PREF_HAS_POSITION = "hud_has_position";
+
     private final TextView tvFPS, tvGPU, tvCPU, tvRAM, tvPower, tvBattery;
     private final TextView tvCPUTemp, tvGPUTemp, tvBatteryTemp;
     private final LinearLayout container;
     private float currentFPS = 0;
-    private int frameCount = 0;
-    private long lastFPSUpdateTime = 0;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private boolean isVertical = false;
     private final GestureDetector gestureDetector;
+    private boolean isTracking = false;
     private boolean isDragging = false;
     private float dX, dY;
     private int touchSlop;
     private float startX, startY;
+    private boolean restoredPosition = false;
 
-    private long lastCpuTotal = 0;
-    private long lastCpuIdle = 0;
+    // For GLRenderer-based FPS tracking
+    private long lastFPSUpdateTimeMs = 0;
 
-    private final Choreographer.FrameCallback frameCallback = new Choreographer.FrameCallback() {
+    // For per-core CPU tracking
+    private long[] lastCoreTotals;
+    private long[] lastCoreIdles;
+    private int numCpuCores = 0;
+
+    private final Runnable fpsUpdateRunnable = new Runnable() {
         @Override
-        public void doFrame(long frameTimeNanos) {
-            frameCount++;
-            long currentTimeNanos = System.nanoTime();
-            if (lastFPSUpdateTime == 0) lastFPSUpdateTime = currentTimeNanos;
+        public void run() {
+            long now = System.currentTimeMillis();
+            if (lastFPSUpdateTimeMs == 0) {
+                lastFPSUpdateTimeMs = now;
+                GLRenderer.getAndResetFrameCount(); // discard initial count
+                handler.postDelayed(this, 500);
+                return;
+            }
 
-            if (currentTimeNanos - lastFPSUpdateTime >= 500_000_000L) {
+            long elapsed = now - lastFPSUpdateTimeMs;
+            if (elapsed >= 400) { // update roughly every 500ms
+                int frames = GLRenderer.getAndResetFrameCount();
+
+                // Try DXVK log first for true Vulkan/game FPS
                 float guestFPS = readGuestFPS();
                 if (guestFPS > 0) {
                     currentFPS = guestFPS;
-                } else {
-                    currentFPS = (frameCount * 1_000_000_000f) / (currentTimeNanos - lastFPSUpdateTime);
+                } else if (elapsed > 0) {
+                    // Use GLRenderer frame counter (actual X server render frames)
+                    currentFPS = (frames * 1000f) / elapsed;
                 }
-                frameCount = 0;
-                lastFPSUpdateTime = currentTimeNanos;
+                lastFPSUpdateTimeMs = now;
                 tvFPS.setText(String.format(Locale.ENGLISH, "FPS: %.1f", currentFPS));
             }
-            Choreographer.getInstance().postFrameCallback(this);
+            handler.postDelayed(this, 500);
         }
     };
 
     private float readGuestFPS() {
         // Try to read DXVK HUD FPS if it's being redirected to a file
-        // DXVK_HUD_LOG_PATH=/tmp/dxvk_fps creates files like /tmp/dxvk_fps/executable_fps.log
         File logDir = new File(getContext().getFilesDir(), "imagefs/tmp/dxvk_fps");
         if (logDir.exists() && logDir.isDirectory()) {
             File[] files = logDir.listFiles((dir, name) -> name.endsWith("_fps.log"));
             if (files != null && files.length > 0) {
-                // Get the most recently modified log file
                 File latestFile = files[0];
                 for (File f : files) if (f.lastModified() > latestFile.lastModified()) latestFile = f;
 
                 try (RandomAccessFile raf = new RandomAccessFile(latestFile, "r")) {
                     long length = raf.length();
                     if (length > 0) {
-                        // Read the last line which contains the latest FPS
                         long pos = length - 1;
                         StringBuilder sb = new StringBuilder();
                         while (pos >= 0) {
@@ -94,7 +113,6 @@ public class PerformanceHUD extends FrameLayout {
                             pos--;
                         }
                         String lastLine = sb.reverse().toString().trim();
-                        // DXVK log format is usually: "frame_count, fps" or just "fps" depending on version
                         if (lastLine.contains(",")) {
                             String[] parts = lastLine.split(",");
                             return Float.parseFloat(parts[parts.length - 1].trim());
@@ -105,8 +123,8 @@ public class PerformanceHUD extends FrameLayout {
                 } catch (Exception e) {}
             }
         }
-        
-        // Fallback to a direct file if some other hook is writing to it
+
+        // Fallback to a direct file
         File file = new File(getContext().getFilesDir(), "imagefs/tmp/dxvk_fps");
         if (file.exists() && !file.isDirectory()) {
             try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
@@ -150,6 +168,11 @@ public class PerformanceHUD extends FrameLayout {
 
         container.setBackgroundResource(R.drawable.hud_background);
 
+        numCpuCores = Runtime.getRuntime().availableProcessors();
+        if (numCpuCores < 1) numCpuCores = 1;
+        lastCoreTotals = new long[numCpuCores];
+        lastCoreIdles = new long[numCpuCores];
+
         touchSlop = ViewConfiguration.get(context).getScaledTouchSlop();
 
         gestureDetector = new GestureDetector(context, new GestureDetector.SimpleOnGestureListener() {
@@ -160,36 +183,95 @@ public class PerformanceHUD extends FrameLayout {
             }
         });
 
-        container.setOnTouchListener((v, event) -> {
-            gestureDetector.onTouchEvent(event);
-            switch (event.getAction()) {
-                case MotionEvent.ACTION_DOWN:
-                    isDragging = false;
-                    startX = event.getRawX();
-                    startY = event.getRawY();
-                    dX = getX() - event.getRawX();
-                    dY = getY() - event.getRawY();
-                    return true;
-                case MotionEvent.ACTION_MOVE:
-                    float distanceX = Math.abs(event.getRawX() - startX);
-                    float distanceY = Math.abs(event.getRawY() - startY);
-                    if (isDragging || distanceX > touchSlop || distanceY > touchSlop) {
-                        isDragging = true;
-                        setX(event.getRawX() + dX);
-                        setY(event.getRawY() + dY);
-                    }
-                    return true;
-                case MotionEvent.ACTION_UP:
-                case MotionEvent.ACTION_CANCEL:
-                    boolean wasDragging = isDragging;
-                    isDragging = false;
-                    return wasDragging;
-            }
-            return false;
-        });
-
-        Choreographer.getInstance().postFrameCallback(frameCallback);
+        handler.post(fpsUpdateRunnable);
         handler.post(metricsUpdateRunnable);
+    }
+
+    @Override
+    protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
+        super.onLayout(changed, left, top, right, bottom);
+        if (!restoredPosition) {
+            restoredPosition = true;
+            restorePosition();
+        }
+    }
+
+    private void savePosition() {
+        SharedPreferences prefs = getContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        prefs.edit()
+            .putFloat(PREF_X, getX())
+            .putFloat(PREF_Y, getY())
+            .putBoolean(PREF_HAS_POSITION, true)
+            .apply();
+    }
+
+    private void restorePosition() {
+        SharedPreferences prefs = getContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        if (prefs.getBoolean(PREF_HAS_POSITION, false)) {
+            float savedX = prefs.getFloat(PREF_X, 0f);
+            float savedY = prefs.getFloat(PREF_Y, 0f);
+            // Clamp to screen bounds
+            View parent = (View) getParent();
+            if (parent != null) {
+                savedX = Math.max(0, Math.min(savedX, parent.getWidth() - getWidth()));
+                savedY = Math.max(0, Math.min(savedY, parent.getHeight() - getHeight()));
+            }
+            setX(savedX);
+            setY(savedY);
+        }
+    }
+
+    /**
+     * Handles touch events dispatched directly from the XServerScreen pointerInteropFilter.
+     * Returns true if the event was consumed (touch is within HUD bounds or part of an active HUD gesture).
+     */
+    public boolean handleTouchEvent(MotionEvent event) {
+        float touchX = event.getRawX();
+        float touchY = event.getRawY();
+
+        int[] location = new int[2];
+        container.getLocationOnScreen(location);
+        float left = location[0];
+        float top = location[1];
+        float right = left + container.getWidth();
+        float bottom = top + container.getHeight();
+
+        boolean inBounds = touchX >= left && touchX <= right && touchY >= top && touchY <= bottom;
+
+        switch (event.getAction()) {
+            case MotionEvent.ACTION_DOWN:
+                if (!inBounds) return false;
+                isTracking = true;
+                isDragging = false;
+                startX = event.getRawX();
+                startY = event.getRawY();
+                dX = getX() - event.getRawX();
+                dY = getY() - event.getRawY();
+                gestureDetector.onTouchEvent(event);
+                return true;
+            case MotionEvent.ACTION_MOVE:
+                if (!isTracking) return false;
+                gestureDetector.onTouchEvent(event);
+                float distanceX = Math.abs(event.getRawX() - startX);
+                float distanceY = Math.abs(event.getRawY() - startY);
+                if (isDragging || distanceX > touchSlop || distanceY > touchSlop) {
+                    isDragging = true;
+                    setX(event.getRawX() + dX);
+                    setY(event.getRawY() + dY);
+                }
+                return true;
+            case MotionEvent.ACTION_UP:
+            case MotionEvent.ACTION_CANCEL:
+                if (!isTracking) return false;
+                gestureDetector.onTouchEvent(event);
+                if (isDragging) {
+                    savePosition();
+                }
+                isDragging = false;
+                isTracking = false;
+                return true;
+        }
+        return false;
     }
 
     private TextView createTempTextView(Context context) {
@@ -227,7 +309,7 @@ public class PerformanceHUD extends FrameLayout {
 
             double watts = Math.abs((double)microAmps * milliVolts) / 1_000_000_000.0;
             if (watts > 0 && watts < 0.01 && Math.abs(microAmps) > 0) watts *= 1000;
-            
+
             tvBattery.setText(String.format(Locale.ENGLISH, "%d%%", batteryLevel));
             tvBatteryTemp.setText(String.format(Locale.ENGLISH, "(%.1f°C)", batteryTemp / 10.0));
             tvPower.setText(String.format(Locale.ENGLISH, "%.1fW", watts));
@@ -245,7 +327,7 @@ public class PerformanceHUD extends FrameLayout {
             }
         }
 
-        tvCPU.setText(String.format(Locale.ENGLISH, "CPU: %d%%", getCpuUsage()));
+        tvCPU.setText(String.format(Locale.ENGLISH, "CPU: %d%%", getMaxCoreCpuUsage()));
         tvCPUTemp.setText(String.format(Locale.ENGLISH, "(%d°C)", getCpuTemp()));
         tvGPU.setText(String.format(Locale.ENGLISH, "GPU: %d%%", getGpuUsage()));
         tvGPUTemp.setText(String.format(Locale.ENGLISH, "(%d°C)", getGpuTemp()));
@@ -278,29 +360,130 @@ public class PerformanceHUD extends FrameLayout {
         return 0;
     }
 
-    private int getCpuUsage() {
+    // Aggregate CPU fallback tracking
+    private long lastAggregateCpuTotal = 0;
+    private long lastAggregateCpuIdle = 0;
+
+    /**
+     * Reads /proc/stat per-core lines (cpu0, cpu1, ...) and returns the highest
+     * single-core usage percentage since the last call.
+     * Falls back to aggregate CPU line, then to frequency-based estimation.
+     */
+    private int getMaxCoreCpuUsage() {
+        int maxUsage = 0;
+        int aggregateUsage = 0;
+        boolean gotPerCore = false;
+
         try (BufferedReader reader = new BufferedReader(new FileReader("/proc/stat"))) {
-            String line = reader.readLine();
-            if (line != null && line.startsWith("cpu")) {
-                String[] parts = line.split("\\s+");
+            String line;
+            while ((line = reader.readLine()) != null) {
+                if (!line.startsWith("cpu")) continue;
+
+                String[] parts = line.trim().split("\\s+");
+                if (parts.length < 5) continue;
+
+                // Aggregate "cpu " line — use as fallback
+                if (line.startsWith("cpu ") && !line.startsWith("cpu0")) {
+                    long user = Long.parseLong(parts[1]);
+                    long nice = Long.parseLong(parts[2]);
+                    long system = Long.parseLong(parts[3]);
+                    long idle = Long.parseLong(parts[4]);
+                    long iowait = parts.length > 5 ? Long.parseLong(parts[5]) : 0;
+                    long irq = parts.length > 6 ? Long.parseLong(parts[6]) : 0;
+                    long softirq = parts.length > 7 ? Long.parseLong(parts[7]) : 0;
+                    long steal = parts.length > 8 ? Long.parseLong(parts[8]) : 0;
+                    long totalTime = user + nice + system + idle + iowait + irq + softirq + steal;
+                    long idleTime = idle + iowait;
+                    if (lastAggregateCpuTotal > 0) {
+                        long totalDiff = totalTime - lastAggregateCpuTotal;
+                        long idleDiff = idleTime - lastAggregateCpuIdle;
+                        if (totalDiff > 0) {
+                            aggregateUsage = Math.max(0, Math.min(100, (int) ((totalDiff - idleDiff) * 100 / totalDiff)));
+                        }
+                    }
+                    lastAggregateCpuTotal = totalTime;
+                    lastAggregateCpuIdle = idleTime;
+                    continue;
+                }
+
+                // Per-core "cpuN" lines
+                int coreIndex;
+                try {
+                    coreIndex = Integer.parseInt(parts[0].substring(3));
+                } catch (NumberFormatException e) {
+                    continue;
+                }
+                if (coreIndex >= numCpuCores) continue;
+
                 long user = Long.parseLong(parts[1]);
                 long nice = Long.parseLong(parts[2]);
                 long system = Long.parseLong(parts[3]);
                 long idle = Long.parseLong(parts[4]);
-                long iowait = Long.parseLong(parts[5]);
-                long irq = Long.parseLong(parts[6]);
-                long softirq = Long.parseLong(parts[7]);
+                long iowait = parts.length > 5 ? Long.parseLong(parts[5]) : 0;
+                long irq = parts.length > 6 ? Long.parseLong(parts[6]) : 0;
+                long softirq = parts.length > 7 ? Long.parseLong(parts[7]) : 0;
+                long steal = parts.length > 8 ? Long.parseLong(parts[8]) : 0;
 
-                long total = user + nice + system + idle + iowait + irq + softirq;
-                long diffTotal = total - lastCpuTotal;
-                long diffIdle = idle - lastCpuIdle;
-                lastCpuTotal = total;
-                lastCpuIdle = idle;
-                if (diffTotal <= 0) return 0;
-                return (int) Math.max(0, Math.min(100, (100 * (diffTotal - diffIdle) / diffTotal)));
+                long totalTime = user + nice + system + idle + iowait + irq + softirq + steal;
+                long idleTime = idle + iowait;
+
+                long prevTotal = lastCoreTotals[coreIndex];
+                long prevIdle = lastCoreIdles[coreIndex];
+                lastCoreTotals[coreIndex] = totalTime;
+                lastCoreIdles[coreIndex] = idleTime;
+
+                if (prevTotal == 0) continue;
+
+                long totalDiff = totalTime - prevTotal;
+                long idleDiff = idleTime - prevIdle;
+
+                if (totalDiff <= 0) continue;
+
+                int usage = (int) ((totalDiff - idleDiff) * 100 / totalDiff);
+                usage = Math.max(0, Math.min(100, usage));
+                if (usage > maxUsage) maxUsage = usage;
+                gotPerCore = true;
             }
         } catch (Exception e) {}
-        return 0;
+
+        // If per-core data worked, use it
+        if (gotPerCore && maxUsage > 0) return maxUsage;
+
+        // Fallback 1: aggregate CPU usage
+        if (aggregateUsage > 0) return aggregateUsage;
+
+        // Fallback 2: frequency-based estimation (cur_freq / max_freq for hottest core)
+        return getFrequencyBasedCpuUsage();
+    }
+
+    /**
+     * Estimates CPU usage by reading current vs max frequency for each core.
+     * Returns the highest core's (cur_freq / cpuinfo_max_freq) as a percentage.
+     * This works even when /proc/stat is restricted by hideprocfs on Android.
+     */
+    private int getFrequencyBasedCpuUsage() {
+        int maxUsage = 0;
+        for (int i = 0; i < numCpuCores; i++) {
+            try {
+                String base = "/sys/devices/system/cpu/cpu" + i + "/cpufreq/";
+                long curFreq = readLongFromFile(base + "scaling_cur_freq");
+                long maxFreq = readLongFromFile(base + "cpuinfo_max_freq");
+                if (maxFreq > 0 && curFreq > 0) {
+                    int usage = (int) (curFreq * 100 / maxFreq);
+                    usage = Math.max(0, Math.min(100, usage));
+                    if (usage > maxUsage) maxUsage = usage;
+                }
+            } catch (Exception e) {}
+        }
+        return maxUsage;
+    }
+
+    private long readLongFromFile(String path) {
+        try (BufferedReader reader = new BufferedReader(new FileReader(path))) {
+            return Long.parseLong(reader.readLine().trim());
+        } catch (Exception e) {
+            return -1;
+        }
     }
 
     private int getGpuUsage() {
@@ -321,7 +504,7 @@ public class PerformanceHUD extends FrameLayout {
     @Override
     protected void onDetachedFromWindow() {
         super.onDetachedFromWindow();
-        Choreographer.getInstance().removeFrameCallback(frameCallback);
+        handler.removeCallbacks(fpsUpdateRunnable);
         handler.removeCallbacks(metricsUpdateRunnable);
     }
 }
