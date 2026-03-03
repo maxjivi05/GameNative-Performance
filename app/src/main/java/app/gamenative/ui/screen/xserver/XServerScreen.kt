@@ -95,6 +95,7 @@ import com.winlator.contents.ContentProfile
 import com.winlator.contents.ContentsManager
 import app.gamenative.ui.component.dialog.GameNavigationMenu
 import app.gamenative.ui.component.dialog.TouchTransparencyDialog
+import app.gamenative.ui.component.dialog.ScreenEffectDialog
 import com.winlator.core.AppUtils
 import com.winlator.core.Callback
 import com.winlator.core.DXVKHelper
@@ -341,6 +342,7 @@ fun XServerScreen(
     var showTaskManagerDialog by remember { mutableStateOf(false) }
     var showGameMenu by remember { mutableStateOf(false) }
     var showTouchTransparencyDialog by remember { mutableStateOf(false) }
+    var showScreenEffectDialog by remember { mutableStateOf(false) }
     var isGamePaused by remember { mutableStateOf(false) }
 
     fun startExitWatchForUnmappedGameWindow(window: Window) {
@@ -605,7 +607,7 @@ fun XServerScreen(
             }
 
             NavigationDialog.ACTION_SCREEN_EFFECT -> {
-                com.winlator.contentdialog.ScreenEffectDialog(context, xServerView?.renderer).show()
+                showScreenEffectDialog = true
             }
 
             NavigationDialog.ACTION_NATIVE_RENDERING -> {
@@ -1528,6 +1530,13 @@ fun XServerScreen(
     if (showTouchTransparencyDialog) {
         TouchTransparencyDialog(
             onDismiss = { showTouchTransparencyDialog = false }
+        )
+    }
+
+    if (showScreenEffectDialog) {
+        app.gamenative.ui.component.dialog.ScreenEffectDialog(
+            renderer = xServerView?.renderer,
+            onDismiss = { showScreenEffectDialog = false }
         )
     }
 
