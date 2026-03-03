@@ -17,10 +17,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -77,45 +79,7 @@ fun ScreenEffectDialog(
         enableNTSC = composer.getEffect(NTSCCombinedEffect::class.java) != null
     }
 
-    fun loadProfile(name: String) {
-        if (name.isEmpty()) return
-        val profileStr = profiles.find { it.startsWith("$name:") } ?: return
-        val parts = profileStr.split(":", limit = 2)
-        if (parts.size > 1 && parts[1].isNotEmpty()) {
-            val settings = KeyValueSet(parts[1])
-            brightness = settings.getFloat("brightness", 0f)
-            contrast = settings.getFloat("contrast", 0f)
-            gamma = settings.getFloat("gamma", 1.0f)
-            enableFXAA = settings.getBoolean("fxaa", false)
-            enableCRT = settings.getBoolean("crt_shader", false)
-            enableToon = settings.getBoolean("toon_shader", false)
-            enableNTSC = settings.getBoolean("ntsc_effect", false)
-        }
-    }
-
-    fun saveCurrentToProfile(name: String) {
-        if (name.isEmpty()) return
-        val settings = KeyValueSet()
-        settings.put("brightness", brightness)
-        settings.put("contrast", contrast)
-        settings.put("gamma", gamma)
-        settings.put("fxaa", enableFXAA)
-        settings.put("crt_shader", enableCRT)
-        settings.put("toon_shader", enableToon)
-        settings.put("ntsc_effect", enableNTSC)
-
-        val newProfiles = profiles.toMutableSet()
-        newProfiles.removeAll { it.startsWith("$name:") }
-        newProfiles.add("$name:${settings}")
-        
-        profiles = newProfiles
-        preferences.edit()
-            .putStringSet("screen_effect_profiles", newProfiles)
-            .putString("last_screen_effect_profile", name)
-            .apply()
-    }
-
-    fun applyEffects() {
+    fun updateRenderer() {
         val composer = renderer.effectComposer ?: return
         
         // Color Effect
@@ -157,8 +121,49 @@ fun ScreenEffectDialog(
         } else {
             composer.getEffect(NTSCCombinedEffect::class.java)?.let { composer.removeEffect(it) }
         }
+    }
 
-        if (selectedProfileName.isNotEmpty()) saveCurrentToProfile(selectedProfileName)
+    // Instant application when state changes
+    LaunchedEffect(brightness, contrast, gamma, enableFXAA, enableCRT, enableToon, enableNTSC) {
+        updateRenderer()
+    }
+
+    fun loadProfile(name: String) {
+        if (name.isEmpty()) return
+        val profileStr = profiles.find { it.startsWith("$name:") } ?: return
+        val parts = profileStr.split(":", limit = 2)
+        if (parts.size > 1 && parts[1].isNotEmpty()) {
+            val settings = KeyValueSet(parts[1])
+            brightness = settings.getFloat("brightness", 0f)
+            contrast = settings.getFloat("contrast", 0f)
+            gamma = settings.getFloat("gamma", 1.0f)
+            enableFXAA = settings.getBoolean("fxaa", false)
+            enableCRT = settings.getBoolean("crt_shader", false)
+            enableToon = settings.getBoolean("toon_shader", false)
+            enableNTSC = settings.getBoolean("ntsc_effect", false)
+        }
+    }
+
+    fun saveCurrentToProfile(name: String) {
+        if (name.isEmpty()) return
+        val settings = KeyValueSet()
+        settings.put("brightness", brightness)
+        settings.put("contrast", contrast)
+        settings.put("gamma", gamma)
+        settings.put("fxaa", enableFXAA)
+        settings.put("crt_shader", enableCRT)
+        settings.put("toon_shader", enableToon)
+        settings.put("ntsc_effect", enableNTSC)
+
+        val newProfiles = profiles.toMutableSet()
+        newProfiles.removeAll { it.startsWith("$name:") }
+        newProfiles.add("$name:${settings}")
+        
+        profiles = newProfiles
+        preferences.edit()
+            .putStringSet("screen_effect_profiles", newProfiles)
+            .putString("last_screen_effect_profile", name)
+            .apply()
     }
 
     var showAddProfileDialog by remember { mutableStateOf(false) }
@@ -169,9 +174,9 @@ fun ScreenEffectDialog(
     ) {
         Surface(
             modifier = Modifier
-                .widthIn(max = 500.dp)
-                .fillMaxHeight(0.85f)
-                .padding(24.dp),
+                .widthIn(max = 520.dp)
+                .fillMaxHeight(0.9f)
+                .padding(16.dp),
             shape = RoundedCornerShape(28.dp),
             color = MaterialTheme.colorScheme.surface,
             tonalElevation = 8.dp
@@ -181,7 +186,7 @@ fun ScreenEffectDialog(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 16.dp)
+                        .padding(horizontal = 16.dp, vertical = 12.dp)
                 ) {
                     Text(
                         text = stringResource(R.string.screen_effect),
@@ -203,12 +208,12 @@ fun ScreenEffectDialog(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxWidth(),
-                    contentPadding = PaddingValues(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     // Profile Selection
                     item {
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text(
                                 text = "Profile",
                                 style = MaterialTheme.typography.labelMedium,
@@ -227,12 +232,14 @@ fun ScreenEffectDialog(
                                         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
                                     ) {
                                         Row(
-                                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
                                             Text(
                                                 text = if (selectedProfileName.isEmpty()) "-- Default --" else selectedProfileName,
-                                                modifier = Modifier.weight(1f)
+                                                modifier = Modifier.weight(1f),
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
                                             )
                                             Icon(Icons.Default.ArrowDropDown, contentDescription = null)
                                         }
@@ -269,7 +276,7 @@ fun ScreenEffectDialog(
                                     }
                                 }
 
-                                IconButton(onClick = { showAddProfileDialog = true }) {
+                                IconButton(onClick = { showAddProfileDialog = true }, modifier = Modifier.size(40.dp)) {
                                     Icon(Icons.Default.Add, contentDescription = "Add Profile")
                                 }
                                 
@@ -280,10 +287,29 @@ fun ScreenEffectDialog(
                                         profiles = newProfiles
                                         preferences.edit().putStringSet("screen_effect_profiles", newProfiles).apply()
                                         selectedProfileName = ""
-                                    }) {
+                                    }, modifier = Modifier.size(40.dp)) {
                                         Icon(Icons.Default.Delete, contentDescription = "Delete Profile", tint = MaterialTheme.colorScheme.error)
                                     }
                                 }
+                            }
+                        }
+                    }
+
+                    // Toggles (2 per row)
+                    item {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(
+                                text = "Effects",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                EffectToggle(label = "FXAA", checked = enableFXAA, onCheckedChange = { enableFXAA = it }, modifier = Modifier.weight(1f))
+                                EffectToggle(label = "CRT Shader", checked = enableCRT, onCheckedChange = { enableCRT = it }, modifier = Modifier.weight(1f))
+                            }
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                EffectToggle(label = "Toon Shader", checked = enableToon, onCheckedChange = { enableToon = it }, modifier = Modifier.weight(1f))
+                                EffectToggle(label = "NTSC Combined", checked = enableNTSC, onCheckedChange = { enableNTSC = it }, modifier = Modifier.weight(1f))
                             }
                         }
                     }
@@ -313,28 +339,13 @@ fun ScreenEffectDialog(
                             valueRange = 0.1f..2.0f
                         )
                     }
-
-                    // Toggles
-                    item {
-                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                            Text(
-                                text = "Effects",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                            EffectToggle(label = "FXAA", checked = enableFXAA, onCheckedChange = { enableFXAA = it })
-                            EffectToggle(label = "CRT Shader", checked = enableCRT, onCheckedChange = { enableCRT = it })
-                            EffectToggle(label = "Toon Shader", checked = enableToon, onCheckedChange = { enableToon = it })
-                            EffectToggle(label = "NTSC Combined", checked = enableNTSC, onCheckedChange = { enableNTSC = it })
-                        }
-                    }
                 }
 
                 // Footer
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(20.dp),
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     OutlinedButton(
@@ -354,7 +365,7 @@ fun ScreenEffectDialog(
                     }
                     Button(
                         onClick = {
-                            applyEffects()
+                            if (selectedProfileName.isNotEmpty()) saveCurrentToProfile(selectedProfileName)
                             onDismiss()
                         },
                         modifier = Modifier.weight(1f),
@@ -416,7 +427,7 @@ private fun EffectSlider(
             Text(text = label, style = MaterialTheme.typography.bodyMedium)
             Text(
                 text = if (label == stringResource(R.string.gamma)) String.format("%.2f", value) else "${value.toInt()}%",
-                style = MaterialTheme.typography.labelLarge,
+                style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.primary
             )
         }
@@ -433,21 +444,32 @@ private fun EffectSlider(
 private fun EffectToggle(
     label: String,
     checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
+    onCheckedChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Surface(
         onClick = { onCheckedChange(!checked) },
         shape = RoundedCornerShape(12.dp),
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-        modifier = Modifier.fillMaxWidth()
+        modifier = modifier
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text(text = label, style = MaterialTheme.typography.bodyMedium)
-            Switch(checked = checked, onCheckedChange = onCheckedChange)
+            Text(
+                text = label, 
+                style = MaterialTheme.typography.bodySmall, 
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
+            )
+            Switch(
+                checked = checked, 
+                onCheckedChange = onCheckedChange,
+                modifier = Modifier.scale(0.8f)
+            )
         }
     }
 }
