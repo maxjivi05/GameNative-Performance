@@ -396,9 +396,10 @@ private fun GenericComponentContent(comp: GNComponent, mgr: ContentsManager, isB
                         onClick = { typeDropdownExpanded = true },
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
-                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.2f))
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.2f)),
+                        modifier = Modifier.widthIn(max = 140.dp)
                     ) {
-                        Text(selectedType)
+                        Text(selectedType, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Icon(Icons.Default.ArrowDropDown, null)
                     }
                     DropdownMenu(
@@ -431,17 +432,34 @@ private fun GenericComponentContent(comp: GNComponent, mgr: ContentsManager, isB
             }
 
             val filteredByType = allAssets.filter { asset ->
-                if (selectedType == "All") true
-                else asset.name.contains(selectedType, ignoreCase = true) || asset.releaseName.contains(selectedType, ignoreCase = true)
+                val name = asset.name.lowercase()
+                val rel = asset.releaseName.lowercase()
+                when (selectedType) {
+                    "All" -> true
+                    "Gplasync" -> (name.contains("gplasync") || rel.contains("gplasync")) && !name.contains("arm64ec") && !name.contains("nvapi")
+                    "Arm64EC" -> name.contains("arm64ec") && !name.contains("gplasync") && !name.contains("nvapi")
+                    "NVAPI" -> name.contains("nvapi") && !name.contains("arm64ec") && !name.contains("gplasync")
+                    else -> asset.name.contains(selectedType, ignoreCase = true) || asset.releaseName.contains(selectedType, ignoreCase = true)
+                }
             }
 
             val finalAssets = if (selectedFilter == "Download") {
-                val sorted = filteredByType.sortedWith(compareBy<GHAsset> { getAssetCategory(it.name, comp) }.thenByDescending { it.releaseDate })
+                val sorted = filteredByType.sortedWith { a, b ->
+                    val catA = getAssetCategory(a.name, comp)
+                    val catB = getAssetCategory(b.name, comp)
+                    if (catA != catB) catA.compareTo(catB)
+                    else compareVersions(b.name, a.name) // Newest top
+                }
                 val nightlies = sorted.filter { it.name.contains("nightly", true) }
                 val nonNightlies = sorted.filter { !it.name.contains("nightly", true) }
                 val latestNightlies = nightlies.groupBy { it.name.substringBeforeLast("-") }.map { it.value.first() }
-                (nonNightlies + latestNightlies).sortedWith(compareBy<GHAsset> { getAssetCategory(it.name, comp) }.thenByDescending { it.releaseDate })
-            } else filteredByType
+                (nonNightlies + latestNightlies).sortedWith { a, b ->
+                    val catA = getAssetCategory(a.name, comp)
+                    val catB = getAssetCategory(b.name, comp)
+                    if (catA != catB) catA.compareTo(catB)
+                    else compareVersions(b.name, a.name)
+                }
+            } else filteredByType.sortedWith { a, b -> compareVersions(b.name, a.name) }
 
             if (finalAssets.isEmpty()) {
                 item {
@@ -612,17 +630,18 @@ private fun WineProtonContent(mgr: ContentsManager, isBusy: Boolean, setBusy: (B
                         modifier = Modifier.padding(end = 12.dp)
                     )
                 }
-                
+
                 Spacer(Modifier.weight(1f))
-                
+
                 Box {
                     OutlinedButton(
                         onClick = { typeDropdownExpanded = true },
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
-                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.2f))
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.2f)),
+                        modifier = Modifier.widthIn(max = 140.dp)
                     ) {
-                        Text(selectedType)
+                        Text(selectedType, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Icon(Icons.Default.ArrowDropDown, null)
                     }
                     DropdownMenu(
@@ -646,7 +665,7 @@ private fun WineProtonContent(mgr: ContentsManager, isBusy: Boolean, setBusy: (B
             val allItems = if (selectedFilter == "Installed") {
                 installed.map { profile ->
                     WineReleaseItem(name = profile.verName, version = "", url = null, fileName = profile.verName, releaseDate = "", source = "Installed")
-                }
+                }.sortedWith { a, b -> compareVersions(b.name, a.name) }
             } else {
                 releases.filter { item ->
                     installed.none { assetKeyMatchesExact(it.verName, item.fileName.removeSuffix(".wcp")) }
@@ -659,11 +678,21 @@ private fun WineProtonContent(mgr: ContentsManager, isBusy: Boolean, setBusy: (B
             }
 
             val finalReleases = if (selectedFilter == "Download") {
-                val sorted = filteredByType.sortedWith(compareBy<WineReleaseItem> { getWineCategory(it.name) }.thenByDescending { it.releaseDate })
+                val sorted = filteredByType.sortedWith { a, b ->
+                    val catA = getWineCategory(a.name)
+                    val catB = getWineCategory(b.name)
+                    if (catA != catB) catA.compareTo(catB)
+                    else compareVersions(b.name, a.name)
+                }
                 val nightlies = sorted.filter { it.name.contains("nightly", true) }
                 val nonNightlies = sorted.filter { !it.name.contains("nightly", true) }
                 val latestNightlies = nightlies.groupBy { it.name.substringBeforeLast("-") }.map { it.value.first() }
-                (nonNightlies + latestNightlies).sortedWith(compareBy<WineReleaseItem> { getWineCategory(it.name) }.thenByDescending { it.releaseDate })
+                (nonNightlies + latestNightlies).sortedWith { a, b ->
+                    val catA = getWineCategory(a.name)
+                    val catB = getWineCategory(b.name)
+                    if (catA != catB) catA.compareTo(catB)
+                    else compareVersions(b.name, a.name)
+                }
             } else filteredByType
 
             if (finalReleases.isEmpty()) {
@@ -692,7 +721,8 @@ private fun WineProtonContent(mgr: ContentsManager, isBusy: Boolean, setBusy: (B
             }
         }
     }
-}
+    }
+
 
 // ─── Logic Helpers ──────────────────────────────────────────────────────────
 
@@ -836,7 +866,22 @@ private fun formatRelativeTime(iso: String): String = try {
 } catch (_: Exception) { "" }
 
 private fun assetUniqueKey(n: String): String = n.removeSuffix(".wcp")
-private fun assetKeyMatchesExact(v: String, k: String): Boolean = v.lowercase() == k.lowercase() || v.lowercase().endsWith("-${k.lowercase()}")
+private fun assetKeyMatchesExact(v: String, k: String): Boolean {
+    val vn = v.lowercase().removeSuffix(".wcp").trim()
+    val kn = k.lowercase().removeSuffix(".wcp").trim()
+    if (vn == kn) return true
+    
+    // Normalize by removing common prefixes
+    val prefixes = listOf("dxvk-", "vk3dk-", "box64-", "bionic-box64-", "wowbox64-", "fex-", "stable-", "nightly-", "arm64ec-", "gplasync-", "nvapi-")
+    var pvn = vn
+    var pkn = kn
+    prefixes.forEach { 
+        if (pvn.startsWith(it)) pvn = pvn.removePrefix(it)
+        if (pkn.startsWith(it)) pkn = pkn.removePrefix(it)
+    }
+    
+    return pvn == pkn || vn.endsWith("-$kn") || kn.endsWith("-$vn") || vn.contains(kn) || kn.contains(vn)
+}
 private fun findInstalledProfile(n: String, p: List<ContentProfile>): ContentProfile? = p.find { assetKeyMatchesExact(it.verName, assetUniqueKey(n)) }
 
 private fun parseGHReleases(json: String): List<GHRelease> = try {
@@ -905,5 +950,22 @@ private suspend fun <T> suspendInstallCallback(block: (ContentsManager.OnInstall
     })
 }
 
-private val nightlyPrefixes = mapOf(GNComponent.DXVK to listOf("dxvk-nightly-", "dxvk-arm64ec-nightly-", "dxvk-nvapi-nightly-", "dxvk-nvapi-arm64ec-nightly-"), GNComponent.VKD3D to listOf("vk3dk-nightly-", "vk3dk-arm64ec-nightly-"), GNComponent.BOX64 to listOf("box64-nightly-", "bionic-box64-nightly-"), GNComponent.WOWBOX64 to listOf("wowbox64-nightly-"), GNComponent.FEXCORE to listOf("fex-nightly-"))
+private fun compareVersions(v1: String, v2: String): Int {
+    val parts1 = v1.removeSuffix(".wcp").split(Regex("[^0-9]+")).filter { it.isNotEmpty() }.map { it.toInt() }
+    val parts2 = v2.removeSuffix(".wcp").split(Regex("[^0-9]+")).filter { it.isNotEmpty() }.map { it.toInt() }
+    
+    val length = minOf(parts1.size, parts2.size)
+    for (i in 0 until length) {
+        if (parts1[i] != parts2[i]) return parts1[i].compareTo(parts2[i])
+    }
+    return parts1.size.compareTo(parts2.size)
+}
+
+private val nightlyPrefixes = mapOf(
+    GNComponent.DXVK to listOf("dxvk-nightly-", "dxvk-arm64ec-nightly-", "dxvk-nvapi-nightly-", "dxvk-nvapi-arm64ec-nightly-", "pre-reg"), 
+    GNComponent.VKD3D to listOf("vk3dk-nightly-", "vk3dk-arm64ec-nightly-"), 
+    GNComponent.BOX64 to listOf("box64-nightly-", "bionic-box64-nightly-"), 
+    GNComponent.WOWBOX64 to listOf("wowbox64-nightly-"), 
+    GNComponent.FEXCORE to listOf("fex-nightly-")
+)
 private val stablePrefixes = mapOf(GNComponent.DXVK to listOf("Stable-Dxvk", "Stable-Arm64ec-Dxvk", "Sarek"), GNComponent.VKD3D to listOf("Stable-Vk3dk", "Stable-Arm64ec-Vk3dk"), GNComponent.BOX64 to listOf("Stable-Box64"), GNComponent.WOWBOX64 to listOf("Stable-wowbox64"), GNComponent.FEXCORE to listOf("Stable-FEX"))
