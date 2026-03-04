@@ -200,3 +200,6 @@
 1	3	0	/home/max/Build/GNP/app/.cxx/Debug/48713l2o/arm64-v8a/CMakeFiles/cmake.verify_globs	e98fd9c612cae3b3
 0	2	0	/home/max/Build/GNP/app/.cxx/Debug/48713l2o/arm64-v8a/CMakeFiles/cmake.verify_globs	e98fd9c612cae3b3
 0	3	0	/home/max/Build/GNP/app/.cxx/Debug/48713l2o/arm64-v8a/CMakeFiles/cmake.verify_globs	e98fd9c612cae3b3
+0	2	0	/home/max/Build/GNP/app/.cxx/Debug/48713l2o/arm64-v8a/CMakeFiles/cmake.verify_globs	e98fd9c612cae3b3
+3	29	1772599462633949841	CMakeFiles/winlator.dir/winlator/alsa_client.c.o	e3d5aaad8524a66c
+29	46	1772599462651950431	/home/max/Build/GNP/app/build/intermediates/cxx/Debug/48713l2o/obj/arm64-v8a/libwinlator.so	f1df234c6cf49647

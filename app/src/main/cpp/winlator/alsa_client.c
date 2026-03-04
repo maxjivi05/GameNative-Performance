@@ -1,5 +1,6 @@
 #include <aaudio/AAudio.h>
 #include <jni.h>
+#include <stdlib.h>
 
 #define WAIT_COMPLETION_TIMEOUT 100 * 1000000L
 
@@ -69,6 +70,54 @@ static void aaudioPause(AAudioStream *aaudioStream) {
 static void aaudioFlush(AAudioStream *aaudioStream) {
     AAudioStream_requestFlush(aaudioStream);
     AAudioStream_waitForStateChange(aaudioStream, AAUDIO_STREAM_STATE_FLUSHING, NULL, WAIT_COMPLETION_TIMEOUT);
+}
+
+typedef struct {
+    int format;
+    int8_t channelCount;
+    int32_t sampleRate;
+    int32_t bufferSize;
+} SimulatedStream;
+
+JNIEXPORT jlong JNICALL
+Java_com_winlator_alsaserver_ALSAClient_simulatedCreate(JNIEnv *env, jobject obj, jint format,
+                                                        jbyte channelCount, jint sampleRate, jint bufferSize) {
+    SimulatedStream *stream = malloc(sizeof(SimulatedStream));
+    if (stream) {
+        stream->format = format;
+        stream->channelCount = channelCount;
+        stream->sampleRate = sampleRate;
+        stream->bufferSize = bufferSize;
+    }
+    return (jlong)stream;
+}
+
+JNIEXPORT jint JNICALL
+Java_com_winlator_alsaserver_ALSAClient_simulatedWrite(JNIEnv *env, jobject obj, jlong streamPtr,
+                                                       jobject buffer, jint numFrames) {
+    return numFrames;
+}
+
+JNIEXPORT void JNICALL
+Java_com_winlator_alsaserver_ALSAClient_simulatedStart(JNIEnv *env, jobject obj, jlong streamPtr) {
+}
+
+JNIEXPORT void JNICALL
+Java_com_winlator_alsaserver_ALSAClient_simulatedStop(JNIEnv *env, jobject obj, jlong streamPtr) {
+}
+
+JNIEXPORT void JNICALL
+Java_com_winlator_alsaserver_ALSAClient_simulatedPause(JNIEnv *env, jobject obj, jlong streamPtr) {
+}
+
+JNIEXPORT void JNICALL
+Java_com_winlator_alsaserver_ALSAClient_simulatedFlush(JNIEnv *env, jobject obj, jlong streamPtr) {
+}
+
+JNIEXPORT void JNICALL
+Java_com_winlator_alsaserver_ALSAClient_simulatedClose(JNIEnv *env, jobject obj, jlong streamPtr) {
+    SimulatedStream *stream = (SimulatedStream*)streamPtr;
+    if (stream) free(stream);
 }
 
 JNIEXPORT jlong JNICALL

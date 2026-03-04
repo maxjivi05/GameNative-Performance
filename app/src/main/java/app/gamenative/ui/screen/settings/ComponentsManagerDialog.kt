@@ -448,7 +448,7 @@ private fun GenericComponentContent(comp: GNComponent, mgr: ContentsManager, isB
                     val catA = getAssetCategory(a.name, comp)
                     val catB = getAssetCategory(b.name, comp)
                     if (catA != catB) catA.compareTo(catB)
-                    else compareVersions(b.name, a.name) // Newest top
+                    else compareVersions(b.name, a.name)
                 }
                 val nightlies = sorted.filter { it.name.contains("nightly", true) }
                 val nonNightlies = sorted.filter { !it.name.contains("nightly", true) }
@@ -473,7 +473,7 @@ private fun GenericComponentContent(comp: GNComponent, mgr: ContentsManager, isB
                     val isInstalled = profile != null
                     ComponentTile(
                         title = asset.name.removeSuffix(".wcp"),
-                        subtitle = if (isInstalled) "Installed Version" else formatRelativeTime(asset.releaseDate),
+                        subtitle = if (isInstalled) "Installed Version ✓" else formatRelativeTime(asset.releaseDate),
                         isInstalled = isInstalled,
                         isBusy = isBusy,
                         onAction = { downloadAndInstall(context, mgr, asset, scope, setBusy, setWorkMsg, setProgress, refresh) },
@@ -710,7 +710,7 @@ private fun WineProtonContent(mgr: ContentsManager, isBusy: Boolean, setBusy: (B
 
                     ComponentTile(
                         title = item.name,
-                        subtitle = if (isInstalled) "Installed" else "[${item.source}] ${formatRelativeTime(item.releaseDate)}",
+                        subtitle = if (isInstalled) "Installed Version ✓" else "[${item.source}] ${formatRelativeTime(item.releaseDate)}",
                         isInstalled = isInstalled,
                         isBusy = isBusy,
                         isUpgrade = isUpgrade,
