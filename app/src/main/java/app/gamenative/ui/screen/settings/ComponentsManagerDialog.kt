@@ -374,6 +374,12 @@ private fun GenericComponentContent(comp: GNComponent, mgr: ContentsManager, isB
         else -> listOf("All")
     }
 
+    LaunchedEffect(selectedFilter) {
+        if (selectedFilter == "Installed") {
+            selectedType = "All"
+        }
+    }
+
     LazyColumn(modifier = Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
@@ -394,9 +400,13 @@ private fun GenericComponentContent(comp: GNComponent, mgr: ContentsManager, isB
                 Box {
                     OutlinedButton(
                         onClick = { typeDropdownExpanded = true },
+                        enabled = selectedFilter != "Installed",
                         shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
-                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.2f)),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = if (selectedFilter == "Installed") Color.White.copy(alpha = 0.3f) else Color.White,
+                            disabledContentColor = Color.White.copy(alpha = 0.3f)
+                        ),
+                        border = BorderStroke(1.dp, if (selectedFilter == "Installed") Color.White.copy(alpha = 0.1f) else Color.White.copy(alpha = 0.2f)),
                         modifier = Modifier.widthIn(max = 140.dp)
                     ) {
                         Text(selectedType, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -616,6 +626,12 @@ private fun WineProtonContent(mgr: ContentsManager, isBusy: Boolean, setBusy: (B
 
     val wineTypes = listOf("All", "GE-Proton", "Wine-Staging", "Wine-Col", "Kron4ek", "Nightly")
 
+    LaunchedEffect(selectedFilter) {
+        if (selectedFilter == "Installed") {
+            selectedType = "All"
+        }
+    }
+
     LazyColumn(modifier = Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
@@ -636,9 +652,13 @@ private fun WineProtonContent(mgr: ContentsManager, isBusy: Boolean, setBusy: (B
                 Box {
                     OutlinedButton(
                         onClick = { typeDropdownExpanded = true },
+                        enabled = selectedFilter != "Installed",
                         shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
-                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.2f)),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = if (selectedFilter == "Installed") Color.White.copy(alpha = 0.3f) else Color.White,
+                            disabledContentColor = Color.White.copy(alpha = 0.3f)
+                        ),
+                        border = BorderStroke(1.dp, if (selectedFilter == "Installed") Color.White.copy(alpha = 0.1f) else Color.White.copy(alpha = 0.2f)),
                         modifier = Modifier.widthIn(max = 140.dp)
                     ) {
                         Text(selectedType, maxLines = 1, overflow = TextOverflow.Ellipsis)

@@ -86,7 +86,7 @@ class MainActivity : ComponentActivity(), InputManager.InputDeviceListener {
         private var totalIndex = 0
 
         private var currentOrientationChangeValue: Int = 0
-        private var availableOrientations: EnumSet<Orientation> = EnumSet.of(Orientation.UNSPECIFIED)
+        private var availableOrientations: EnumSet<Orientation> = EnumSet.of(Orientation.LANDSCAPE, Orientation.REVERSE_LANDSCAPE)
 
         // Store pending launch request to be processed after UI is ready
         @Volatile
@@ -170,8 +170,8 @@ class MainActivity : ComponentActivity(), InputManager.InputDeviceListener {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        // Allow the app to open in the device's current orientation
-        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+        // Force the app to open in sensor landscape orientation
+        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
 
         enableEdgeToEdge(
             statusBarStyle = SystemBarStyle.dark(android.graphics.Color.rgb(30, 30, 30)),
@@ -495,8 +495,8 @@ class MainActivity : ComponentActivity(), InputManager.InputDeviceListener {
         // reverse direction of orientation
         val adjustedOrientation = 360 - orientation
 
-        // if our available orientations are empty then assume unspecified
-        val orientations = conformTo.ifEmpty { EnumSet.of(Orientation.UNSPECIFIED) }
+        // if our available orientations are empty then assume landscape
+        val orientations = conformTo.ifEmpty { EnumSet.of(Orientation.LANDSCAPE, Orientation.REVERSE_LANDSCAPE) }
 
         var inRange = orientations
             .filter { it.angleRanges.any { it.contains(adjustedOrientation) } }

@@ -145,16 +145,12 @@ internal fun LibraryListPane(
 
     var paneType: PaneType by remember(state.libraryLayout) { mutableStateOf(state.libraryLayout) }
 
-    // Lock orientation to landscape when FRONTEND mode is active
-    DisposableEffect(paneType) {
+    // Lock orientation to landscape
+    DisposableEffect(Unit) {
         val activity = context as? Activity
-        if (paneType == PaneType.FRONTEND) {
-            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
-        } else {
-            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
-        }
+        activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
         onDispose {
-            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
         }
     }
 

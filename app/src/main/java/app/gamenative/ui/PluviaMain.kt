@@ -1,5 +1,7 @@
 package app.gamenative.ui
 
+import android.util.Log
+import com.winlator.core.AppUtils
 import android.content.Context
 import android.content.Intent
 import android.widget.Toast
@@ -386,8 +388,8 @@ fun PluviaMain(
 
                 // reset system ui visibility based on user preference
                 // TODO: add option for user to set
-                // reset available orientations
-                PluviaApp.events.emit(AndroidEvent.SetAllowedOrientation(EnumSet.of(Orientation.UNSPECIFIED)))
+                // Force landscape orientation (Standard and Reverse)
+                PluviaApp.events.emit(AndroidEvent.SetAllowedOrientation(EnumSet.of(Orientation.LANDSCAPE, Orientation.REVERSE_LANDSCAPE)))
             }
             // find out if back is available
             hasBack = navController.previousBackStackEntry?.destination?.route != null
@@ -1190,144 +1192,174 @@ fun preLaunchApp(
             context.getString(R.string.main_installing_bionic)
         }
         setLoadingMessage(loadingMessage)
-        val imageFsInstallSuccess =
-            ImageFsInstaller.installIfNeededFuture(context, context.assets, container) { progress ->
-                // Log.d("XServerScreen", "$progress")
-                setLoadingProgress(progress / 100f)
-            }.get()
-        setLoadingMessage(context.getString(R.string.main_loading))
-        setLoadingProgress(-1f)
-
-        // Fix for Wine version swap (Error 255/53):
-        // 1. Forcefully kill any lingering wineserver to prevent version mismatch
-        // 2. Resolve the actual directory name in /opt/ (handles naming variations)
-        // 3. Ensure /opt/wine symlink points to the correct version folder (using relative path)
-        val imageFs = ImageFs.find(context)
-        val rootDir = imageFs.rootDir
-        val optDir = File(rootDir, "opt")
-        val wineSymlink = File(optDir, "wine")
-        val wineVersionRaw = container.wineVersion
-
-        // Kill all potential lingering wine processes from Android side
-        try {
-            com.winlator.core.ProcessHelper.killAllSubProcesses()
-            delay(300)
-        } catch (e: Exception) {}
-
-        if (wineVersionRaw.isNotBlank()) {
-            // Find the actual directory in /opt that matches this version
-            val optFiles = optDir.listFiles()
-            var targetDirName: String? = null
-
-            if (optFiles != null) {
-                // Try 1: Exact match
-                if (File(optDir, wineVersionRaw).isDirectory) {
-                    targetDirName = wineVersionRaw
-                } else {
-                    // Try 2: Partial matches (e.g., ignore trailing version codes or type prefixes)
-                    val possibleMatches = optFiles.filter { it.isDirectory && !it.name.equals("wine") }
-                        .map { it.name }
-                        .filter { dirName ->
-                            wineVersionRaw.contains(dirName) || dirName.contains(wineVersionRaw) ||
-                            (wineVersionRaw.startsWith("proton-") && dirName.startsWith("proton-") && 
-                             wineVersionRaw.split("-").getOrNull(1) == dirName.split("-").getOrNull(1))
-                        }
-                        .sortedByDescending { it.length }
-                    
-                    targetDirName = possibleMatches.firstOrNull()
-                }
-            }
-
-            if (targetDirName != null) {
-                // Use a RELATIVE symlink (e.g., wine -> proton-10-x86_64)
-                // This ensures the link is valid both inside and outside the container
-                FileUtils.symlink(targetDirName, wineSymlink.absolutePath)
-                Timber.i("Resolved Wine swap: /opt/wine -> $targetDirName (from $wineVersionRaw)")
-            } else {
-                Timber.w("Could not resolve Wine directory for version: $wineVersionRaw")
-            }
-        }
-
-        // must activate container before downloading save files
-        containerManager.activateContainer(container)
-
-        // If another game is running on this account elsewhere, prompt user first (cross-app session)
-        val isSteamGame = ContainerUtils.extractGameSourceFromContainerId(appId) == GameSource.STEAM
-        if(isSteamGame) {
+        
+        var imageFsInstallSuccess = false
+        var installRetryCount = 0
+        val maxInstallRetries = 2
+        
+        while (installRetryCount <= maxInstallRetries) {
             try {
-                val currentPlaying = SteamService.getSelfCurrentlyPlayingAppId()
-                if (!isOffline && currentPlaying != null && currentPlaying != gameId) {
-                    val otherGameName = SteamService.getAppInfoOf(currentPlaying)?.name ?: "another game"
-                    setLoadingDialogVisible(false)
-                    setMessageDialogState(
-                        MessageDialogState(
-                            visible = true,
-                            type = DialogType.ACCOUNT_SESSION_ACTIVE,
-                            title = context.getString(R.string.main_app_running_title),
-                            message = context.getString(R.string.main_app_running_message, otherGameName),
-                            confirmBtnText = context.getString(R.string.main_play_anyway),
-                            dismissBtnText = context.getString(R.string.cancel),
-                        ),
-                    )
-                    return@launch
+                imageFsInstallSuccess = ImageFsInstaller.installIfNeededFuture(context, context.assets, container) { progress ->
+                    setLoadingProgress(progress / 100f)
+                }.get()
+                
+                if (imageFsInstallSuccess) break
+                
+                installRetryCount++
+                if (installRetryCount <= maxInstallRetries) {
+                    Log.w("PluviaMain", "ImageFs installation failed, retrying ($installRetryCount/$maxInstallRetries)...")
+                    setLoadingMessage("$loadingMessage (Retry $installRetryCount)")
+                    delay(1000)
                 }
-            } catch (_: Exception) { /* ignore persona read errors */ }
+            } catch (e: Exception) {
+                Log.e("PluviaMain", "Error during ImageFs installation attempt $installRetryCount", e)
+                installRetryCount++
+                if (installRetryCount > maxInstallRetries) break
+                delay(1000)
+            }
         }
 
-        // For Amazon Games, skip cloud sync (Amazon doesn't support cloud saves) and start game session
-        val isAmazonGame = ContainerUtils.extractGameSourceFromContainerId(appId) == GameSource.AMAZON
-        if (isAmazonGame) {
-            Timber.tag("preLaunchApp").i("Amazon Game detected for $appId — skipping cloud sync and launching container")
-            val amazonProductId = appId.removePrefix("AMAZON_")
-            app.gamenative.service.amazon.AmazonService.startGameSession(amazonProductId)
-            setLoadingDialogVisible(false)
-            onSuccess(context, appId)
-            return@launch
-        }
+        if (imageFsInstallSuccess) {
+            setLoadingMessage(context.getString(R.string.main_loading))
+            setLoadingProgress(-1f)
 
-        if (skipCloudSync) {
-            Timber.tag("preLaunchApp").w("Skipping Steam Cloud sync for $appId by user request")
-            setLoadingDialogVisible(false)
-            onSuccess(context, appId)
-            return@launch
-        }
+            // Fix for Wine version swap (Error 255/53):
+            // 1. Forcefully kill any lingering wineserver to prevent version mismatch
+            // 2. Resolve the actual directory name in /opt/ (handles naming variations)
+            // 3. Ensure /opt/wine symlink points to the correct version folder (using relative path)
+            val imageFs = ImageFs.find(context)
+            val rootDir = imageFs.rootDir
+            val optDir = File(rootDir, "opt")
+            val wineSymlink = File(optDir, "wine")
+            val wineVersionRaw = container.wineVersion
 
-        val syncParams = CloudSyncParams(
-            appId = appId,
-            gameId = gameId,
-            ignorePendingOperations = ignorePendingOperations,
-            preferredSave = preferredSave,
-            useTemporaryOverride = useTemporaryOverride,
-            retryCount = retryCount,
-            isOffline = isOffline,
-            scope = this,
-        )
-        val outcome = syncCloudSaves(
-            context = context,
-            container = container,
-            params = syncParams,
-            setLoadingMessage = setLoadingMessage,
-            setLoadingProgress = setLoadingProgress,
-        )
-        setLoadingDialogVisible(false)
+            // Kill all potential lingering wine processes from Android side
+            try {
+                com.winlator.core.ProcessHelper.killAllSubProcesses()
+                delay(300)
+            } catch (e: Exception) {
+            }
 
-        when (outcome) {
-            is CloudSyncOutcome.Proceed -> onSuccess(context, appId)
-            is CloudSyncOutcome.ShowDialog -> setMessageDialogState(outcome.state)
-            is CloudSyncOutcome.Retry -> preLaunchApp(
-                context = context,
+            if (wineVersionRaw.isNotBlank()) {
+                // Find the actual directory in /opt that matches this version
+                val optFiles = optDir.listFiles()
+                var targetDirName: String? = null
+
+                if (optFiles != null) {
+                    // Try 1: Exact match
+                    if (File(optDir, wineVersionRaw).isDirectory) {
+                        targetDirName = wineVersionRaw
+                    } else {
+                        // Try 2: Partial matches (e.g., ignore trailing version codes or type prefixes)
+                        val possibleMatches = optFiles.filter { it.isDirectory && !it.name.equals("wine") }
+                            .map { it.name }
+                            .filter { dirName ->
+                                wineVersionRaw.contains(dirName) || dirName.contains(wineVersionRaw) ||
+                                        (wineVersionRaw.startsWith("proton-") && dirName.startsWith("proton-") &&
+                                                wineVersionRaw.split("-").getOrNull(1) == dirName.split("-").getOrNull(1))
+                            }
+                            .sortedByDescending { it.length }
+
+                        targetDirName = possibleMatches.firstOrNull()
+                    }
+                }
+
+                if (targetDirName != null) {
+                    // Use a RELATIVE symlink (e.g., wine -> proton-10-x86_64)
+                    // This ensures the link is valid both inside and outside the container
+                    FileUtils.symlink(targetDirName, wineSymlink.absolutePath)
+                    Timber.i("Resolved Wine swap: /opt/wine -> $targetDirName (from $wineVersionRaw)")
+                } else {
+                    Timber.w("Could not resolve Wine directory for version: $wineVersionRaw")
+                }
+            }
+
+            // must activate container before downloading save files
+            containerManager.activateContainer(container)
+
+            // If another game is running on this account elsewhere, prompt user first (cross-app session)
+            val isSteamGame = ContainerUtils.extractGameSourceFromContainerId(appId) == GameSource.STEAM
+            if (isSteamGame) {
+                try {
+                    val currentPlaying = SteamService.getSelfCurrentlyPlayingAppId()
+                    if (!isOffline && currentPlaying != null && currentPlaying != gameId) {
+                        val otherGameName = SteamService.getAppInfoOf(currentPlaying)?.name ?: "another game"
+                        setLoadingDialogVisible(false)
+                        setMessageDialogState(
+                            MessageDialogState(
+                                visible = true,
+                                type = DialogType.ACCOUNT_SESSION_ACTIVE,
+                                title = context.getString(R.string.main_app_running_title),
+                                message = context.getString(R.string.main_app_running_message, otherGameName),
+                                confirmBtnText = context.getString(R.string.main_play_anyway),
+                                dismissBtnText = context.getString(R.string.cancel),
+                            ),
+                        )
+                        return@launch
+                    }
+                } catch (_: Exception) { /* ignore persona read errors */ }
+            }
+
+            // For Amazon Games, skip cloud sync (Amazon doesn't support cloud saves) and start game session
+            val isAmazonGame = ContainerUtils.extractGameSourceFromContainerId(appId) == GameSource.AMAZON
+            if (isAmazonGame) {
+                Timber.tag("preLaunchApp").i("Amazon Game detected for $appId — skipping cloud sync and launching container")
+                val amazonProductId = appId.removePrefix("AMAZON_")
+                app.gamenative.service.amazon.AmazonService.startGameSession(amazonProductId)
+                setLoadingDialogVisible(false)
+                onSuccess(context, appId)
+                return@launch
+            }
+
+            if (skipCloudSync) {
+                Timber.tag("preLaunchApp").w("Skipping Steam Cloud sync for $appId by user request")
+                setLoadingDialogVisible(false)
+                onSuccess(context, appId)
+                return@launch
+            }
+
+            val syncParams = CloudSyncParams(
                 appId = appId,
+                gameId = gameId,
                 ignorePendingOperations = ignorePendingOperations,
                 preferredSave = preferredSave,
                 useTemporaryOverride = useTemporaryOverride,
-                setLoadingDialogVisible = setLoadingDialogVisible,
-                setLoadingProgress = setLoadingProgress,
-                setLoadingMessage = setLoadingMessage,
-                setMessageDialogState = setMessageDialogState,
-                onSuccess = onSuccess,
-                retryCount = retryCount + 1,
+                retryCount = retryCount,
                 isOffline = isOffline,
+                scope = this,
             )
+            val outcome = syncCloudSaves(
+                context = context,
+                container = container,
+                params = syncParams,
+                setLoadingMessage = setLoadingMessage,
+                setLoadingProgress = setLoadingProgress,
+            )
+            setLoadingDialogVisible(false)
+
+            when (outcome) {
+                is CloudSyncOutcome.Proceed -> onSuccess(context, appId)
+                is CloudSyncOutcome.ShowDialog -> setMessageDialogState(outcome.state)
+                is CloudSyncOutcome.Retry -> preLaunchApp(
+                    context = context,
+                    appId = appId,
+                    ignorePendingOperations = ignorePendingOperations,
+                    preferredSave = preferredSave,
+                    useTemporaryOverride = useTemporaryOverride,
+                    setLoadingDialogVisible = setLoadingDialogVisible,
+                    setLoadingProgress = setLoadingProgress,
+                    setLoadingMessage = setLoadingMessage,
+                    setMessageDialogState = setMessageDialogState,
+                    onSuccess = onSuccess,
+                    retryCount = retryCount + 1,
+                    isOffline = isOffline,
+                )
+            }
+        } else {
+            Log.e("PluviaMain", "Failed to install ImageFs after $maxInstallRetries retries")
+            AppUtils.showToast(context, R.string.unable_to_install_system_files)
+            setLoadingMessage("")
+            setLoadingProgress(-1f)
         }
     }
 }

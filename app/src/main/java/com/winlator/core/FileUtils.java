@@ -154,20 +154,38 @@ public abstract class FileUtils {
     }
 
     public static boolean delete(File targetFile) {
-        if (targetFile == null) return false;
-        if (targetFile.isDirectory()) {
-            if (!isSymlink(targetFile)) if (!clear(targetFile)) return false;
+        return deleteRecursive(targetFile);
+    }
+
+    public static boolean deleteRecursive(File file) {
+        if (file == null || !file.exists()) return true;
+
+        if (file.isDirectory() && !isSymlink(file)) {
+            File[] files = file.listFiles();
+            if (files != null) {
+                for (File child : files) {
+                    if (!deleteRecursive(child)) return false;
+                }
+            }
         }
-        return targetFile.delete();
+
+        // Try to delete with retries (handle potential locks)
+        for (int i = 0; i < 3; i++) {
+            if (file.delete() || !file.exists()) return true;
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException ignored) {}
+        }
+        return !file.exists();
     }
 
     public static boolean clear(File targetFile) {
-        if (targetFile == null) return false;
+        if (targetFile == null || !targetFile.exists()) return true;
         if (targetFile.isDirectory()) {
             File[] files = targetFile.listFiles();
             if (files != null) {
                 for (File file : files) {
-                    if (!delete(file)) return false;
+                    if (!deleteRecursive(file)) return false;
                 }
             }
         }

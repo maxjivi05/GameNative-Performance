@@ -242,14 +242,9 @@ private fun LibraryScreenContent(
         if (!isFrontend) frontendOnDownloadsTab = false
     }
 
-    // When in Frontend mode, force landscape. Otherwise follow system.
-    LaunchedEffect(isFrontend) {
-        if (isFrontend) {
-            PluviaApp.events.emit(AndroidEvent.SetAllowedOrientation(EnumSet.of(Orientation.LANDSCAPE, Orientation.REVERSE_LANDSCAPE)))
-        } else {
-            // Revert to unspecified (follows system sensor)
-            PluviaApp.events.emit(AndroidEvent.SetAllowedOrientation(EnumSet.of(Orientation.UNSPECIFIED)))
-        }
+    // Force landscape orientation (Standard and Reverse) at all times
+    LaunchedEffect(Unit) {
+        PluviaApp.events.emit(AndroidEvent.SetAllowedOrientation(EnumSet.of(Orientation.LANDSCAPE, Orientation.REVERSE_LANDSCAPE)))
     }
 
     BackHandler(selectedLibraryItem != null) {

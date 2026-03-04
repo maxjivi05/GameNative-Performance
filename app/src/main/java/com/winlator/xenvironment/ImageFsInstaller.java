@@ -97,87 +97,122 @@ public abstract class ImageFsInstaller {
         // final DownloadProgressDialog dialog = new DownloadProgressDialog(context);
         // dialog.show(R.string.installing_system_files);
         return Executors.newSingleThreadExecutor().submit(() -> {
-            clearRootDir(context, rootDir);
-            final byte compressionRatio = 22;
-            String imagefsFile = containerVariant.equals(Container.GLIBC) ? "imagefs_gamenative.txz" : "imagefs_bionic.txz";
-            File downloaded = new File(imageFs.getFilesDir(), imagefsFile);
+            boolean overallSuccess = false;
+            int maxRetries = 2;
 
-            boolean success = false;
-
-            if (Arrays.asList(context.getAssets().list("")).contains(imagefsFile) == true){
-                final long contentLength = (long) (FileUtils.getSize(assetManager, imagefsFile) * (100.0f / compressionRatio));
-                AtomicLong totalSizeRef = new AtomicLong();
-                Log.d("Extraction", "extracting " + imagefsFile);
-
-                success = TarCompressorUtils.extract(TarCompressorUtils.Type.XZ, assetManager, imagefsFile, rootDir, (file, size) -> {
-                    if (size > 0) {
-                        long totalSize = totalSizeRef.addAndGet(size);
-                        if (onProgress != null) {
-                            final int progress = (int) (((float) totalSize / contentLength) * 100);
-                            onProgress.call(progress);
-                        }
-                    }
-                    return file;
-                });
-            }
-
-            else if (downloaded.exists()){
-                final long contentLength = (long) (FileUtils.getSize(downloaded) * (100.0f / compressionRatio));
-                AtomicLong totalSizeRef = new AtomicLong();
-                Log.d("Extraction", "extracting " + imagefsFile);
-                success = TarCompressorUtils.extract(TarCompressorUtils.Type.XZ, downloaded, rootDir, (file, size) -> {
-                    if (size > 0) {
-                        long totalSize = totalSizeRef.addAndGet(size);
-                        if (onProgress != null) {
-                            final int progress = (int) (((float) totalSize / contentLength) * 100);
-                            onProgress.call(progress);
-                        }
-                    }
-                    return file;
-                });
-            }
-
-            if (success) {
-                Log.d("ImageFsInstaller", "Successfully installed system files");
-                chmodRecursive(rootDir, 0755);
-
-                // Package Redirection Symlink Fix:
+            for (int attempt = 0; attempt <= maxRetries; attempt++) {
+                Log.d("ImageFsInstaller", "Installation attempt " + (attempt + 1) + " for variant: " + containerVariant);
+                
                 try {
-                    String[] hardcodedPkgs = {"com.winlator.cmod", "app.gamenative"};
-                    String currentPkg = context.getPackageName();
-                    File fakeDataDir = new File(rootDir, "data/data");
-                    fakeDataDir.mkdirs();
-                    for (String pkg : hardcodedPkgs) {
-                        File pkgDir = new File(fakeDataDir, pkg);
-                        if (!pkgDir.exists()) {
-                            FileUtils.symlink("/data/data/" + currentPkg, pkgDir.getAbsolutePath());
+                    if (!clearRootDir(context, rootDir)) {
+                        Log.e("ImageFsInstaller", "Failed to clear root directory on attempt " + (attempt + 1));
+                        continue;
+                    }
+
+                    final byte compressionRatio = 22;
+                    String imagefsFile = containerVariant.equals(Container.GLIBC) ? "imagefs_gamenative.txz" : "imagefs_bionic.txz";
+                    File downloaded = new File(imageFs.getFilesDir(), imagefsFile);
+
+                    boolean extractionSuccess = false;
+
+                    if (Arrays.asList(context.getAssets().list("")).contains(imagefsFile) == true){
+                        final long contentLength = (long) (FileUtils.getSize(assetManager, imagefsFile) * (100.0f / compressionRatio));
+                        AtomicLong totalSizeRef = new AtomicLong();
+                        Log.d("ImageFsInstaller", "Extracting from assets: " + imagefsFile);
+
+                        extractionSuccess = TarCompressorUtils.extract(TarCompressorUtils.Type.XZ, assetManager, imagefsFile, rootDir, (file, size) -> {
+                            if (size > 0) {
+                                long totalSize = totalSizeRef.addAndGet(size);
+                                if (onProgress != null) {
+                                    final int progress = (int) (((float) totalSize / contentLength) * 100);
+                                    onProgress.call(progress);
+                                }
+                            }
+                            return file;
+                        });
+                    }
+
+                    else if (downloaded.exists()){
+                        final long contentLength = (long) (FileUtils.getSize(downloaded) * (100.0f / compressionRatio));
+                        AtomicLong totalSizeRef = new AtomicLong();
+                        Log.d("ImageFsInstaller", "Extracting from downloads: " + imagefsFile);
+                        extractionSuccess = TarCompressorUtils.extract(TarCompressorUtils.Type.XZ, downloaded, rootDir, (file, size) -> {
+                            if (size > 0) {
+                                long totalSize = totalSizeRef.addAndGet(size);
+                                if (onProgress != null) {
+                                    final int progress = (int) (((float) totalSize / contentLength) * 100);
+                                    onProgress.call(progress);
+                                }
+                            }
+                            return file;
+                        });
+                    }
+                    else {
+                        Log.e("ImageFsInstaller", "Source file not found: " + imagefsFile);
+                        continue;
+                    }
+
+                    if (extractionSuccess) {
+                        Log.d("ImageFsInstaller", "Successfully extracted system files on attempt " + (attempt + 1));
+                        chmodRecursive(rootDir, 0755);
+
+                        // Package Redirection Symlink Fix:
+                        try {
+                            String[] hardcodedPkgs = {"com.winlator.cmod", "app.gamenative"};
+                            String currentPkg = context.getPackageName();
+                            File dataDir = new File(rootDir, "data");
+                            dataDir.mkdirs();
+                            File fakeDataDir = new File(dataDir, "data");
+                            fakeDataDir.mkdirs();
+                            
+                            for (String pkg : hardcodedPkgs) {
+                                File pkgDir = new File(fakeDataDir, pkg);
+                                if (pkgDir.exists() || FileUtils.isSymlink(pkgDir)) {
+                                    FileUtils.deleteRecursive(pkgDir);
+                                }
+                                FileUtils.symlink("/data/data/" + currentPkg, pkgDir.getAbsolutePath());
+                            }
+                        } catch (Exception e) {
+                            Log.e("ImageFsInstaller", "Failed to setup package redirection symlinks", e);
                         }
+
+                        ContainerManager containerManager = new ContainerManager(context);
+                        installWineFromDownloads(context);
+                        installGuestLibs(context);
+                        imageFs.createImgVersionFile(LATEST_VERSION);
+                        resetContainerImgVersions(context);
+                        clearSteamDllMarkers(context, containerManager);
+                        
+                        overallSuccess = true;
+                        break; // Success! Exit retry loop
+                    } else {
+                        Log.e("ImageFsInstaller", "Extraction failed on attempt " + (attempt + 1));
                     }
                 } catch (Exception e) {
-                    Log.e("ImageFsInstaller", "Failed to setup package redirection symlinks", e);
+                    Log.e("ImageFsInstaller", "Critical error during installation attempt " + (attempt + 1), e);
                 }
-
-                ContainerManager containerManager = new ContainerManager(context);
-
-                installWineFromDownloads(context);
-                installGuestLibs(context);
-                imageFs.createImgVersionFile(LATEST_VERSION);
-                resetContainerImgVersions(context);
-
-                // Clear Steam DLL markers for all games
-                clearSteamDllMarkers(context, containerManager);
+                
+                // If we failed and have retries left, wait a bit before trying again
+                if (!overallSuccess && attempt < maxRetries) {
+                    try {
+                        Thread.sleep(1000); // 1 second cool-down
+                    } catch (InterruptedException ignored) {}
+                }
             }
-            else {
-                Log.e("ImageFsInstaller", "Failed to install system files");
-                // AppUtils.showToast(context, R.string.unable_to_install_system_files);
+
+            if (!overallSuccess) {
+                Log.e("ImageFsInstaller", "All installation attempts failed for variant: " + containerVariant);
             }
-            return success;
+            
+            return overallSuccess;
             // dialog.closeOnUiThread();
         });
     }
 
     private static void chmodRecursive(File file, int mode) {
-        if (file.isDirectory()) {
+        if (file == null || !file.exists()) return;
+
+        if (file.isDirectory() && !FileUtils.isSymlink(file)) {
             File[] files = file.listFiles();
             if (files != null) {
                 for (File child : files) {
@@ -282,7 +317,7 @@ public abstract class ImageFsInstaller {
         }
     }
 
-    private static void clearRootDir(Context context, File rootDir) {
+    private static boolean clearRootDir(Context context, File rootDir) {
         if (rootDir.isDirectory()) {
             File[] files = rootDir.listFiles();
             if (files != null) {
@@ -299,11 +334,15 @@ public abstract class ImageFsInstaller {
                             continue;
                         }
                     }
-                    FileUtils.delete(file);
+                    if (!FileUtils.deleteRecursive(file)) {
+                        Log.w("ImageFsInstaller", "Failed to delete: " + file.getAbsolutePath());
+                        // Even if it failed, we continue as some files might be locked
+                    }
                 }
             }
         }
-        else rootDir.mkdirs();
+        else return rootDir.mkdirs();
+        return true;
     }
 
     public static void generateCompactContainerPattern(final Context context, AssetManager assetManager) {

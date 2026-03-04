@@ -45,7 +45,7 @@ fun ControlsEditorScreen(
         onDispose {
             // Restore settings
             PluviaApp.events.emit(AndroidEvent.SetSystemUIVisibility(true))
-            PluviaApp.events.emit(AndroidEvent.SetAllowedOrientation(EnumSet.of(Orientation.UNSPECIFIED)))
+            PluviaApp.events.emit(AndroidEvent.SetAllowedOrientation(EnumSet.of(Orientation.LANDSCAPE, Orientation.REVERSE_LANDSCAPE)))
         }
     }
 
