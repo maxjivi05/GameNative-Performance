@@ -45,6 +45,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import timber.log.Timber
@@ -94,6 +95,12 @@ class LibraryViewModel @Inject constructor(
     // Track if this is the first load to apply minimum load time
     private var isFirstLoad = true
 
+    // Serialized filter request system to avoid race conditions
+    private val filterTrigger = kotlinx.coroutines.flow.MutableSharedFlow<Int>(
+        replay = 1,
+        onBufferOverflow = kotlinx.coroutines.channels.BufferOverflow.DROP_OLDEST
+    )
+
     // Track debounce job for search
     private var searchDebounceJob: Job? = null
     private val SEARCH_DEBOUNCE_MS = 500L // 500ms debounce
@@ -116,6 +123,13 @@ class LibraryViewModel @Inject constructor(
     }
 
     init {
+        // Collect and process filter requests sequentially, cancelling previous if new arrives
+        viewModelScope.launch(Dispatchers.IO) {
+            filterTrigger.collectLatest { page ->
+                performFilter(page)
+            }
+        }
+
         viewModelScope.launch(Dispatchers.IO) {
             steamAppDao.getAllOwnedApps(
                 // ownerIds = SteamService.familyMembers.ifEmpty { listOf(SteamService.userSteamId!!.accountID.toInt()) },
@@ -132,6 +146,13 @@ class LibraryViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             var tickCount = 0
             var cachedInstalledIds: Set<Int> = emptySet()
+            // Initialize cachedInstalledIds from DB immediately
+            try {
+                cachedInstalledIds = appInfoDao.getAllInstalledAppIds().toHashSet()
+            } catch (e: Exception) {
+                Timber.tag("LibraryViewModel").e(e, "Error initializing installed status cache")
+            }
+
             while (true) {
                 updateActiveDownloads()
                 tickCount++
@@ -139,7 +160,8 @@ class LibraryViewModel @Inject constructor(
                 if (tickCount % 5 == 0) {
                     try {
                         val currentIds = appInfoDao.getAllInstalledAppIds().toHashSet()
-                        if (cachedInstalledIds.isNotEmpty() && currentIds != cachedInstalledIds) {
+                        // Fix: Removed .isNotEmpty() guard so it refreshes when the first game is installed
+                        if (currentIds != cachedInstalledIds) {
                             Timber.tag("LibraryViewModel").d("Installed app set changed, refreshing filter")
                             onFilterApps(paginationCurrentPage)
                         }
@@ -319,12 +341,7 @@ class LibraryViewModel @Inject constructor(
             } catch (e: Exception) {
                 Timber.tag("LibraryViewModel").e(e, "Failed to refresh owned games from server")
             } finally {
-                onFilterApps(0).join()
-                // Fetch compatibility for current page after refresh
-                val currentPageGames = _state.value.appInfoList.map { it.name }
-                if (currentPageGames.isNotEmpty()) {
-                    fetchCompatibilityForPage(currentPageGames)
-                }
+                onFilterApps(0)
                 _state.update { it.copy(isRefreshing = false) }
             }
         }
@@ -342,7 +359,8 @@ class LibraryViewModel @Inject constructor(
             val manualFolders = PrefManager.customGameManualFolders.toMutableSet()
             if (!manualFolders.contains(normalizedPath)) {
                 manualFolders.add(normalizedPath)
-                PrefManager.customGameManualFolders = manualFolders
+                // Fix: Wait for preference update to complete before refreshing
+                PrefManager.setCustomGameManualFoldersSuspend(manualFolders)
             }
 
             CustomGameScanner.invalidateCache()
@@ -351,9 +369,15 @@ class LibraryViewModel @Inject constructor(
     }
 
     private fun onFilterApps(paginationPage: Int = 0): Job {
-        Timber.tag("LibraryViewModel").d("onFilterApps - appList.size: ${appList.size}, isFirstLoad: $isFirstLoad")
-        return viewModelScope.launch(Dispatchers.IO) {
-            _state.update { it.copy(isLoading = true) }
+        Timber.tag("LibraryViewModel").d("onFilterApps - requesting page $paginationPage")
+        return viewModelScope.launch {
+            filterTrigger.emit(paginationPage)
+        }
+    }
+
+    private suspend fun performFilter(paginationPage: Int = 0) {
+        Timber.tag("LibraryViewModel").d("performFilter - appList.size: ${appList.size}, isFirstLoad: $isFirstLoad")
+        _state.update { it.copy(isLoading = true) }
 
             val currentState = _state.value
             val currentFilter = AppFilter.getAppType(currentState.appInfoSortType)
@@ -662,7 +686,6 @@ class LibraryViewModel @Inject constructor(
                     isLoading = false, // Loading complete
                 )
             }
-        }
     }
 
     /**

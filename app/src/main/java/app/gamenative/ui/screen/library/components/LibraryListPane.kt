@@ -343,8 +343,8 @@ internal fun LibraryListPane(
                             // Hide skeleton loaders if final count is 0 (no games match filters)
                             if (state.totalAppsInFilter == 0 && !state.isLoading) {
                                 shouldShowSkeletonOverlay = false
-                            } else if (state.isLoading && state.appInfoList.isEmpty() && state.totalAppsInFilter > 0) {
-                                // Still loading and we expect games, show skeleton overlay
+                            } else if (state.isLoading && state.appInfoList.isEmpty()) {
+                                // Still loading and we have no items to show yet, show skeleton overlay
                                 shouldShowSkeletonOverlay = true
                             } else if (state.appInfoList.isNotEmpty() && !state.isLoading) {
                                 // Games are loaded and loading is complete, start fading out skeleton overlay

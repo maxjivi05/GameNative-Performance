@@ -304,9 +304,8 @@ class CustomGameAppScreen : BaseAppScreen() {
 
             if (gameFolder.exists() && gameFolder.isDirectory) {
                 try {
-                    val containerManager = com.winlator.container.ContainerManager(context)
-                    if (containerManager.hasContainer(libraryItem.appId)) {
-                        val container = containerManager.getContainerById(libraryItem.appId)
+                    if (ContainerUtils.hasContainer(context, libraryItem.appId)) {
+                        val container = ContainerUtils.getContainer(context, libraryItem.appId)
                         val relExe = container.executablePath
 
                         if (!relExe.isNullOrEmpty()) {

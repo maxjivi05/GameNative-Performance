@@ -151,6 +151,36 @@ fun EmulationTabContent(state: ContainerConfigState) {
                     state.config.value = config.copy(fexcorePreset = state.fexcorePresets[it].id)
                 },
             )
+
+            if (config.fexcorePreset.startsWith(com.winlator.fexcore.FEXCorePreset.CUSTOM)) {
+                SettingsListDropdown(
+                    colors = settingsTileColors(),
+                    title = { Text(text = "FEXCore TSO Mode") },
+                    value = state.fexcoreTSOPresets.indexOfFirst { it.equals(config.fexcoreTSOMode, true) }.coerceAtLeast(0),
+                    items = state.fexcoreTSOPresets,
+                    onItemSelected = {
+                        state.config.value = config.copy(fexcoreTSOMode = state.fexcoreTSOPresets[it])
+                    },
+                )
+                SettingsListDropdown(
+                    colors = settingsTileColors(),
+                    title = { Text(text = "FEXCore X87 Mode") },
+                    value = state.fexcoreX87Presets.indexOfFirst { it.equals(config.fexcoreX87Mode, true) }.coerceAtLeast(0),
+                    items = state.fexcoreX87Presets,
+                    onItemSelected = {
+                        state.config.value = config.copy(fexcoreX87Mode = state.fexcoreX87Presets[it])
+                    },
+                )
+                SettingsListDropdown(
+                    colors = settingsTileColors(),
+                    title = { Text(text = "FEXCore MultiBlock") },
+                    value = state.fexcoreMultiblockValues.indexOfFirst { it.equals(config.fexcoreMultiBlock, true) }.coerceAtLeast(0),
+                    items = state.fexcoreMultiblockValues,
+                    onItemSelected = {
+                        state.config.value = config.copy(fexcoreMultiBlock = state.fexcoreMultiblockValues[it])
+                    },
+                )
+            }
         }
     }
 }

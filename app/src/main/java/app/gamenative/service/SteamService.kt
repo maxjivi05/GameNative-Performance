@@ -45,6 +45,7 @@ import app.gamenative.events.SteamEvent
 import app.gamenative.utils.Net
 import app.gamenative.utils.SteamUtils
 import app.gamenative.utils.MarkerUtils
+import app.gamenative.utils.ContainerUtils
 import app.gamenative.enums.Marker
 import app.gamenative.utils.generateSteamApp
 import com.winlator.xenvironment.ImageFs
@@ -387,7 +388,10 @@ class SteamService : Service(), IChallengeUrlChanged {
                 }
                 if (persistedDepotIds.isEmpty()) return@runCatching emptyList()
 
-                val container = ContainerManager(instance!!.applicationContext).getContainerById("STEAM_${appId}")
+                val context = instance!!.applicationContext
+                val container = if (ContainerUtils.hasContainer(context, "STEAM_${appId}")) {
+                    ContainerUtils.getContainer(context, "STEAM_${appId}")
+                } else null
                 val containerLanguage = container?.language ?: PrefManager.containerLanguage
                 val depots = getDownloadableDepots(appId = appId, preferredLanguage = containerLanguage)
                 depots.asSequence()
@@ -1149,6 +1153,21 @@ class SteamService : Service(), IChallengeUrlChanged {
                 MarkerUtils.removeMarker(appDirPath, Marker.DOWNLOAD_COMPLETE_MARKER)
                 MarkerUtils.removeMarker(appDirPath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
                 clearPersistedProgressSnapshot(appDirPath)
+            }
+
+            // Also delete staging and shadercache folders if they exist
+            val stagingPath = Paths.get(defaultAppStagingPath, appId.toString()).pathString
+            val stagingDir = File(stagingPath)
+            if (stagingDir.exists()) {
+                Timber.i("Deleting staging folder for appId $appId: $stagingPath")
+                deleteRecursivelyWithRetries(stagingDir)
+            }
+
+            val shaderCachePath = Paths.get(defaultStoragePath, "Steam", "steamapps", "shadercache", appId.toString()).pathString
+            val shaderCacheDir = File(shaderCachePath)
+            if (shaderCacheDir.exists()) {
+                Timber.i("Deleting shadercache folder for appId $appId: $shaderCachePath")
+                deleteRecursivelyWithRetries(shaderCacheDir)
             }
 
             // Remove from DB synchronously so immediate reinstall cannot race with stale metadata.

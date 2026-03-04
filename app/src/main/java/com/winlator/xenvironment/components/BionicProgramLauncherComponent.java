@@ -313,7 +313,8 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         envVars.put("PATH", winePath + ":" +
                 rootDir.getPath() + "/usr/bin");
 
-        envVars.put("LD_LIBRARY_PATH", rootDir.getPath() + "/usr/lib" + ":" + "/system/lib64");
+        String nativeLibDir = context.getApplicationInfo().nativeLibraryDir;
+        envVars.put("LD_LIBRARY_PATH", nativeLibDir + ":" + rootDir.getPath() + "/usr/lib" + ":" + "/system/lib64");
         envVars.put("ANDROID_SYSVSHM_SERVER", rootDir.getPath() + UnixSocketConfig.SYSVSHM_SERVER_PATH);
         envVars.put("FONTCONFIG_PATH", rootDir.getPath() + "/usr/etc/fonts");
 
@@ -359,12 +360,13 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
             if (!ld_preload.isEmpty()) ld_preload += ":";
             ld_preload += evshimPath;
         }
-        if (!ld_preload.isEmpty()) ld_preload += ":";
-        ld_preload += replacePath;
+        if (new File(replacePath).exists()) {
+            if (!ld_preload.isEmpty()) ld_preload += ":";
+            ld_preload += replacePath;
+        }
 
         envVars.put("LD_PRELOAD", ld_preload);
 
-        String nativeLibDir = context.getApplicationInfo().nativeLibraryDir;
         String box64LdPreload = "";
         String hookImplPath = nativeLibDir + "/libhook_impl.so";
         String redirectHookPath = nativeLibDir + "/libfile_redirect_hook.so";
@@ -375,15 +377,22 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
             box64LdPreload += redirectHookPath;
         }
 
+        // Include the other preloads in BOX64_LD_PRELOAD as well, using absolute paths
+        if (!ld_preload.isEmpty()) {
+            if (!box64LdPreload.isEmpty()) box64LdPreload += ":";
+            box64LdPreload += ld_preload;
+        }
+
         if (!box64LdPreload.isEmpty()) {
             envVars.put("BOX64_LD_PRELOAD", box64LdPreload);
         }
 
         String currentBox64LibPath = envVars.get("BOX64_LD_LIBRARY_PATH");
-        envVars.put("BOX64_LD_LIBRARY_PATH", nativeLibDir + (currentBox64LibPath != null && !currentBox64LibPath.isEmpty() ? ":" + currentBox64LibPath : ""));
+        String extraBox64Paths = nativeLibDir + ":" + imageFs.getLibDir();
+        envVars.put("BOX64_LD_LIBRARY_PATH", extraBox64Paths + (currentBox64LibPath != null && !currentBox64LibPath.isEmpty() ? ":" + currentBox64LibPath : ""));
 
         envVars.put("EVSHIM_SHM_NAME", "controller-shm0");
-        envVars.put("EVSHIM_DATA_DIR", "/data/data/" + app.gamenative.BuildConfig.APPLICATION_ID);
+        envVars.put("EVSHIM_DATA_DIR", "/tmp");
 
         // Check for specific shared memory libraries
 //        if ((new File(imageFs.getLibDir(), "libandroid-sysvshm.so")).exists()){
@@ -563,14 +572,16 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         String evshimPath = imageFs.getLibDir() + "/libevshim.so";
         String replacePath = imageFs.getLibDir() + "/libredirect-bionic.so";
 
-        if (new File(sysvPath).exists()) ld_preload += sysvPath;
+        if (new File(sysvPath).exists()) ld_preload += "libandroid-sysvshm.so";
 
         if (new File(evshimPath).exists()) {
             if (!ld_preload.isEmpty()) ld_preload += ":";
-            ld_preload += evshimPath;
+            ld_preload += "libevshim.so";
         }
-        if (!ld_preload.isEmpty()) ld_preload += ":";
-        ld_preload += replacePath;
+        if (new File(replacePath).exists()) {
+            if (!ld_preload.isEmpty()) ld_preload += ":";
+            ld_preload += "libredirect-bionic.so";
+        }
 
         envVars.put("LD_PRELOAD", ld_preload);
 

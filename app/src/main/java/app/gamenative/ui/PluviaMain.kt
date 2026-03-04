@@ -1300,12 +1300,17 @@ fun preLaunchApp(
                 } catch (_: Exception) { /* ignore persona read errors */ }
             }
 
-            // For Amazon Games, skip cloud sync (Amazon doesn't support cloud saves) and start game session
-            val isAmazonGame = ContainerUtils.extractGameSourceFromContainerId(appId) == GameSource.AMAZON
-            if (isAmazonGame) {
-                Timber.tag("preLaunchApp").i("Amazon Game detected for $appId — skipping cloud sync and launching container")
-                val amazonProductId = appId.removePrefix("AMAZON_")
-                app.gamenative.service.amazon.AmazonService.startGameSession(amazonProductId)
+            // For Amazon and Custom Games, skip cloud sync and start game session
+            val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
+            val isAmazonGame = gameSource == GameSource.AMAZON
+            val isCustomGame = gameSource == GameSource.CUSTOM_GAME
+            
+            if (isAmazonGame || isCustomGame) {
+                Timber.tag("preLaunchApp").i("$gameSource detected for $appId — skipping cloud sync and launching container")
+                if (isAmazonGame) {
+                    val amazonProductId = appId.removePrefix("AMAZON_")
+                    app.gamenative.service.amazon.AmazonService.startGameSession(amazonProductId)
+                }
                 setLoadingDialogVisible(false)
                 onSuccess(context, appId)
                 return@launch

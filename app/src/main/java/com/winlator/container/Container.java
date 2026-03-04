@@ -101,6 +101,9 @@ public class Container {
     private String box64Preset = Box86_64Preset.PERFORMANCE;
     private String fexcoreVersion = DefaultVersion.FEXCORE;
     private String fexcorePreset = FEXCorePreset.INTERMEDIATE;
+    private String fexcoreTSOMode = "Fast";
+    private String fexcoreX87Mode = "Fast";
+    private String fexcoreMultiBlock = "Disabled";
     private String emulator = DEFAULT_EMULATOR;
     private File rootDir;
     private String installPath = "";
@@ -474,6 +477,18 @@ public class Container {
 
     public String getFEXCorePreset() { return fexcorePreset; }
 
+    public String getFexcoreTSOMode() { return fexcoreTSOMode; }
+
+    public void setFexcoreTSOMode(String fexcoreTSOMode) { this.fexcoreTSOMode = fexcoreTSOMode; }
+
+    public String getFexcoreX87Mode() { return fexcoreX87Mode; }
+
+    public void setFexcoreX87Mode(String fexcoreX87Mode) { this.fexcoreX87Mode = fexcoreX87Mode; }
+
+    public String getFexcoreMultiBlock() { return fexcoreMultiBlock; }
+
+    public void setFexcoreMultiBlock(String fexcoreMultiBlock) { this.fexcoreMultiBlock = fexcoreMultiBlock; }
+
     public File getRootDir() {
         return rootDir;
     }
@@ -699,6 +714,9 @@ public class Container {
             data.put("box86Preset", box86Preset);
             data.put("box64Preset", box64Preset);
             data.put("fexcorePreset", fexcorePreset);
+            data.put("fexcoreTSOMode", fexcoreTSOMode);
+            data.put("fexcoreX87Mode", fexcoreX87Mode);
+            data.put("fexcoreMultiBlock", fexcoreMultiBlock);
             data.put("desktopTheme", desktopTheme);
             data.put("extraData", extraData);
             data.put("sessionMetadata", sessionMetadata);
@@ -855,6 +873,15 @@ public class Container {
                     break;
                 case "fexcorePreset":
                     setFEXCorePreset(data.getString(key));
+                    break;
+                case "fexcoreTSOMode":
+                    setFexcoreTSOMode(data.getString(key));
+                    break;
+                case "fexcoreX87Mode":
+                    setFexcoreX87Mode(data.getString(key));
+                    break;
+                case "fexcoreMultiBlock":
+                    setFexcoreMultiBlock(data.getString(key));
                     break;
                 case "audioDriver" :
                     setAudioDriver(data.getString(key));

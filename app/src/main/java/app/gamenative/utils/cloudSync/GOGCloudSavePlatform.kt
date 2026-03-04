@@ -27,10 +27,12 @@ internal object GOGCloudSavePlatform : CloudSavePlatform {
     ): CloudSyncOutcome {
         Timber.tag("GOG").i("[Cloud Saves] GOG Game detected for ${params.appId} — syncing cloud saves before launch")
         return try {
-            app.gamenative.service.gog.GOGService.syncCloudSaves(
+            val success = app.gamenative.service.gog.GOGService.syncCloudSaves(
                 context = context,
                 appId = params.appId,
             )
+            // If sync returned false, it might be due to user not being logged in or other non-fatal reasons.
+            // We proceed with launching the game anyway.
             CloudSyncOutcome.Proceed
         } catch (e: Exception) {
             if (e is CancellationException) throw e

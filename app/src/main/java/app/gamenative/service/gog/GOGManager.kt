@@ -535,6 +535,13 @@ class GOGManager @Inject constructor(
 
                 val installPath = getAppDirPath(libraryItem.appId)
                 val installDir = File(installPath)
+                val isUnsafeDeleteTarget = installPath == GOGConstants.internalGOGGamesPath || installPath == GOGConstants.externalGOGGamesPath || installPath == GOGConstants.defaultGOGGamesPath
+
+                // Guard against accidental root deletion
+                if (isUnsafeDeleteTarget) {
+                    Timber.e("Refusing to delete GOG game because resolved path points to install root: $installPath")
+                    return@withContext Result.failure(Exception("Resolved path is unsafe for deletion"))
+                }
 
                 // Delete the manifest file
                 val manifestPath = File(context.filesDir, "manifests/$gameId")

@@ -6,6 +6,7 @@ import com.winlator.core.DefaultVersion
 import com.winlator.core.WineInfo
 import com.winlator.core.WineThemeManager
 import com.winlator.fexcore.FEXCorePreset
+import org.json.JSONObject
 import kotlin.String
 
 data class ContainerData(
@@ -91,7 +92,148 @@ data class ContainerData(
     val dxvkVersion: String? = null,
     val vkd3dVersion: String? = null,
 ) {
+    fun toJson(): String {
+        val json = JSONObject()
+        json.put("name", name)
+        json.put("screenSize", screenSize)
+        json.put("envVars", envVars)
+        json.put("graphicsDriver", graphicsDriver)
+        json.put("graphicsDriverVersion", graphicsDriverVersion)
+        json.put("graphicsDriverConfig", graphicsDriverConfig)
+        json.put("dxwrapper", dxwrapper)
+        json.put("dxwrapperConfig", dxwrapperConfig)
+        json.put("audioDriver", audioDriver)
+        json.put("wincomponents", wincomponents)
+        json.put("drives", drives)
+        json.put("execArgs", execArgs)
+        json.put("executablePath", executablePath)
+        json.put("installPath", installPath)
+        json.put("showFPS", showFPS)
+        json.put("launchRealSteam", launchRealSteam)
+        json.put("allowSteamUpdates", allowSteamUpdates)
+        json.put("steamType", steamType)
+        json.put("cpuList", cpuList)
+        json.put("cpuListWoW64", cpuListWoW64)
+        json.put("wow64Mode", wow64Mode)
+        json.put("startupSelection", startupSelection.toInt())
+        json.put("box86Version", box86Version)
+        json.put("box64Version", box64Version)
+        json.put("box86Preset", box86Preset)
+        json.put("box64Preset", box64Preset)
+        json.put("desktopTheme", desktopTheme)
+        json.put("containerVariant", containerVariant)
+        json.put("wineVersion", wineVersion)
+        json.put("emulator", emulator)
+        json.put("fexcoreVersion", fexcoreVersion)
+        json.put("fexcoreTSOMode", fexcoreTSOMode)
+        json.put("fexcoreX87Mode", fexcoreX87Mode)
+        json.put("fexcoreMultiBlock", fexcoreMultiBlock)
+        json.put("fexcorePreset", fexcorePreset)
+        json.put("renderer", renderer)
+        json.put("csmt", csmt)
+        json.put("videoPciDeviceID", videoPciDeviceID)
+        json.put("offScreenRenderingMode", offScreenRenderingMode)
+        json.put("strictShaderMath", strictShaderMath)
+        json.put("useDRI3", useDRI3)
+        json.put("videoMemorySize", videoMemorySize)
+        json.put("mouseWarpOverride", mouseWarpOverride)
+        json.put("shaderBackend", shaderBackend)
+        json.put("useGLSL", useGLSL)
+        json.put("sdlControllerAPI", sdlControllerAPI)
+        json.put("useSteamInput", useSteamInput)
+        json.put("enableXInput", enableXInput)
+        json.put("enableDInput", enableDInput)
+        json.put("dinputMapperType", dinputMapperType.toInt())
+        json.put("disableMouseInput", disableMouseInput)
+        json.put("touchscreenMode", touchscreenMode)
+        json.put("externalDisplayMode", externalDisplayMode)
+        json.put("externalDisplaySwap", externalDisplaySwap)
+        json.put("language", language)
+        json.put("forceDlc", forceDlc)
+        json.put("useLegacyDRM", useLegacyDRM)
+        json.put("unpackFiles", unpackFiles)
+        json.put("sharpnessEffect", sharpnessEffect)
+        json.put("sharpnessLevel", sharpnessLevel)
+        json.put("sharpnessDenoise", sharpnessDenoise)
+        json.put("forceAdrenoClocks", forceAdrenoClocks)
+        json.put("rootPerformanceMode", rootPerformanceMode)
+        if (dxvkVersion != null) json.put("dxvkVersion", dxvkVersion)
+        if (vkd3dVersion != null) json.put("vkd3dVersion", vkd3dVersion)
+        return json.toString()
+    }
+
     companion object {
+        fun fromJson(jsonString: String): ContainerData {
+            val json = JSONObject(jsonString)
+            return ContainerData(
+                name = json.optString("name", ""),
+                screenSize = json.optString("screenSize", Container.DEFAULT_SCREEN_SIZE),
+                envVars = json.optString("envVars", Container.DEFAULT_ENV_VARS),
+                graphicsDriver = json.optString("graphicsDriver", Container.DEFAULT_GRAPHICS_DRIVER),
+                graphicsDriverVersion = json.optString("graphicsDriverVersion", ""),
+                graphicsDriverConfig = json.optString("graphicsDriverConfig", ""),
+                dxwrapper = json.optString("dxwrapper", Container.DEFAULT_DXWRAPPER),
+                dxwrapperConfig = json.optString("dxwrapperConfig", ""),
+                audioDriver = json.optString("audioDriver", Container.DEFAULT_AUDIO_DRIVER),
+                wincomponents = json.optString("wincomponents", Container.DEFAULT_WINCOMPONENTS),
+                drives = json.optString("drives", Container.DEFAULT_DRIVES),
+                execArgs = json.optString("execArgs", ""),
+                executablePath = json.optString("executablePath", ""),
+                installPath = json.optString("installPath", ""),
+                showFPS = json.optBoolean("showFPS", false),
+                launchRealSteam = json.optBoolean("launchRealSteam", false),
+                allowSteamUpdates = json.optBoolean("allowSteamUpdates", false),
+                steamType = json.optString("steamType", "normal"),
+                cpuList = json.optString("cpuList", Container.getFallbackCPUList()),
+                cpuListWoW64 = json.optString("cpuListWoW64", Container.getFallbackCPUListWoW64()),
+                wow64Mode = json.optBoolean("wow64Mode", true),
+                startupSelection = json.optInt("startupSelection", Container.STARTUP_SELECTION_ESSENTIAL.toInt()).toByte(),
+                box86Version = json.optString("box86Version", DefaultVersion.BOX86),
+                box64Version = json.optString("box64Version", DefaultVersion.BOX64),
+                box86Preset = json.optString("box86Preset", Box86_64Preset.COMPATIBILITY),
+                box64Preset = json.optString("box64Preset", Box86_64Preset.COMPATIBILITY),
+                desktopTheme = json.optString("desktopTheme", WineThemeManager.DEFAULT_DESKTOP_THEME),
+                containerVariant = json.optString("containerVariant", Container.DEFAULT_VARIANT),
+                wineVersion = json.optString("wineVersion", WineInfo.MAIN_WINE_VERSION.identifier()),
+                emulator = json.optString("emulator", Container.DEFAULT_EMULATOR),
+                fexcoreVersion = json.optString("fexcoreVersion", DefaultVersion.FEXCORE),
+                fexcoreTSOMode = json.optString("fexcoreTSOMode", "Fast"),
+                fexcoreX87Mode = json.optString("fexcoreX87Mode", "Fast"),
+                fexcoreMultiBlock = json.optString("fexcoreMultiBlock", "Disabled"),
+                fexcorePreset = json.optString("fexcorePreset", FEXCorePreset.INTERMEDIATE),
+                renderer = json.optString("renderer", "gl"),
+                csmt = json.optBoolean("csmt", true),
+                videoPciDeviceID = json.optInt("videoPciDeviceID", 1728),
+                offScreenRenderingMode = json.optString("offScreenRenderingMode", "fbo"),
+                strictShaderMath = json.optBoolean("strictShaderMath", true),
+                useDRI3 = json.optBoolean("useDRI3", true),
+                videoMemorySize = json.optString("videoMemorySize", "2048"),
+                mouseWarpOverride = json.optString("mouseWarpOverride", "disable"),
+                shaderBackend = json.optString("shaderBackend", "glsl"),
+                useGLSL = json.optString("useGLSL", "enabled"),
+                sdlControllerAPI = json.optBoolean("sdlControllerAPI", true),
+                useSteamInput = json.optBoolean("useSteamInput", false),
+                enableXInput = json.optBoolean("enableXInput", true),
+                enableDInput = json.optBoolean("enableDInput", true),
+                dinputMapperType = json.optInt("dinputMapperType", 1).toByte(),
+                disableMouseInput = json.optBoolean("disableMouseInput", false),
+                touchscreenMode = json.optBoolean("touchscreenMode", false),
+                externalDisplayMode = json.optString("externalDisplayMode", Container.DEFAULT_EXTERNAL_DISPLAY_MODE),
+                externalDisplaySwap = json.optBoolean("externalDisplaySwap", false),
+                language = json.optString("language", "english"),
+                forceDlc = json.optBoolean("forceDlc", false),
+                useLegacyDRM = json.optBoolean("useLegacyDRM", false),
+                unpackFiles = json.optBoolean("unpackFiles", false),
+                sharpnessEffect = json.optString("sharpnessEffect", "None"),
+                sharpnessLevel = json.optInt("sharpnessLevel", 100),
+                sharpnessDenoise = json.optInt("sharpnessDenoise", 100),
+                forceAdrenoClocks = json.optBoolean("forceAdrenoClocks", false),
+                rootPerformanceMode = json.optBoolean("rootPerformanceMode", false),
+                dxvkVersion = if (json.has("dxvkVersion")) json.getString("dxvkVersion") else null,
+                vkd3dVersion = if (json.has("vkd3dVersion")) json.getString("vkd3dVersion") else null,
+            )
+        }
+
         val Saver = mapSaver(
             save = { state ->
                 mapOf(

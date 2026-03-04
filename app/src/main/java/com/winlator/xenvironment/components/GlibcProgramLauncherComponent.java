@@ -252,7 +252,7 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
                 imageFs.getRootDir().getPath() + "/usr/bin:" +
                 imageFs.getRootDir().getPath() + "/usr/local/bin");
 
-        envVars.put("LD_LIBRARY_PATH", imageFs.getRootDir().getPath() + "/usr/lib");
+        envVars.put("LD_LIBRARY_PATH", nativeLibDir + ":" + imageFs.getRootDir().getPath() + "/usr/lib");
         
         if (wineInfo != null && wineInfo.isArm64EC()) {
             envVars.put("BOX64_LD_LIBRARY_PATH", nativeLibDir + ":" + imageFs.getRootDir().getPath() + "/usr/lib/aarch64-linux-gnu");
@@ -263,20 +263,50 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
         } else {
             envVars.put("BOX64_LD_LIBRARY_PATH", nativeLibDir + ":" + imageFs.getRootDir().getPath() + "/usr/lib/x86_64-linux-gnu");
         }
-        
+
+        String ldPreload = "";
+        if ((new File(imageFs.getGlibc64Dir(), "libandroid-sysvshm.so")).exists() ||
+                (new File(imageFs.getGlibc32Dir(), "libandroid-sysvshm.so")).exists()) {
+            ldPreload = imageFs.getLibDir() + "/libredirect.so";
+            if (!ldPreload.isEmpty()) ldPreload += ":";
+            ldPreload += imageFs.getLibDir() + "/libandroid-sysvshm.so";
+            String evshimPath = imageFs.getLibDir() + "/libevshim.so";
+            if (new File(evshimPath).exists()) {
+                if (!ldPreload.isEmpty()) ldPreload += ":";
+                ldPreload += evshimPath;
+            }
+            envVars.put("LD_PRELOAD", ldPreload);
+        }
+
+        String box64LdPreload = "";
+        String hookImplPath = nativeLibDir + "/libhook_impl.so";
+        String redirectHookPath = nativeLibDir + "/libfile_redirect_hook.so";
+
+        if (new File(hookImplPath).exists()) box64LdPreload += hookImplPath;
+        if (new File(redirectHookPath).exists()) {
+            if (!box64LdPreload.isEmpty()) box64LdPreload += ":";
+            box64LdPreload += redirectHookPath;
+        }
+
+        // Include the other preloads in BOX64_LD_PRELOAD as well, using absolute paths
+        if (!ldPreload.isEmpty()) {
+            if (!box64LdPreload.isEmpty()) box64LdPreload += ":";
+            box64LdPreload += ldPreload;
+        }
+
+        if (!box64LdPreload.isEmpty()) {
+            envVars.put("BOX64_LD_PRELOAD", box64LdPreload);
+        }
+
+        String extraBox64Paths = nativeLibDir + ":" + imageFs.getLibDir();
+        String currentBox64LibPath = envVars.get("BOX64_LD_LIBRARY_PATH");
+        envVars.put("BOX64_LD_LIBRARY_PATH", extraBox64Paths + (currentBox64LibPath != null && !currentBox64LibPath.isEmpty() ? ":" + currentBox64LibPath : ""));
+
         envVars.put("ANDROID_SYSVSHM_SERVER", imageFs.getRootDir().getPath() + UnixSocketConfig.SYSVSHM_SERVER_PATH);
         envVars.put("FONTCONFIG_PATH", imageFs.getRootDir().getPath() + "/usr/etc/fonts");
         envVars.put("ALSA_CONFIG_PATH", imageFs.getRootDir().getPath() + "/usr/share/alsa/alsa.conf" + ":" + imageFs.getRootDir().getPath() + "/usr/etc/alsa/conf.d/android_aserver.conf");
         envVars.put("ALSA_PLUGIN_DIR", imageFs.getRootDir().getPath() + "/usr/lib/alsa-lib");
 
-        if ((new File(imageFs.getGlibc64Dir(), "libandroid-sysvshm.so")).exists() ||
-                (new File(imageFs.getGlibc32Dir(), "libandroid-sysvshm.so")).exists
-                        ()) {
-            String ldPreload = "libredirect.so libandroid-sysvshm.so";
-            String evshimPath = imageFs.getLibDir() + "/libevshim.so";
-            if (new File(evshimPath).exists()) ldPreload += " " + evshimPath;
-            envVars.put("LD_PRELOAD", ldPreload);
-        }
         envVars.put("WINEESYNC_WINLATOR", "1");
         if (this.envVars != null) envVars.putAll(this.envVars);
 

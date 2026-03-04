@@ -154,10 +154,13 @@ fun GeneralTabContent(
                         state.bcnEmulationCacheEnabled.value = newCfg.get("bcnEmulationCache", "0") == "1"
                         state.adrenotoolsTurnipChecked.value = true
 
-                        val defaultGlibcWine = glibcWineEntries.firstOrNull() ?: Container.DEFAULT_WINE_VERSION
+                        val newWine = if (config.wineVersion.contains("x86_64") && !config.wineVersion.contains("arm64ec"))
+                            glibcWineEntries.find { it.contains("x86_64") && !it.contains("arm64ec") } ?: glibcWineEntries.firstOrNull() ?: Container.DEFAULT_WINE_VERSION
+                        else glibcWineEntries.firstOrNull() ?: Container.DEFAULT_WINE_VERSION
+
                         state.config.value = config.copy(
                             containerVariant = newVariant,
-                            wineVersion = defaultGlibcWine,
+                            wineVersion = newWine,
                             graphicsDriver = defaultDriver,
                             graphicsDriverVersion = "",
                             graphicsDriverConfig = newCfg.toString(),
@@ -167,7 +170,9 @@ fun GeneralTabContent(
                         val defaultBionicDriver = StringUtils.parseIdentifier(state.bionicGraphicsDrivers.first())
                         val newWine = if (config.wineVersion == (glibcWineEntries.firstOrNull() ?: Container.DEFAULT_WINE_VERSION))
                             bionicWineEntries.firstOrNull() ?: config.wineVersion
-                        else config.wineVersion
+                        else if (config.wineVersion.contains("x86_64") && !config.wineVersion.contains("arm64ec"))
+                            bionicWineEntries.find { it.contains("x86_64") && !it.contains("arm64ec") } ?: bionicWineEntries.firstOrNull() ?: config.wineVersion
+                        else bionicWineEntries.firstOrNull() ?: config.wineVersion
                         val newCfg = KeyValueSet(config.graphicsDriverConfig).apply {
                             put("version", DefaultVersion.WRAPPER)
                             put("syncFrame", "0")

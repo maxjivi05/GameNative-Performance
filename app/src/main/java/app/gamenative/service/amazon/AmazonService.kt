@@ -459,62 +459,17 @@ class AmazonService : Service() {
                     val path = game.installPath
                     if (path.isNotEmpty() && File(path).exists()) {
                         val installDir = File(path)
-                        val manifestFile = File(context.filesDir, "manifests/amazon/$productId.proto")
+                        Timber.tag("Amazon").i("Deleting game installation folder recursively: $path")
+                        val deleted = installDir.deleteRecursively()
+                        if (!deleted) {
+                            Timber.tag("Amazon").w("Failed to delete some files in installation folder")
+                        }
 
-                        if (manifestFile.exists()) {
-                            // ── Manifest-based uninstall ─────────────────────────
-                            Timber.tag("Amazon").i("Manifest-based uninstall for $productId")
-                            try {
-                                val manifest = AmazonManifest.parse(manifestFile.readBytes())
-                                var deletedFiles = 0
-                                var failedFiles = 0
-
-                                for (mf in manifest.allFiles) {
-                                    val file = File(installDir, mf.unixPath)
-                                    if (file.exists()) {
-                                        if (file.delete()) {
-                                            deletedFiles++
-                                        } else {
-                                            failedFiles++
-                                            Timber.tag("Amazon").w("Failed to delete: ${file.absolutePath}")
-                                        }
-                                    }
-                                }
-
-                                // Walk directories bottom-up and remove empty ones
-                                val dirs = mutableSetOf<File>()
-                                for (mf in manifest.allFiles) {
-                                    var parent = File(installDir, mf.unixPath).parentFile
-                                    while (parent != null && parent != installDir && parent.startsWith(installDir)) {
-                                        dirs.add(parent)
-                                        parent = parent.parentFile
-                                    }
-                                }
-                                // Sort deepest-first so child dirs are removed before parents
-                                for (dir in dirs.sortedByDescending { it.absolutePath.length }) {
-                                    if (dir.exists() && dir.isDirectory && (dir.listFiles()?.isEmpty() == true)) {
-                                        dir.delete()
-                                    }
-                                }
-
-                                // Remove the install dir itself if it's now empty
-                                if (installDir.exists() && installDir.isDirectory &&
-                                    (installDir.listFiles()?.isEmpty() == true)
-                                ) {
-                                    installDir.delete()
-                                }
-
-                                Timber.tag("Amazon").i(
-                                    "Manifest-based uninstall complete: $deletedFiles deleted, $failedFiles failed"
-                                )
-                            } catch (e: Exception) {
-                                Timber.tag("Amazon").w(e, "Manifest parse failed — falling back to recursive delete")
-                                installDir.deleteRecursively()
-                            }
-                        } else {
-                            // ── Fallback: recursive delete ───────────────────────
-                            Timber.tag("Amazon").i("No cached manifest — recursive delete: $path")
-                            installDir.deleteRecursively()
+                        // Also check for staging folder (if any)
+                        val stagingPath = File(context.filesDir, "staging/amazon/$productId")
+                        if (stagingPath.exists()) {
+                            Timber.tag("Amazon").i("Deleting Amazon staging folder: ${stagingPath.absolutePath}")
+                            stagingPath.deleteRecursively()
                         }
 
                         MarkerUtils.removeMarker(path, Marker.DOWNLOAD_COMPLETE_MARKER)

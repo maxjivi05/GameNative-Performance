@@ -3228,6 +3228,17 @@ private fun extractDXWrapperFiles(
                     "dxwrapper/vkd3d-$cleanVkd3dVersion.tzst", windowsDir, onExtractFileListener,
                 )
             }
+
+            // Ensure compatible DXVK/DXGI is present if not already handled by custom DXVK
+            if (dxvkVersion == null || dxvkVersion == "wined3d" || dxvkVersion == "Disabled") {
+                val vortekLike = container.graphicsDriver == "vortek" || container.graphicsDriver == "adreno" || container.graphicsDriver == "sd-8-elite"
+                val dxvkVersionForVkd3d = if (vortekLike && GPUHelper.vkGetApiVersionSafe() < GPUHelper.vkMakeVersion(1, 3, 0)) "1.10.3" else "2.4.1"
+                Timber.i("Extracting compatible DXVK DX version for VKD3D: $dxvkVersionForVkd3d")
+                TarCompressorUtils.extract(
+                    TarCompressorUtils.Type.ZSTD, context.assets,
+                    "dxwrapper/dxvk-${dxvkVersionForVkd3d}.tzst", windowsDir, onExtractFileListener,
+                )
+            }
         } else {
             // Restore Wine VKD3D-related DLLs
             restoreOriginalDllFiles(context, container, containerManager, imageFs, "d3d12.dll", "d3d12core.dll")

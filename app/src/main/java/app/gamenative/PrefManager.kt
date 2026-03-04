@@ -116,8 +116,12 @@ object PrefManager {
     @Suppress("SameParameterValue")
     private fun <T> setPref(key: Preferences.Key<T>, value: T) {
         scope.launch {
-            dataStore.edit { pref -> pref[key] = value }
+            setPrefSuspend(key, value)
         }
+    }
+
+    private suspend fun <T> setPrefSuspend(key: Preferences.Key<T>, value: T) {
+        dataStore.edit { pref -> pref[key] = value }
     }
 
     private fun <T> removePref(key: Preferences.Key<T>) {
@@ -898,6 +902,10 @@ object PrefManager {
             setPref(CUSTOM_GAME_MANUAL_FOLDERS, Json.encodeToString(value))
         }
 
+    suspend fun setCustomGameManualFoldersSuspend(value: Set<String>) {
+        setPrefSuspend(CUSTOM_GAME_MANUAL_FOLDERS, Json.encodeToString(value))
+    }
+
     // Add new setting for Wine debug logging
     private val ENABLE_WINE_DEBUG = booleanPreferencesKey("enable_wine_debug")
     var enableWineDebug: Boolean
@@ -964,4 +972,42 @@ object PrefManager {
     var showJoysticks: Boolean
         get() = getPref(SHOW_JOYSTICKS, true)
         set(value) = setPref(SHOW_JOYSTICKS, value)
+
+    private val SDL_CONTROLLER_API = booleanPreferencesKey("sdl_controller_api")
+    var sdlControllerAPI: Boolean
+        get() = getPref(SDL_CONTROLLER_API, false)
+        set(value) = setPref(SDL_CONTROLLER_API, value)
+
+    private val MASTER_CONTAINERS = booleanPreferencesKey("master_containers")
+    var masterContainers: Boolean
+        get() = getPref(MASTER_CONTAINERS, true)
+        set(value) = setPref(MASTER_CONTAINERS, value)
+
+    private val GAME_CONTAINERS = stringPreferencesKey("game_containers")
+    var gameContainers: Map<String, String>
+        get() {
+            val json = getPref(GAME_CONTAINERS, "{}")
+            return try {
+                Json.decodeFromString<Map<String, String>>(json)
+            } catch (e: Exception) {
+                emptyMap()
+            }
+        }
+        set(value) {
+            setPref(GAME_CONTAINERS, Json.encodeToString(value))
+        }
+
+    private val APP_SPECIFIC_CONFIGS = stringPreferencesKey("app_specific_configs")
+    var appSpecificConfigs: Map<String, String>
+        get() {
+            val json = getPref(APP_SPECIFIC_CONFIGS, "{}")
+            return try {
+                Json.decodeFromString<Map<String, String>>(json)
+            } catch (e: Exception) {
+                emptyMap()
+            }
+        }
+        set(value) {
+            setPref(APP_SPECIFIC_CONFIGS, Json.encodeToString(value))
+        }
 }

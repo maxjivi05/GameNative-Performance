@@ -194,6 +194,7 @@ object ContainerUtils {
         PrefManager.xinputEnabled = containerData.enableXInput
 		PrefManager.dinputEnabled = containerData.enableDInput
 		PrefManager.dinputMapperType = containerData.dinputMapperType.toInt()
+        PrefManager.sdlControllerAPI = containerData.sdlControllerAPI
         PrefManager.forceDlc = containerData.forceDlc
         PrefManager.useLegacyDRM = containerData.useLegacyDRM
         PrefManager.unpackFiles = containerData.unpackFiles
@@ -289,6 +290,9 @@ object ContainerUtils {
             wineVersion = container.wineVersion,
             emulator = container.emulator,
             fexcoreVersion = container.fexCoreVersion,
+            fexcoreTSOMode = container.fexcoreTSOMode,
+            fexcoreX87Mode = container.fexcoreX87Mode,
+            fexcoreMultiBlock = container.fexcoreMultiBlock,
             fexcorePreset = container.getFEXCorePreset(),
             language = container.language,
             sdlControllerAPI = container.isSdlControllerAPI,
@@ -322,7 +326,13 @@ object ContainerUtils {
 
     fun applyToContainer(context: Context, appId: String, containerData: ContainerData) {
         val container = getContainer(context, appId)
-        applyToContainer(context, container, containerData)
+        applyToContainer(context, container, containerData, saveToDisk = true)
+
+        // Save app-specific config to PrefManager
+        val configs = PrefManager.appSpecificConfigs.toMutableMap()
+        configs[appId] = containerData.toJson()
+        PrefManager.appSpecificConfigs = configs
+        Timber.i("Saved app-specific config for $appId")
     }
 
     /**
@@ -395,7 +405,13 @@ object ContainerUtils {
     }
 
     fun applyToContainer(context: Context, container: Container, containerData: ContainerData) {
-        applyToContainer(context, container, containerData, saveToDisk = true)
+        // Try to find if this container is assigned to an app to save its config
+        val appId = PrefManager.gameContainers.entries.find { it.value == container.id }?.key
+        if (appId != null) {
+            applyToContainer(context, appId, containerData)
+        } else {
+            applyToContainer(context, container, containerData, saveToDisk = true)
+        }
     }
 
     fun applyToContainer(context: Context, container: Container, containerData: ContainerData, saveToDisk: Boolean) {
@@ -510,6 +526,9 @@ object ContainerUtils {
         container.wineVersion = containerData.wineVersion
         container.emulator = containerData.emulator
         container.fexCoreVersion = containerData.fexcoreVersion
+        container.fexcoreTSOMode = containerData.fexcoreTSOMode
+        container.fexcoreX87Mode = containerData.fexcoreX87Mode
+        container.fexcoreMultiBlock = containerData.fexcoreMultiBlock
         container.setFEXCorePreset(containerData.fexcorePreset)
         container.dxvkVersion = containerData.dxvkVersion
         container.vkd3dVersion = containerData.vkd3dVersion
@@ -562,6 +581,8 @@ object ContainerUtils {
         container.setInputType(api.ordinal)
         container.setDinputMapperType(containerData.dinputMapperType)
         container.setUseDRI3(containerData.useDRI3)
+        container.setSdlControllerAPI(containerData.sdlControllerAPI)
+        container.putExtra("useSteamInput", containerData.useSteamInput.toString())
         Timber.d("Container set: preferredInputApi=%s, dinputMapperType=0x%02x", api, containerData.dinputMapperType)
 
         if (saveToDisk) {
@@ -608,20 +629,45 @@ object ContainerUtils {
     }
 
     fun getContainerId(appId: String): String {
-        return appId
+        return getAssignedContainerId(appId)
+    }
+
+    fun getMasterContainerId(variant: String, wineVersion: String): String {
+        val sanitizedWine = wineVersion.replace(" ", "_").replace("(", "").replace(")", "").replace("/", "_")
+        val sanitizedVariant = variant.uppercase()
+        return "MASTER_${sanitizedVariant}_$sanitizedWine"
+    }
+
+    fun getAssignedContainerId(appId: String): String {
+        val map = PrefManager.gameContainers
+        if (map.containsKey(appId)) return map[appId]!!
+
+        val containerId = if (PrefManager.masterContainers) {
+            getMasterContainerId(PrefManager.containerVariant, PrefManager.wineVersion)
+        } else {
+            appId
+        }
+
+        // Store assignment
+        val newMap = map.toMutableMap()
+        newMap[appId] = containerId
+        PrefManager.gameContainers = newMap
+        Timber.i("Assigned container $containerId to game $appId (masterContainers=${PrefManager.masterContainers})")
+        return containerId
     }
 
     fun hasContainer(context: Context, appId: String): Boolean {
         val containerManager = ContainerManager(context)
-        return containerManager.hasContainer(appId)
+        return containerManager.hasContainer(getContainerId(appId))
     }
 
     fun getContainer(context: Context, appId: String): Container {
         val containerManager = ContainerManager(context)
-        return if (containerManager.hasContainer(appId)) {
-            containerManager.getContainerById(appId)
+        val containerId = getContainerId(appId)
+        return if (containerManager.hasContainer(containerId)) {
+            containerManager.getContainerById(containerId)
         } else {
-            throw Exception("Container does not exist for game $appId")
+            throw Exception("Container $containerId does not exist for game $appId")
         }
     }
 
@@ -736,7 +782,14 @@ object ContainerUtils {
 
         // Set up data for container creation
         val data = JSONObject()
-        data.put("name", "container_$containerId")
+        if (containerId.startsWith("MASTER_")) {
+            val parts = containerId.removePrefix("MASTER_").split("_")
+            val variant = parts.getOrNull(0) ?: ""
+            val wine = parts.drop(1).joinToString(" ").replace("_", " ")
+            data.put("name", "Master $variant $wine")
+        } else {
+            data.put("name", "container_$containerId")
+        }
 
         // Create the actual container
         var container = containerManager.createContainerFuture(containerId, data).get()
@@ -768,20 +821,32 @@ object ContainerUtils {
             }
         }
 
-        // For Custom Games, pre-populate executablePath if there's exactly one valid .exe
-        if (gameSource == GameSource.CUSTOM_GAME) {
+        // For Custom, GOG, and Amazon Games, pre-populate executablePath if there's exactly one valid .exe
+        if (gameSource == GameSource.CUSTOM_GAME || gameSource == GameSource.GOG || gameSource == GameSource.AMAZON) {
             try {
-                val gameFolderPath = CustomGameScanner.getFolderPathFromAppId(appId)
+                val gameFolderPath = when (gameSource) {
+                    GameSource.CUSTOM_GAME -> CustomGameScanner.getFolderPathFromAppId(appId)
+                    GameSource.GOG -> {
+                        val gameId = extractGameIdFromContainerId(appId)
+                        GOGService.getGOGGameOf(gameId.toString())?.installPath
+                    }
+                    GameSource.AMAZON -> {
+                        val productId = appId.removePrefix("AMAZON_").substringBefore("(")
+                        AmazonService.getInstance()?.getInstalledGamePath(productId)
+                    }
+                    else -> null
+                }
+                
                 if (!gameFolderPath.isNullOrEmpty() && container.executablePath.isEmpty()) {
                     val auto = CustomGameScanner.findUniqueExeRelativeToFolder(gameFolderPath)
                     if (auto != null) {
-                        Timber.i("Auto-selected Custom Game exe during container creation: $auto")
+                        Timber.i("Auto-selected $gameSource game exe during container creation: $auto")
                         container.executablePath = auto
                         container.saveData()
                     }
                 }
             } catch (e: Exception) {
-                Timber.w(e, "Failed to auto-select exe during Custom Game creation for $appId")
+                Timber.w(e, "Failed to auto-select exe during $gameSource creation for $appId")
             }
         }
 
@@ -881,6 +946,13 @@ object ContainerUtils {
                 unpackFiles = PrefManager.unpackFiles,
                 externalDisplayMode = PrefManager.externalDisplayInputMode,
                 externalDisplaySwap = PrefManager.externalDisplaySwap,
+                sdlControllerAPI = PrefManager.sdlControllerAPI,
+                useSteamInput = PrefManager.useSteamInput,
+                sharpnessEffect = PrefManager.sharpnessEffect,
+                sharpnessLevel = PrefManager.sharpnessLevel,
+                sharpnessDenoise = PrefManager.sharpnessDenoise,
+                forceAdrenoClocks = PrefManager.forceAdrenoClocks,
+                rootPerformanceMode = PrefManager.rootPerformanceMode,
             )
         }
 
@@ -940,19 +1012,30 @@ object ContainerUtils {
             }
         }
 
-        // Apply container data with the determined DX wrapper
-        applyToContainer(context, container, containerData)
+        // Apply container data with the determined DX wrapper (saves to PrefManager via appId version)
+        applyToContainer(context, appId, containerData)
         return container
     }
 
     fun getOrCreateContainer(context: Context, appId: String): Container {
         val containerManager = ContainerManager(context)
+        val containerId = getContainerId(appId)
 
-        val container = if (containerManager.hasContainer(appId)) {
-            containerManager.getContainerById(appId)
+        val container = if (containerManager.hasContainer(containerId)) {
+            containerManager.getContainerById(containerId)
         } else {
-            createNewContainer(context, appId, appId, containerManager)
+            createNewContainer(context, appId, containerId, containerManager)
         }
+
+        // Load app-specific config if exists, otherwise use container's current data
+        var containerData = PrefManager.appSpecificConfigs[appId]?.let {
+            try {
+                ContainerData.fromJson(it)
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to parse app-specific config for $appId")
+                toContainerData(container)
+            }
+        } ?: toContainerData(container)
 
         // Ensure Custom Games have the A: drive mapped to the game folder
         // and GOG games have a drive mapped to the GOG games directory
@@ -1016,14 +1099,20 @@ object ContainerUtils {
         // Apply registry-based game fixes if available
         app.gamenative.gamefixes.GameFixesRegistry.applyFor(context, appId)
 
+        // Apply potentially updated/loaded data back to container
+        applyToContainer(context, container, containerData)
+
         return container
     }
 
     fun getOrCreateContainerWithOverride(context: Context, appId: String): Container {
         val containerManager = ContainerManager(context)
+        val containerId = getContainerId(appId)
 
-        val container = if (containerManager.hasContainer(appId)) {
-            val container = containerManager.getContainerById(appId)
+        var containerData: ContainerData? = null
+
+        val container = if (containerManager.hasContainer(containerId)) {
+            val container = containerManager.getContainerById(containerId)
 
             // Apply temporary override if present (without saving to disk)
             if (IntentLaunchManager.hasTemporaryOverride(appId)) {
@@ -1038,8 +1127,7 @@ object ContainerUtils {
                     // Get the effective config (merge base with override)
                     val effectiveConfig = IntentLaunchManager.getEffectiveContainerConfig(context, appId)
                     if (effectiveConfig != null) {
-                        applyToContainer(context, container, effectiveConfig, saveToDisk = false)
-                        Timber.i("Applied temporary config override to existing container for app $appId (in-memory only)")
+                        containerData = effectiveConfig
                     }
                 }
             }
@@ -1053,11 +1141,27 @@ object ContainerUtils {
                 null
             }
 
-            createNewContainer(context, appId, appId, containerManager, overrideConfig)
+            containerData = overrideConfig
+            createNewContainer(context, appId, containerId, containerManager, overrideConfig)
+        }
+
+        // Load app-specific config if not already set by override
+        if (containerData == null) {
+            containerData = PrefManager.appSpecificConfigs[appId]?.let {
+                try {
+                    ContainerData.fromJson(it)
+                } catch (e: Exception) {
+                    Timber.e(e, "Failed to parse app-specific config for $appId")
+                    toContainerData(container)
+                }
+            } ?: toContainerData(container)
         }
 
         // Apply registry-based game fixes if available
         app.gamenative.gamefixes.GameFixesRegistry.applyFor(context, appId)
+
+        // Apply potentially updated/loaded data back to container
+        containerData?.let { applyToContainer(context, container, it) }
 
         return container
     }
@@ -1067,13 +1171,41 @@ object ContainerUtils {
      */
     fun deleteContainer(context: Context, appId: String) {
         val manager = ContainerManager(context)
-        if (manager.hasContainer(appId)) {
+        val containerId = getContainerId(appId)
+
+        // Remove from assignment map
+        val map = PrefManager.gameContainers.toMutableMap()
+        if (map.containsKey(appId)) {
+            map.remove(appId)
+            PrefManager.gameContainers = map
+            Timber.i("Removed container assignment for game $appId")
+        }
+
+        // Remove from app-specific configs
+        val configMap = PrefManager.appSpecificConfigs.toMutableMap()
+        if (configMap.containsKey(appId)) {
+            configMap.remove(appId)
+            PrefManager.appSpecificConfigs = configMap
+            Timber.i("Removed app-specific config for game $appId")
+        }
+
+        // Delete the remote metadata folder (artwork, etc.)
+        val remoteMetadataDir = File(context.filesDir, "remote_games_metadata/$appId")
+        if (remoteMetadataDir.exists()) {
+            Timber.i("Deleting remote metadata folder for game $appId: ${remoteMetadataDir.absolutePath}")
+            remoteMetadataDir.deleteRecursively()
+        }
+
+        // Only delete the container if it's not a master container
+        if (!containerId.startsWith("MASTER_") && manager.hasContainer(containerId)) {
             // Remove the container directory asynchronously
             manager.removeContainerAsync(
-                manager.getContainerById(appId),
+                manager.getContainerById(containerId),
             ) {
-                Timber.i("Deleted container for appId=$appId")
+                Timber.i("Deleted per-game container for appId=$appId (containerId=$containerId)")
             }
+        } else if (containerId.startsWith("MASTER_")) {
+            Timber.i("Skipping deletion of shared master container $containerId while deleting game $appId")
         }
     }
 

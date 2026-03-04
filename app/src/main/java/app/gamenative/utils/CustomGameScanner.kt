@@ -163,9 +163,8 @@ object CustomGameScanner {
 
         // 2) Try extracting from the selected container executable
         try {
-            val cm = ContainerManager(context)
-            if (cm.hasContainer(appId)) {
-                val container = cm.getContainerById(appId)
+            if (ContainerUtils.hasContainer(context, appId)) {
+                val container = ContainerUtils.getContainer(context, appId)
                 val relExe = container.executablePath
                 if (!relExe.isNullOrEmpty()) {
                     val exeFile = File(folder, relExe.replace('/', File.separatorChar))
@@ -193,9 +192,8 @@ object CustomGameScanner {
 
         // 3) Try using the icon matching the selected container executable name if it exists as an extracted icon
         try {
-            val cm = ContainerManager(context)
-            if (cm.hasContainer(appId)) {
-                val container = cm.getContainerById(appId)
+            if (ContainerUtils.hasContainer(context, appId)) {
+                val container = ContainerUtils.getContainer(context, appId)
                 val relExe = container.executablePath
                 if (!relExe.isNullOrEmpty()) {
                     val exeBase = relExe.substringAfterLast('/').substringBeforeLast('.')
@@ -488,10 +486,9 @@ object CustomGameScanner {
                 if (!hasExtractedIcon) {
                     // Try to use container's selected exe first
                     val context = DownloadService.appContext ?: return@launch
-                    val cm = ContainerManager(context)
                     var targetExe: File? = null
-                    if (cm.hasContainer(appId)) {
-                        val container = cm.getContainerById(appId)
+                    if (ContainerUtils.hasContainer(context, appId)) {
+                        val container = ContainerUtils.getContainer(context, appId)
                         val relExe = container.executablePath
                         if (!relExe.isNullOrEmpty()) {
                             val exeFile = File(folder, relExe.replace('/', File.separatorChar))

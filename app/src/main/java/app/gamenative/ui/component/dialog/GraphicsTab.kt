@@ -163,6 +163,49 @@ fun GraphicsTabContent(state: ContainerConfigState) {
         // Surface Format (Common)
         SurfaceFormatSection(state)
 
+        // --- Sharpness Boost (vkBasalt) ---
+        SettingsListDropdown(
+            colors = settingsTileColors(),
+            title = { Text(text = stringResource(R.string.sharpness_effect)) },
+            value = state.sharpnessEffectIndex.value,
+            items = state.sharpnessDisplayItems,
+            onItemSelected = { idx ->
+                state.sharpnessEffectIndex.value = idx
+                state.config.value = state.config.value.copy(sharpnessEffect = state.sharpnessEffects[idx])
+            },
+        )
+
+        if (state.config.value.sharpnessEffect != "None") {
+            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                Text(
+                    text = "${stringResource(R.string.sharpness_level)}: ${state.sharpnessLevel.value}%",
+                    style = androidx.compose.material3.MaterialTheme.typography.bodyMedium
+                )
+                Slider(
+                    value = state.sharpnessLevel.value.toFloat(),
+                    onValueChange = {
+                        state.sharpnessLevel.value = it.roundToInt()
+                        state.config.value = state.config.value.copy(sharpnessLevel = it.roundToInt())
+                    },
+                    valueRange = 0f..100f
+                )
+            }
+            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                Text(
+                    text = "${stringResource(R.string.sharpness_denoise)}: ${state.sharpnessDenoise.value}%",
+                    style = androidx.compose.material3.MaterialTheme.typography.bodyMedium
+                )
+                Slider(
+                    value = state.sharpnessDenoise.value.toFloat(),
+                    onValueChange = {
+                        state.sharpnessDenoise.value = it.roundToInt()
+                        state.config.value = state.config.value.copy(sharpnessDenoise = it.roundToInt())
+                    },
+                    valueRange = 0f..100f
+                )
+            }
+        }
+
         // Bionic Specific Extras
         if (state.config.value.containerVariant.equals(Container.BIONIC, ignoreCase = true)) {
             // Bionic: Exposed Vulkan Extensions
@@ -304,6 +347,49 @@ fun GraphicsTabContent(state: ContainerConfigState) {
                 state.config.value = state.config.value.copy(useDRI3 = it)
             },
         )
+
+        // --- Sharpness Boost (vkBasalt) ---
+        SettingsListDropdown(
+            colors = settingsTileColors(),
+            title = { Text(text = stringResource(R.string.sharpness_effect)) },
+            value = state.sharpnessEffectIndex.value,
+            items = state.sharpnessDisplayItems,
+            onItemSelected = { idx ->
+                state.sharpnessEffectIndex.value = idx
+                state.config.value = state.config.value.copy(sharpnessEffect = state.sharpnessEffects[idx])
+            },
+        )
+
+        if (state.config.value.sharpnessEffect != "None") {
+            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                Text(
+                    text = "${stringResource(R.string.sharpness_level)}: ${state.sharpnessLevel.value}%",
+                    style = androidx.compose.material3.MaterialTheme.typography.bodyMedium
+                )
+                Slider(
+                    value = state.sharpnessLevel.value.toFloat(),
+                    onValueChange = {
+                        state.sharpnessLevel.value = it.roundToInt()
+                        state.config.value = state.config.value.copy(sharpnessLevel = it.roundToInt())
+                    },
+                    valueRange = 0f..100f
+                )
+            }
+            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                Text(
+                    text = "${stringResource(R.string.sharpness_denoise)}: ${state.sharpnessDenoise.value}%",
+                    style = androidx.compose.material3.MaterialTheme.typography.bodyMedium
+                )
+                Slider(
+                    value = state.sharpnessDenoise.value.toFloat(),
+                    onValueChange = {
+                        state.sharpnessDenoise.value = it.roundToInt()
+                        state.config.value = state.config.value.copy(sharpnessDenoise = it.roundToInt())
+                    },
+                    valueRange = 0f..100f
+                )
+            }
+        }
     }
 }
 

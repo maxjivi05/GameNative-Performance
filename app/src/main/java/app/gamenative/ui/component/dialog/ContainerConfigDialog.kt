@@ -192,14 +192,18 @@ fun ContainerConfigScreen(
         }
     }
 
-    val configState = rememberSaveable(stateSaver = ContainerData.Saver) {
+    val configState = remember(initialConfig) {
         mutableStateOf(initialConfig)
     }
     var config by configState
 
+    LaunchedEffect(initialConfig) {
+        config = initialConfig
+    }
+
     val screenSizes = stringArrayResource(R.array.screen_size_entries).toList()
     val baseGraphicsDrivers = stringArrayResource(R.array.graphics_driver_entries).toList()
-    val graphicsDriversRef = remember { mutableStateOf(baseGraphicsDrivers.toMutableList()) }
+    val graphicsDriversRef = remember(initialConfig) { mutableStateOf(baseGraphicsDrivers.toMutableList()) }
     var graphicsDrivers by graphicsDriversRef
     val dxWrappers = stringArrayResource(R.array.dxwrapper_entries).toList()
     val dxvkVersionsBase = stringArrayResource(R.array.dxvk_version_entries).toList()
@@ -265,13 +269,13 @@ fun ContainerConfigScreen(
     val installedLists = availability?.installed
     val manifestData = availability?.manifest ?: ManifestData.empty()
 
-    val dxvkVersionsAllRef = remember { mutableStateOf((dxvkVersionsBase + (installedLists?.dxvk ?: emptyList())).distinct()) }
+    val dxvkVersionsAllRef = remember(initialConfig) { mutableStateOf((dxvkVersionsBase + (installedLists?.dxvk ?: emptyList())).distinct()) }
     var dxvkVersionsAll by dxvkVersionsAllRef
-    val bionicWineEntriesRef = remember { mutableStateOf((bionicWineEntriesBase + (installedLists?.proton ?: emptyList()) + (installedLists?.wine ?: emptyList())).distinct()) }
+    val bionicWineEntriesRef = remember(initialConfig) { mutableStateOf((bionicWineEntriesBase + (installedLists?.proton ?: emptyList()) + (installedLists?.wine ?: emptyList())).distinct()) }
     var bionicWineEntries by bionicWineEntriesRef
-    val glibcWineEntriesRef = remember { mutableStateOf(glibcWineEntriesBase) }
+    val glibcWineEntriesRef = remember(initialConfig) { mutableStateOf(glibcWineEntriesBase) }
     var glibcWineEntries by glibcWineEntriesRef
-    val wrapperVersionsRef = remember { mutableStateOf((baseWrapperVersions + (availability?.installedDrivers ?: emptyList())).distinct()) }
+    val wrapperVersionsRef = remember(initialConfig) { mutableStateOf((baseWrapperVersions + (availability?.installedDrivers ?: emptyList())).distinct()) }
     var wrapperVersions by wrapperVersionsRef
 
     var manifestInstallInProgress by remember { mutableStateOf(false) }
@@ -326,7 +330,7 @@ fun ContainerConfigScreen(
             ManifestComponentHelper.filterManifestByVariant(manifestProton, "glibc")
     
     val bionicWineOptions = ManifestComponentHelper.buildVersionOptionList(bionicWineEntriesBase, installedWine + installedProton, bionicWineManifest)
-    val glibcWineOptions = ManifestComponentHelper.buildVersionOptionList(glibcWineEntriesBase, emptyList(), glibcWineManifest)
+    val glibcWineOptions = ManifestComponentHelper.buildVersionOptionList(glibcWineEntriesBase, installedWine + installedProton, glibcWineManifest)
 
     val graphicsDriverVersionOptions = ManifestComponentHelper.buildVersionOptionList(
         baseVersions = emptyList(),
@@ -427,7 +431,7 @@ fun ContainerConfigScreen(
             GPUHelper.vkGetDeviceExtensions().toList()
         }
     }
-    LaunchedEffect(config.graphicsDriverConfig) {
+    LaunchedEffect(initialConfig, config.graphicsDriverConfig) {
         val cfg = KeyValueSet(config.graphicsDriverConfig)
         run {
             val options = listOf("1.0", "1.1", "1.2", "1.3")
@@ -524,7 +528,7 @@ fun ContainerConfigScreen(
     }
     var adrenotoolsTurnipChecked by adrenotoolsTurnipCheckedRef
     
-    LaunchedEffect(config.graphicsDriverConfig) {
+    LaunchedEffect(initialConfig, config.graphicsDriverConfig) {
         val cfg = KeyValueSet(config.graphicsDriverConfig)
         presentModeIndex = presentModes.indexOfFirst { it.equals(cfg.get("presentMode", "mailbox"), true) }.let { if (it >= 0) it else 0 }
         resourceTypeIndex = resourceTypes.indexOfFirst { it.equals(cfg.get("resourceType", "auto"), true) }.let { if (it >= 0) it else 0 }
@@ -538,13 +542,13 @@ fun ContainerConfigScreen(
         adrenotoolsTurnipChecked = cfg.get("adrenotoolsTurnip", "1") != "0"
     }
 
-    LaunchedEffect(config.sharpnessEffect, config.sharpnessLevel, config.sharpnessDenoise) {
+    LaunchedEffect(initialConfig, config.sharpnessEffect, config.sharpnessLevel, config.sharpnessDenoise) {
         sharpnessEffectIndex = sharpnessEffects.indexOfFirst { it.equals(config.sharpnessEffect, true) }.coerceAtLeast(0)
         sharpnessLevel = config.sharpnessLevel.coerceIn(0, 100)
         sharpnessDenoise = config.sharpnessDenoise.coerceIn(0, 100)
     }
 
-    LaunchedEffect(versionsLoaded, wrapperOptions, config.graphicsDriverConfig) {
+    LaunchedEffect(initialConfig, versionsLoaded, wrapperOptions, config.graphicsDriverConfig) {
         if (!versionsLoaded) return@LaunchedEffect
         val cfg = KeyValueSet(config.graphicsDriverConfig)
         val ver = cfg.get("version", DefaultVersion.WRAPPER)
@@ -552,22 +556,22 @@ fun ContainerConfigScreen(
         if (wrapperVersionIndex != newIdx) wrapperVersionIndex = newIdx
     }
 
-    val screenSizeIndexRef = rememberSaveable {
+    val screenSizeIndexRef = rememberSaveable(initialConfig) {
         val searchIndex = screenSizes.indexOfFirst { it.contains(config.screenSize) }
         mutableIntStateOf(if (searchIndex > 0) searchIndex else 0)
     }
     var screenSizeIndex by screenSizeIndexRef
-    val customScreenWidthRef = rememberSaveable {
+    val customScreenWidthRef = rememberSaveable(initialConfig) {
         val searchIndex = screenSizes.indexOfFirst { it.contains(config.screenSize) }
         mutableStateOf(if (searchIndex <= 0) config.screenSize.split("x").getOrElse(0) { "1280" } else "1280")
     }
     var customScreenWidth by customScreenWidthRef
-    val customScreenHeightRef = rememberSaveable {
+    val customScreenHeightRef = rememberSaveable(initialConfig) {
         val searchIndex = screenSizes.indexOfFirst { it.contains(config.screenSize) }
         mutableStateOf(if (searchIndex <= 0) config.screenSize.split("x").getOrElse(1) { "720" } else "720")
     }
     var customScreenHeight by customScreenHeightRef
-    val graphicsDriverIndexRef = rememberSaveable {
+    val graphicsDriverIndexRef = rememberSaveable(initialConfig) {
         val driverIndex = graphicsDrivers.indexOfFirst { StringUtils.parseIdentifier(it) == config.graphicsDriver }
         mutableIntStateOf(if (driverIndex >= 0) driverIndex else 0)
     }
@@ -592,14 +596,14 @@ fun ContainerConfigScreen(
 
     fun getStartupSelectionOptions(): List<String> = if (config.containerVariant.equals(Container.GLIBC)) startupSelectionEntries else startupSelectionEntries.subList(0, 2)
 
-    val dxWrapperIndexRef = rememberSaveable {
+    val dxWrapperIndexRef = rememberSaveable(initialConfig) {
         val driverIndex = dxWrappers.indexOfFirst { StringUtils.parseIdentifier(it) == config.dxwrapper }
         mutableIntStateOf(if (driverIndex >= 0) driverIndex else 0)
     }
     var dxWrapperIndex by dxWrapperIndexRef
-    val dxvkVersionIndexRef = rememberSaveable { mutableIntStateOf(0) }
+    val dxvkVersionIndexRef = rememberSaveable(initialConfig) { mutableIntStateOf(0) }
     var dxvkVersionIndex by dxvkVersionIndexRef
-    val vkd3dVersionIndexRef = rememberSaveable { mutableIntStateOf(0) }
+    val vkd3dVersionIndexRef = rememberSaveable(initialConfig) { mutableIntStateOf(0) }
     var vkd3dVersionIndex by vkd3dVersionIndexRef
 
     fun vkd3dForcedVersion(): String {
@@ -698,32 +702,32 @@ fun ContainerConfigScreen(
         if (changed) config = config.copy(envVars = envSet.toString(), dxwrapperConfig = kvs.toString())
     }
 
-    val audioDriverIndexRef = rememberSaveable {
+    val audioDriverIndexRef = rememberSaveable(initialConfig) {
         val driverIndex = audioDrivers.indexOfFirst { StringUtils.parseIdentifier(it) == config.audioDriver }
         mutableIntStateOf(if (driverIndex >= 0) driverIndex else audioDrivers.indexOfFirst { it.lowercase().contains("pulse") }.coerceAtLeast(0))
     }
     var audioDriverIndex by audioDriverIndexRef
-    val gpuNameIndexRef = rememberSaveable {
+    val gpuNameIndexRef = rememberSaveable(initialConfig) {
         val gpuInfoIndex = gpuCards.values.indexOfFirst { it.deviceId == config.videoPciDeviceID }
         mutableIntStateOf(if (gpuInfoIndex >= 0) gpuInfoIndex else 0)
     }
     var gpuNameIndex by gpuNameIndexRef
-    val renderingModeIndexRef = rememberSaveable {
+    val renderingModeIndexRef = rememberSaveable(initialConfig) {
         val index = renderingModes.indexOfFirst { it.lowercase() == config.offScreenRenderingMode }
         mutableIntStateOf(if (index >= 0) index else 0)
     }
     var renderingModeIndex by renderingModeIndexRef
-    val videoMemIndexRef = rememberSaveable {
+    val videoMemIndexRef = rememberSaveable(initialConfig) {
         val index = videoMemSizes.indexOfFirst { StringUtils.parseNumber(it) == config.videoMemorySize }
         mutableIntStateOf(if (index >= 0) index else 0)
     }
     var videoMemIndex by videoMemIndexRef
-    val mouseWarpIndexRef = rememberSaveable {
+    val mouseWarpIndexRef = rememberSaveable(initialConfig) {
         val index = mouseWarps.indexOfFirst { it.lowercase() == config.mouseWarpOverride }
         mutableIntStateOf(if (index >= 0) index else 0)
     }
     var mouseWarpIndex by mouseWarpIndexRef
-    val externalDisplayModeIndexRef = rememberSaveable {
+    val externalDisplayModeIndexRef = rememberSaveable(initialConfig) {
         val index = when (config.externalDisplayMode.lowercase()) {
             Container.EXTERNAL_DISPLAY_MODE_TOUCHPAD -> 1
             Container.EXTERNAL_DISPLAY_MODE_KEYBOARD -> 2
@@ -733,17 +737,17 @@ fun ContainerConfigScreen(
         mutableIntStateOf(index)
     }
     var externalDisplayModeIndex by externalDisplayModeIndexRef
-    val languageIndexRef = rememberSaveable {
+    val languageIndexRef = rememberSaveable(initialConfig) {
         val idx = languages.indexOfFirst { it == config.language.lowercase() }
         mutableIntStateOf(if (idx >= 0) idx else languages.indexOf("english"))
     }
     var languageIndex by languageIndexRef
 
     var dismissDialogState by rememberSaveable(stateSaver = MessageDialogState.Saver) { mutableStateOf(MessageDialogState(visible = false)) }
-    val showEnvVarCreateDialogRef = rememberSaveable { mutableStateOf(false) }
+    val showEnvVarCreateDialogRef = rememberSaveable(initialConfig) { mutableStateOf(false) }
     var showEnvVarCreateDialog by showEnvVarCreateDialogRef
-    val showAddDriveDialogRef = rememberSaveable { mutableStateOf(false) }
-    val selectedDriveLetterRef = rememberSaveable { mutableStateOf("") }
+    val showAddDriveDialogRef = rememberSaveable(initialConfig) { mutableStateOf(false) }
+    val selectedDriveLetterRef = rememberSaveable(initialConfig) { mutableStateOf("") }
     var selectedDriveLetter by selectedDriveLetterRef
     val pendingDriveLetterRef = rememberSaveable { mutableStateOf("") }
     var pendingDriveLetter by pendingDriveLetterRef

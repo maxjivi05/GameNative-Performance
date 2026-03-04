@@ -96,7 +96,17 @@ fun SettingsGroupDebug() {
         CrashLogDialog(visible = showWineLogDialog, fileName = latestWineLogFile?.name ?: "wine_debug.log", fileText = latestWineLogFile?.readText() ?: "", onSave = { latestWineLogFile?.let { file -> saveWineLogContract.launch(file.name) } }, onDismissRequest = { showWineLogDialog = false })
     }
 
+    var masterContainers by rememberSaveable { mutableStateOf(PrefManager.masterContainers) }
+
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        SettingsSectionHeader("Advanced")
+        SettingsTile(
+            title = "Master Containers",
+            subtitle = "Share the same container for all games using the same Proton version and architecture.",
+            icon = Icons.Default.Hub,
+            trailing = { Switch(checked = masterContainers, onCheckedChange = { masterContainers = it; PrefManager.masterContainers = it }) }
+        )
+
         SettingsSectionHeader(stringResource(R.string.settings_debug_title))
 
         SettingsTile(title = "Embedded File Access", subtitle = "Explore internal app files and container data", icon = Icons.Default.Folder, onClick = { showFileExplorer = true })
