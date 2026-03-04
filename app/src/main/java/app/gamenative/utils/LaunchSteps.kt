@@ -9,6 +9,7 @@ import app.gamenative.utils.launchdependencies.StepRunner
 import app.gamenative.utils.launchdependencies.VcRedistLaunchStep
 import com.winlator.container.Container
 import timber.log.Timber
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * Launch steps (e.g. VC Redist, GOG script) then the game.
@@ -22,6 +23,14 @@ object LaunchSteps {
         OtherRedistLaunchStep,
         GogScriptInterpreterLaunchStep,
     )
+
+    /**
+     * True while pre-game steps (e.g. VC Redist install) are running.
+     * XServerScreen checks this to suppress the exit watch — otherwise when
+     * a VC Redist installer window unmaps, the exit watch would see "no game
+     * processes" and navigate back before the game even starts.
+     */
+    val isRunningPreGameStep = AtomicBoolean(false)
 
     /**
      * Starts the launch flow. Configures the launcher for the first applicable step
@@ -44,12 +53,17 @@ object LaunchSteps {
             !step.runOnce || step.stepId == null || container.getExtra(STEP_DONE_EXTRA_PREFIX + step.stepId, "") != "done"
         }
         if (steps.isEmpty()) {
+            isRunningPreGameStep.set(false)
             return
         }
 
         // Track which step is currently running and which remain.
         var pendingSteps: List<LaunchStep> = emptyList()
         var currentStep: LaunchStep? = null
+
+        // Determine if first step is a pre-game step (has no termination callback)
+        val firstStep = steps.first()
+        isRunningPreGameStep.set(firstStep.terminationCallback() == null)
 
         // Shared termination callback installed on the launcher.
         val terminationHandler: (Int) -> Unit = terminationHandler@ { status ->
@@ -64,11 +78,17 @@ object LaunchSteps {
 
             if (pendingSteps.isEmpty()) {
                 // No further steps to run.
+                isRunningPreGameStep.set(false)
                 return@terminationHandler
             }
 
             val next = pendingSteps.first()
             pendingSteps = pendingSteps.drop(1)
+
+            // If the next step is the game step (has a termination callback), clear the pre-game flag
+            if (next.terminationCallback() != null) {
+                isRunningPreGameStep.set(false)
+            }
 
             val stepRunner = object : StepRunner {
                 override fun runStepContent(stepContent: String) {
@@ -114,6 +134,9 @@ object LaunchSteps {
                 return
             }
         }
+
+        // No steps actually ran; clear flag
+        isRunningPreGameStep.set(false)
     }
 
     private fun buildStepExecutable(stepContent: String, screenInfo: String, execArgs: String): String {

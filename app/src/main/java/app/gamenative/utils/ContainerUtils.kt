@@ -638,6 +638,51 @@ object ContainerUtils {
         return "MASTER_${sanitizedVariant}_$sanitizedWine"
     }
 
+    /**
+     * Ensures that the container's A: drive points to the correct game directory.
+     * This is crucial for Master Containers because their configuration is reused across
+     * different games, meaning the A: drive could be pointing to the previously launched game.
+     */
+    fun ensureGameDriveMounted(context: Context, container: Container, appId: String) {
+        val gameSource = extractGameSourceFromContainerId(appId)
+        val gameInstallPath = when (gameSource) {
+            GameSource.STEAM -> {
+                val gameId = extractGameIdFromContainerId(appId)
+                SteamService.getAppDirPath(gameId)
+            }
+            GameSource.CUSTOM_GAME -> CustomGameScanner.getFolderPathFromAppId(appId)
+            GameSource.GOG -> {
+                val gameId = extractGameIdFromContainerId(appId)
+                GOGService.getGOGGameOf(gameId.toString())?.installPath
+            }
+            GameSource.EPIC -> {
+                val gameId = extractGameIdFromContainerId(appId)
+                EpicService.getEpicGameOf(gameId)?.installPath
+            }
+            GameSource.AMAZON -> {
+                val productId = appId.removePrefix("AMAZON_").substringBefore("(")
+                app.gamenative.service.amazon.AmazonService.getInstance()?.getInstalledGamePath(productId)
+            }
+        }
+
+        if (!gameInstallPath.isNullOrEmpty()) {
+            val baseDrives = container.drives.split(",").filter { !it.startsWith("A:") }.joinToString(",")
+            val newDrives = if (baseDrives.isEmpty()) {
+                "A:$gameInstallPath"
+            } else {
+                "$baseDrives,A:$gameInstallPath"
+            }
+
+            if (container.drives != newDrives) {
+                Timber.i("Dynamically updating container drives for $appId: $newDrives")
+                container.drives = newDrives
+                // No need to container.saveData() here, as this is a transient state map
+                // for master containers. XServerScreen/WineUtils will use container.drives
+                // to create dosdevices symlinks.
+            }
+        }
+    }
+
     fun getAssignedContainerId(appId: String): String {
         val map = PrefManager.gameContainers
         if (map.containsKey(appId)) return map[appId]!!

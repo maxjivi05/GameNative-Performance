@@ -936,6 +936,7 @@ fun PluviaMain(
                             setMessageDialogState = { msgDialogState = it },
                             onSuccess = viewModel::launchApp,
                             isOffline = isOffline,
+                            bootToContainer = asContainer,
                         )
                     },
                     onTestGraphics = { appId ->
@@ -952,6 +953,7 @@ fun PluviaMain(
                             setMessageDialogState = { msgDialogState = it },
                             onSuccess = viewModel::launchApp,
                             isOffline = isOffline,
+                            bootToContainer = true,
                         )
                     },
                     onClickExit = {
@@ -1057,6 +1059,7 @@ fun preLaunchApp(
     onSuccess: KFunction2<Context, String, Unit>,
     retryCount: Int = 0,
     isOffline: Boolean = false,
+    bootToContainer: Boolean = false,
 ) {
     setLoadingDialogVisible(true)
     // TODO: add a way to cancel
@@ -1073,6 +1076,9 @@ fun preLaunchApp(
         } else {
             ContainerUtils.getOrCreateContainer(context, appId)
         }
+
+        // Dynamically mount the assigned game directory for Master Containers
+        ContainerUtils.ensureGameDriveMounted(context, container, appId)
 
         // Clear session metadata on every launch to ensure fresh values
         container.clearSessionMetadata()
@@ -1300,13 +1306,13 @@ fun preLaunchApp(
                 } catch (_: Exception) { /* ignore persona read errors */ }
             }
 
-            // For Amazon and Custom Games, skip cloud sync and start game session
+            // For Amazon, Custom Games, and Open Container, skip cloud sync and start game session
             val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
             val isAmazonGame = gameSource == GameSource.AMAZON
             val isCustomGame = gameSource == GameSource.CUSTOM_GAME
             
-            if (isAmazonGame || isCustomGame) {
-                Timber.tag("preLaunchApp").i("$gameSource detected for $appId — skipping cloud sync and launching container")
+            if (bootToContainer || isAmazonGame || isCustomGame) {
+                Timber.tag("preLaunchApp").i("$gameSource detected for $appId — skipping cloud sync and launching (bootToContainer=$bootToContainer)")
                 if (isAmazonGame) {
                     val amazonProductId = appId.removePrefix("AMAZON_")
                     app.gamenative.service.amazon.AmazonService.startGameSession(amazonProductId)
@@ -1358,6 +1364,7 @@ fun preLaunchApp(
                     onSuccess = onSuccess,
                     retryCount = retryCount + 1,
                     isOffline = isOffline,
+                    bootToContainer = bootToContainer,
                 )
             }
         } else {

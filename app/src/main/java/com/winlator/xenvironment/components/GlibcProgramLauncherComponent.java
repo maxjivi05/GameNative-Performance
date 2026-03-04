@@ -62,12 +62,18 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
     public void setWineInfo(WineInfo wineInfo) {
         this.wineInfo = wineInfo;
     }
+
     public WineInfo getWineInfo() {
         return this.wineInfo;
     }
 
-    public Container getContainer() { return this.container; }
-    public void setContainer(Container container) { this.container = container; }
+    public Container getContainer() {
+        return this.container;
+    }
+
+    public void setContainer(Container container) {
+        this.container = container;
+    }
 
     public GlibcProgramLauncherComponent(ContentsManager contentsManager, ContentProfile wineProfile) {
         this.contentsManager = contentsManager;
@@ -75,7 +81,11 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
     }
 
     private Runnable preUnpack;
-    public void setPreUnpack(Runnable r) { this.preUnpack = r; }
+
+    public void setPreUnpack(Runnable r) {
+        this.preUnpack = r;
+    }
+
     @Override
     public void start() {
         Log.d("GlibcProgramLauncherComponent", "Starting...");
@@ -86,8 +96,9 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
             else
                 extractBox64Files();
             copyDefaultBox64RCFile();
-            if (preUnpack != null) preUnpack.run();
-            
+            if (preUnpack != null)
+                preUnpack.run();
+
             try {
                 if (container != null) {
                     if (container.isRootPerformanceMode()) {
@@ -95,7 +106,7 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
                     } else {
                         PerformanceTuner.stopRootPerformanceMode();
                     }
-                    
+
                     if (container.isForceAdrenoClocks()) {
                         PerformanceTuner.startNonRootPerformanceMode();
                         envVars.put("ADRENOTOOLS_GPU_TURBO", "1");
@@ -126,7 +137,8 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
             }
             PerformanceTuner.stopRootPerformanceMode();
             // Flush wineserver registry to disk BEFORE killing sub-processes.
-            // wineserver -k tells wineserver to save all registry hives and exit gracefully.
+            // wineserver -k tells wineserver to save all registry hives and exit
+            // gracefully.
             // Previously, sub-processes (including wineserver) were killed first, so
             // wineserver -k had nothing to flush and winecfg changes were lost.
             execShellCommand("wineserver -k");
@@ -178,13 +190,21 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
         this.envVars = envVars;
     }
 
-    public String getBox86Version() { return box86Version; }
+    public String getBox86Version() {
+        return box86Version;
+    }
 
-    public void setBox86Version(String box86Version) { this.box86Version = box86Version; }
+    public void setBox86Version(String box86Version) {
+        this.box86Version = box86Version;
+    }
 
-    public String getBox64Version() { return box64Version; }
+    public String getBox64Version() {
+        return box64Version;
+    }
 
-    public void setBox64Version(String box64Version) { this.box64Version = box64Version; }
+    public void setBox64Version(String box64Version) {
+        this.box64Version = box64Version;
+    }
 
     public String getBox86Preset() {
         return box86Preset;
@@ -212,11 +232,12 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
 
     private int execGuestProgram() {
         // Get the number of enabled players directly from ControllerManager.
-        final int enabledPlayerCount = com.winlator.inputcontrols.ControllerManager.getInstance().getEnabledPlayerCount();
+        final int enabledPlayerCount = com.winlator.inputcontrols.ControllerManager.getInstance()
+                .getEnabledPlayerCount();
         Context context = environment.getContext();
         String filesDir = context.getFilesDir().getAbsolutePath();
         String actualTmpDir = filesDir + "/imagefs/tmp";
-        
+
         // Ensure actual directory exists
         new File(actualTmpDir).mkdirs();
 
@@ -226,7 +247,7 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
             try (RandomAccessFile raf = new RandomAccessFile(memFile, "rw")) {
                 raf.setLength(64);
             } catch (IOException e) {
-                Log.e("EVSHIM_HOST", "Failed to create mem file for player index "+i, e);
+                Log.e("EVSHIM_HOST", "Failed to create mem file for player index " + i, e);
             }
         }
 
@@ -253,27 +274,27 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
                 imageFs.getRootDir().getPath() + "/usr/local/bin");
 
         envVars.put("LD_LIBRARY_PATH", nativeLibDir + ":" + imageFs.getRootDir().getPath() + "/usr/lib");
-        
+
         if (wineInfo != null && wineInfo.isArm64EC()) {
-            envVars.put("BOX64_LD_LIBRARY_PATH", nativeLibDir + ":" + imageFs.getRootDir().getPath() + "/usr/lib/aarch64-linux-gnu");
-            envVars.put("VK_LAYER_PATH", imageFs.getRootDir().getPath() + "/usr/share/vulkan/implicit_layer.d" + ":" + imageFs.getRootDir().getPath() + "/usr/share/vulkan/explicit_layer.d");
+            envVars.put("BOX64_LD_LIBRARY_PATH",
+                    nativeLibDir + ":" + imageFs.getRootDir().getPath() + "/usr/lib/aarch64-linux-gnu");
+            envVars.put("VK_LAYER_PATH", imageFs.getRootDir().getPath() + "/usr/share/vulkan/implicit_layer.d" + ":"
+                    + imageFs.getRootDir().getPath() + "/usr/share/vulkan/explicit_layer.d");
             envVars.put("XDG_DATA_DIRS", imageFs.getRootDir().getPath() + "/usr/share");
             envVars.put("EVSHIM_SHM_ID", "1");
             envVars.put("EVSHIM_SHM_NAME", "controller-shm0");
         } else {
-            envVars.put("BOX64_LD_LIBRARY_PATH", nativeLibDir + ":" + imageFs.getRootDir().getPath() + "/usr/lib/x86_64-linux-gnu");
+            envVars.put("BOX64_LD_LIBRARY_PATH",
+                    nativeLibDir + ":" + imageFs.getRootDir().getPath() + "/usr/lib/x86_64-linux-gnu");
         }
 
         String ldPreload = "";
         if ((new File(imageFs.getGlibc64Dir(), "libandroid-sysvshm.so")).exists() ||
                 (new File(imageFs.getGlibc32Dir(), "libandroid-sysvshm.so")).exists()) {
-            ldPreload = imageFs.getLibDir() + "/libredirect.so";
-            if (!ldPreload.isEmpty()) ldPreload += ":";
-            ldPreload += imageFs.getLibDir() + "/libandroid-sysvshm.so";
+            ldPreload = "libredirect.so libandroid-sysvshm.so";
             String evshimPath = imageFs.getLibDir() + "/libevshim.so";
             if (new File(evshimPath).exists()) {
-                if (!ldPreload.isEmpty()) ldPreload += ":";
-                ldPreload += evshimPath;
+                ldPreload += " libevshim.so";
             }
             envVars.put("LD_PRELOAD", ldPreload);
         }
@@ -282,16 +303,19 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
         String hookImplPath = nativeLibDir + "/libhook_impl.so";
         String redirectHookPath = nativeLibDir + "/libfile_redirect_hook.so";
 
-        if (new File(hookImplPath).exists()) box64LdPreload += hookImplPath;
+        if (new File(hookImplPath).exists())
+            box64LdPreload += hookImplPath;
         if (new File(redirectHookPath).exists()) {
-            if (!box64LdPreload.isEmpty()) box64LdPreload += ":";
+            if (!box64LdPreload.isEmpty())
+                box64LdPreload += ":";
             box64LdPreload += redirectHookPath;
         }
 
-        // Include the other preloads in BOX64_LD_PRELOAD as well, using absolute paths
+        // Include the other preloads in BOX64_LD_PRELOAD as well, using colons
         if (!ldPreload.isEmpty()) {
-            if (!box64LdPreload.isEmpty()) box64LdPreload += ":";
-            box64LdPreload += ldPreload;
+            if (!box64LdPreload.isEmpty())
+                box64LdPreload += ":";
+            box64LdPreload += ldPreload.replace(" ", ":");
         }
 
         if (!box64LdPreload.isEmpty()) {
@@ -300,15 +324,18 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
 
         String extraBox64Paths = nativeLibDir + ":" + imageFs.getLibDir();
         String currentBox64LibPath = envVars.get("BOX64_LD_LIBRARY_PATH");
-        envVars.put("BOX64_LD_LIBRARY_PATH", extraBox64Paths + (currentBox64LibPath != null && !currentBox64LibPath.isEmpty() ? ":" + currentBox64LibPath : ""));
+        envVars.put("BOX64_LD_LIBRARY_PATH", extraBox64Paths
+                + (currentBox64LibPath != null && !currentBox64LibPath.isEmpty() ? ":" + currentBox64LibPath : ""));
 
         envVars.put("ANDROID_SYSVSHM_SERVER", imageFs.getRootDir().getPath() + UnixSocketConfig.SYSVSHM_SERVER_PATH);
         envVars.put("FONTCONFIG_PATH", imageFs.getRootDir().getPath() + "/usr/etc/fonts");
-        envVars.put("ALSA_CONFIG_PATH", imageFs.getRootDir().getPath() + "/usr/share/alsa/alsa.conf" + ":" + imageFs.getRootDir().getPath() + "/usr/etc/alsa/conf.d/android_aserver.conf");
+        envVars.put("ALSA_CONFIG_PATH", imageFs.getRootDir().getPath() + "/usr/share/alsa/alsa.conf" + ":"
+                + imageFs.getRootDir().getPath() + "/usr/etc/alsa/conf.d/android_aserver.conf");
         envVars.put("ALSA_PLUGIN_DIR", imageFs.getRootDir().getPath() + "/usr/lib/alsa-lib");
 
         envVars.put("WINEESYNC_WINLATOR", "1");
-        if (this.envVars != null) envVars.putAll(this.envVars);
+        if (this.envVars != null)
+            envVars.putAll(this.envVars);
 
         String box64Path = rootDir.getPath() + "/usr/local/bin/box64";
 
@@ -320,14 +347,16 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
         String command = getFinalCommand(winePath, emulator, envVars, box64Path, guestExecutable);
         Log.d("GlibcProgramLauncherComponent", "Final command: " + command);
 
-        return ProcessHelper.exec(command, envVars.toStringArray(), workingDir != null ? workingDir : rootDir, (status) -> {
-            Log.d("GlibcProgramLauncherComponent", "Process terminated " + pid + " with status " + status);
-            synchronized (lock) {
-                pid = -1;
-            }
-            SteamService.setKeepAlive(false);
-            if (terminationCallback != null) terminationCallback.call(status);
-        });
+        return ProcessHelper.exec(command, envVars.toStringArray(), workingDir != null ? workingDir : rootDir,
+                (status) -> {
+                    Log.d("GlibcProgramLauncherComponent", "Process terminated " + pid + " with status " + status);
+                    synchronized (lock) {
+                        pid = -1;
+                    }
+                    SteamService.setKeepAlive(false);
+                    if (terminationCallback != null)
+                        terminationCallback.call(status);
+                });
     }
 
     private void extractEmulatorsDlls() {
@@ -349,7 +378,8 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
             contentsManager.applyContent(wowboxprofile);
         } else {
             Log.d("Extraction", "Extracting box64Version: " + wowbox64Version);
-            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, environment.getContext(), "wowbox64/wowbox64-" + wowbox64Version + ".tzst", system32dir);
+            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, environment.getContext(),
+                    "wowbox64/wowbox64-" + wowbox64Version + ".tzst", system32dir);
         }
         container.putExtra("box64Version", wowbox64Version);
         containerDataChanged = true;
@@ -359,15 +389,18 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
             contentsManager.applyContent(fexprofile);
         } else {
             Log.d("Extraction", "Extracting fexcoreVersion: " + fexcoreVersion);
-            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, environment.getContext(), "fexcore/fexcore-" + fexcoreVersion + ".tzst", system32dir);
+            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, environment.getContext(),
+                    "fexcore/fexcore-" + fexcoreVersion + ".tzst", system32dir);
         }
         container.putExtra("fexcoreVersion", fexcoreVersion);
 
         containerDataChanged = true;
-        if (containerDataChanged) container.saveData();
+        if (containerDataChanged)
+            container.saveData();
     }
 
-    private String getFinalCommand(String winePath, String emulator, EnvVars envVars, String box64Path, String guestExecutable) {
+    private String getFinalCommand(String winePath, String emulator, EnvVars envVars, String box64Path,
+            String guestExecutable) {
         String command;
         if (wineInfo != null && wineInfo.isArm64EC()) {
             command = winePath + "/" + guestExecutable;
@@ -375,8 +408,7 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
                 envVars.put("HODLL", "libwow64fex.dll");
             else
                 envVars.put("HODLL", "wowbox64.dll");
-        }
-        else
+        } else
             command = box64Path + " " + guestExecutable;
         return command;
     }
@@ -392,10 +424,10 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
         ContentProfile profile = contentsManager.getProfileByEntryName("box64-" + box64Version);
         if (profile != null) {
             contentsManager.applyContent(profile);
-        }
-        else {
+        } else {
             Log.d("Extraction", "exctracting box64 with box64Version " + box64Version);
-            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context.getAssets(), "box86_64/box64-" + box64Version + ".tzst", rootDir);
+            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context.getAssets(),
+                    "box86_64/box64-" + box64Version + ".tzst", rootDir);
         }
         PrefManager.putString("current_box64_version", box64Version);
     }
@@ -444,30 +476,33 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
                 imageFs.getRootDir().getPath() + "/usr/local/bin");
 
         envVars.put("LD_LIBRARY_PATH", imageFs.getRootDir().getPath() + "/usr/lib");
-        
+
         if (wineInfo != null && wineInfo.isArm64EC()) {
             envVars.put("BOX64_LD_LIBRARY_PATH", imageFs.getRootDir().getPath() + "/usr/lib/aarch64-linux-gnu");
-            envVars.put("VK_LAYER_PATH", imageFs.getRootDir().getPath() + "/usr/share/vulkan/implicit_layer.d" + ":" + imageFs.getRootDir().getPath() + "/usr/share/vulkan/explicit_layer.d");
+            envVars.put("VK_LAYER_PATH", imageFs.getRootDir().getPath() + "/usr/share/vulkan/implicit_layer.d" + ":"
+                    + imageFs.getRootDir().getPath() + "/usr/share/vulkan/explicit_layer.d");
             envVars.put("XDG_DATA_DIRS", imageFs.getRootDir().getPath() + "/usr/share");
         } else {
             envVars.put("BOX64_LD_LIBRARY_PATH", imageFs.getRootDir().getPath() + "/usr/lib/x86_64-linux-gnu");
         }
-        
+
         envVars.put("ANDROID_SYSVSHM_SERVER", imageFs.getRootDir().getPath() + UnixSocketConfig.SYSVSHM_SERVER_PATH);
         envVars.put("FONTCONFIG_PATH", imageFs.getRootDir().getPath() + "/usr/etc/fonts");
-        envVars.put("ALSA_CONFIG_PATH", imageFs.getRootDir().getPath() + "/usr/share/alsa/alsa.conf" + ":" + imageFs.getRootDir().getPath() + "/usr/etc/alsa/conf.d/android_aserver.conf");
+        envVars.put("ALSA_CONFIG_PATH", imageFs.getRootDir().getPath() + "/usr/share/alsa/alsa.conf" + ":"
+                + imageFs.getRootDir().getPath() + "/usr/etc/alsa/conf.d/android_aserver.conf");
         envVars.put("ALSA_PLUGIN_DIR", imageFs.getRootDir().getPath() + "/usr/lib/alsa-lib");
 
         if ((new File(imageFs.getGlibc64Dir(), "libandroid-sysvshm.so")).exists() ||
-                (new File(imageFs.getGlibc32Dir(), "libandroid-sysvshm.so")).exists
-                        ()) {
+                (new File(imageFs.getGlibc32Dir(), "libandroid-sysvshm.so")).exists()) {
             String ldPreload = "libredirect.so libandroid-sysvshm.so";
             String evshimPath = imageFs.getLibDir() + "/libevshim.so";
-            if (new File(evshimPath).exists()) ldPreload += " " + evshimPath;
+            if (new File(evshimPath).exists())
+                ldPreload += " libevshim.so";
             envVars.put("LD_PRELOAD", ldPreload);
         }
         envVars.put("WINEESYNC_WINLATOR", "1");
-        if (this.envVars != null) envVars.putAll(this.envVars);
+        if (this.envVars != null)
+            envVars.putAll(this.envVars);
 
         String box64Path = rootDir.getPath() + "/usr/local/bin/box64";
         String emulator = container != null ? container.getEmulator() : "box64";
@@ -476,34 +511,40 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
         // Execute the command and capture its output
         try {
             Log.d("GlibcProgramLauncherComponent", "Shell command is " + finalCommand);
-            java.lang.Process process = Runtime.getRuntime().exec(finalCommand, envVars.toStringArray(), workingDir != null ? workingDir : imageFs.getRootDir());
-            
+            java.lang.Process process = Runtime.getRuntime().exec(finalCommand, envVars.toStringArray(),
+                    workingDir != null ? workingDir : imageFs.getRootDir());
+
             final StringBuilder stdout = new StringBuilder();
             final StringBuilder stderr = new StringBuilder();
-            
+
             Thread stdoutThread = new Thread(() -> {
                 try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
                     String line;
-                    while ((line = reader.readLine()) != null) stdout.append(line).append("\n");
-                } catch (IOException e) {}
+                    while ((line = reader.readLine()) != null)
+                        stdout.append(line).append("\n");
+                } catch (IOException e) {
+                }
             });
-            
+
             Thread stderrThread = new Thread(() -> {
                 try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getErrorStream()))) {
                     String line;
-                    while ((line = reader.readLine()) != null) stderr.append(line).append("\n");
-                } catch (IOException e) {}
+                    while ((line = reader.readLine()) != null)
+                        stderr.append(line).append("\n");
+                } catch (IOException e) {
+                }
             });
-            
+
             stdoutThread.start();
             stderrThread.start();
-            
+
             process.waitFor();
             stdoutThread.join(5000);
             stderrThread.join(5000);
-            
+
             output.append(stdout);
-            if (includeStderr) output.append(stderr);
+            if (includeStderr)
+                output.append(stderr);
         } catch (Exception e) {
             output.append("Error: ").append(e.getMessage());
         }

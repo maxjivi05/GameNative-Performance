@@ -75,12 +75,18 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
     public void setWineInfo(WineInfo wineInfo) {
         this.wineInfo = wineInfo;
     }
+
     public WineInfo getWineInfo() {
         return this.wineInfo;
     }
 
-    public Container getContainer() { return this.container; }
-    public void setContainer(Container container) { this.container = container; }
+    public Container getContainer() {
+        return this.container;
+    }
+
+    public void setContainer(Container container) {
+        this.container = container;
+    }
 
     public BionicProgramLauncherComponent(ContentsManager contentsManager, ContentProfile wineProfile) {
         this.contentsManager = contentsManager;
@@ -88,16 +94,21 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
     }
 
     private Runnable preUnpack;
-    public void setPreUnpack(Runnable r) { this.preUnpack = r; }
+
+    public void setPreUnpack(Runnable r) {
+        this.preUnpack = r;
+    }
+
     @Override
     public void start() {
         synchronized (lock) {
-            if (wineInfo.isArm64EC())
+            if (wineInfo != null && wineInfo.isArm64EC())
                 extractEmulatorsDlls();
             else
                 extractBox64Files();
-            if (preUnpack != null) preUnpack.run();
-            
+            if (preUnpack != null)
+                preUnpack.run();
+
             // Apply performance settings
             try {
                 if (container != null) {
@@ -106,7 +117,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
                     } else {
                         PerformanceTuner.stopRootPerformanceMode();
                     }
-                    
+
                     if (container.isForceAdrenoClocks()) {
                         PerformanceTuner.startNonRootPerformanceMode();
                         envVars.put("ADRENOTOOLS_GPU_TURBO", "1");
@@ -136,7 +147,8 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
             }
             PerformanceTuner.stopRootPerformanceMode();
             // Flush wineserver registry to disk BEFORE killing sub-processes.
-            // wineserver -k tells wineserver to save all registry hives and exit gracefully.
+            // wineserver -k tells wineserver to save all registry hives and exit
+            // gracefully.
             // Previously, sub-processes (including wineserver) were killed first, so
             // wineserver -k had nothing to flush and winecfg changes were lost.
             execShellCommand("wineserver -k");
@@ -196,7 +208,9 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         this.box64Preset = box64Preset;
     }
 
-    public void setFEXCorePreset (String fexcorePreset) { this.fexcorePreset = fexcorePreset; }
+    public void setFEXCorePreset(String fexcorePreset) {
+        this.fexcorePreset = fexcorePreset;
+    }
 
     public File getWorkingDir() {
         return workingDir;
@@ -208,11 +222,12 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
 
     private int execGuestProgram() {
         // Get the number of enabled players directly from ControllerManager.
-        final int enabledPlayerCount = com.winlator.inputcontrols.ControllerManager.getInstance().getEnabledPlayerCount();
+        final int enabledPlayerCount = com.winlator.inputcontrols.ControllerManager.getInstance()
+                .getEnabledPlayerCount();
         Context context = environment.getContext();
         String filesDir = context.getFilesDir().getAbsolutePath();
         String actualTmpDir = filesDir + "/imagefs/tmp";
-        
+
         // Ensure actual directory exists
         new File(actualTmpDir).mkdirs();
 
@@ -222,21 +237,21 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
             try (RandomAccessFile raf = new RandomAccessFile(memFile, "rw")) {
                 raf.setLength(64);
             } catch (IOException e) {
-                Log.e("EVSHIM_HOST", "Failed to create mem file for player index "+i, e);
+                Log.e("EVSHIM_HOST", "Failed to create mem file for player index " + i, e);
             }
         }
 
         ImageFs imageFs = ImageFs.find(context);
-        
+
         // Symlink Fix: Create symlinks for hardcoded paths in libredirect.so
         try {
             String currentPkg = context.getPackageName();
-            String[] hardcodedPkgs = {"com.winlator.cmod", "app.gamenative"};
-            
+            String[] hardcodedPkgs = { "com.winlator.cmod", "app.gamenative" };
+
             // Guest-side /data/data redirection inside imagefs
             File fakeDataDataDir = new File(imageFs.getRootDir(), "data/data");
             fakeDataDataDir.mkdirs();
-            
+
             for (String pkg : hardcodedPkgs) {
                 if (!pkg.equals(currentPkg)) {
                     // 1. Link inside imagefs (for relative guest path resolution)
@@ -244,21 +259,22 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
                     if (!pkgDir.exists()) {
                         FileUtils.symlink("/data/data/" + currentPkg, pkgDir.getAbsolutePath());
                     }
-                    
+
                     // 2. Link in actual host /data/data (Crucial for Bionic which sees host paths)
-                    // We can't usually create things in /data/data/ directly, 
-                    // but we can create it inside OUR OWN data folder and then use LD_PRELOAD 
-                    // or other environment variables to redirect. 
+                    // We can't usually create things in /data/data/ directly,
+                    // but we can create it inside OUR OWN data folder and then use LD_PRELOAD
+                    // or other environment variables to redirect.
                     // However, libredirect.so is the one DOING the redirect.
-                    // If libredirect.so is hardcoded to use /data/data/app.gamenative as the TARGET,
+                    // If libredirect.so is hardcoded to use /data/data/app.gamenative as the
+                    // TARGET,
                     // we must ensure that path exists.
                 }
             }
-            
+
             // Re-apply the EVSHIM_DATA_DIR to point to /tmp
             // Most Ludashi-based shims look here if the env var is set.
             envVars.put("EVSHIM_DATA_DIR", "/tmp");
-            
+
             // Set additional env var that some versions of libredirect use
             envVars.put("PACKAGE_NAME", currentPkg);
             envVars.put("REPLACE_PATH", "/data/data/" + currentPkg);
@@ -272,7 +288,6 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         boolean openWithAndroidBrowser = PrefManager.getBoolean("open_with_android_browser", false);
         boolean shareAndroidClipboard = PrefManager.getBoolean("share_android_clipboard", false);
         boolean enablePebLogs = PrefManager.getBoolean("enable_peb_logs", false);
-
 
         if (openWithAndroidBrowser)
             envVars.put("WINE_OPEN_WITH_ANDROID_BROWSER", "1");
@@ -297,13 +312,13 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         if (renderer.contains("Mali"))
             envVars.put("BOX64_MMAP32", "0");
 
-        if (envVars.get("BOX64_MMAP32").equals("1") && !wineInfo.isArm64EC())
+        if (envVars.get("BOX64_MMAP32").equals("1") && (wineInfo == null || !wineInfo.isArm64EC()))
             envVars.put("WRAPPER_DISABLE_PLACED", "1");
 
         // Setting up essential environment variables for Wine
         envVars.put("HOME", imageFs.home_path);
         envVars.put("USER", ImageFs.USER);
-        envVars.put("TMPDIR", rootDir.getPath() + "/tmp");
+        envVars.put("TMPDIR", rootDir.getPath() + "/usr/tmp");
         envVars.put("DISPLAY", ":0");
 
         String winePath = imageFs.getWinePath() + "/bin";
@@ -321,13 +336,15 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         envVars.put("XDG_DATA_DIRS", rootDir.getPath() + "/usr/share");
         envVars.put("XDG_CONFIG_DIRS", rootDir.getPath() + "/usr/etc/xdg");
         envVars.put("GST_PLUGIN_PATH", rootDir.getPath() + "/usr/lib/gstreamer-1.0");
-        envVars.put("VK_LAYER_PATH", rootDir.getPath() + "/usr/share/vulkan/implicit_layer.d" + ":" + rootDir.getPath() + "/usr/share/vulkan/explicit_layer.d");
+        envVars.put("VK_LAYER_PATH", rootDir.getPath() + "/usr/share/vulkan/implicit_layer.d" + ":" + rootDir.getPath()
+                + "/usr/share/vulkan/explicit_layer.d");
         envVars.put("WINE_NO_DUPLICATE_EXPLORER", "1");
         envVars.put("PREFIX", rootDir.getPath() + "/usr");
         envVars.put("WINE_DISABLE_FULLSCREEN_HACK", "1");
         envVars.put("ENABLE_UTIL_LAYER", "1");
         envVars.put("GST_PLUGIN_FEATURE_RANK", "ximagesink:3000");
-        envVars.put("ALSA_CONFIG_PATH", rootDir.getPath() + "/usr/share/alsa/alsa.conf" + ":" + rootDir.getPath() + "/usr/etc/alsa/conf.d/android_aserver.conf");
+        envVars.put("ALSA_CONFIG_PATH", rootDir.getPath() + "/usr/share/alsa/alsa.conf" + ":" + rootDir.getPath()
+                + "/usr/etc/alsa/conf.d/android_aserver.conf");
         envVars.put("ALSA_PLUGIN_DIR", rootDir.getPath() + "/usr/lib/alsa-lib");
         envVars.put("OPENSSL_CONF", rootDir.getPath() + "/usr/etc/tls/openssl.cnf");
         envVars.put("SSL_CERT_FILE", rootDir.getPath() + "/usr/etc/tls/cert.pem");
@@ -337,9 +354,11 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         envVars.put("SteamGameId", "0");
 
         String primaryDNS = "8.8.4.4";
-        ConnectivityManager connectivityManager = (ConnectivityManager) context.getSystemService(Service.CONNECTIVITY_SERVICE);
+        ConnectivityManager connectivityManager = (ConnectivityManager) context
+                .getSystemService(Service.CONNECTIVITY_SERVICE);
         if (connectivityManager.getActiveNetwork() != null) {
-            ArrayList<InetAddress> dnsServers = new ArrayList<>(connectivityManager.getLinkProperties(connectivityManager.getActiveNetwork()).getDnsServers());
+            ArrayList<InetAddress> dnsServers = new ArrayList<>(
+                    connectivityManager.getLinkProperties(connectivityManager.getActiveNetwork()).getDnsServers());
 
             // Check if the dnsServers list is not empty before getting an item
             if (!dnsServers.isEmpty()) {
@@ -354,14 +373,17 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         String evshimPath = imageFs.getLibDir() + "/libevshim.so";
         String replacePath = imageFs.getLibDir() + "/libredirect-bionic.so";
 
-        if (new File(sysvPath).exists()) ld_preload += sysvPath;
+        if (new File(sysvPath).exists())
+            ld_preload += sysvPath;
 
         if (new File(evshimPath).exists()) {
-            if (!ld_preload.isEmpty()) ld_preload += ":";
+            if (!ld_preload.isEmpty())
+                ld_preload += ":";
             ld_preload += evshimPath;
         }
         if (new File(replacePath).exists()) {
-            if (!ld_preload.isEmpty()) ld_preload += ":";
+            if (!ld_preload.isEmpty())
+                ld_preload += ":";
             ld_preload += replacePath;
         }
 
@@ -371,15 +393,18 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         String hookImplPath = nativeLibDir + "/libhook_impl.so";
         String redirectHookPath = nativeLibDir + "/libfile_redirect_hook.so";
 
-        if (new File(hookImplPath).exists()) box64LdPreload += hookImplPath;
+        if (new File(hookImplPath).exists())
+            box64LdPreload += hookImplPath;
         if (new File(redirectHookPath).exists()) {
-            if (!box64LdPreload.isEmpty()) box64LdPreload += ":";
+            if (!box64LdPreload.isEmpty())
+                box64LdPreload += ":";
             box64LdPreload += redirectHookPath;
         }
 
         // Include the other preloads in BOX64_LD_PRELOAD as well, using absolute paths
         if (!ld_preload.isEmpty()) {
-            if (!box64LdPreload.isEmpty()) box64LdPreload += ":";
+            if (!box64LdPreload.isEmpty())
+                box64LdPreload += ":";
             box64LdPreload += ld_preload;
         }
 
@@ -389,17 +414,19 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
 
         String currentBox64LibPath = envVars.get("BOX64_LD_LIBRARY_PATH");
         String extraBox64Paths = nativeLibDir + ":" + imageFs.getLibDir();
-        envVars.put("BOX64_LD_LIBRARY_PATH", extraBox64Paths + (currentBox64LibPath != null && !currentBox64LibPath.isEmpty() ? ":" + currentBox64LibPath : ""));
+        envVars.put("BOX64_LD_LIBRARY_PATH", extraBox64Paths
+                + (currentBox64LibPath != null && !currentBox64LibPath.isEmpty() ? ":" + currentBox64LibPath : ""));
 
         envVars.put("EVSHIM_SHM_NAME", "controller-shm0");
         envVars.put("EVSHIM_DATA_DIR", "/tmp");
 
         // Check for specific shared memory libraries
-//        if ((new File(imageFs.getLibDir(), "libandroid-sysvshm.so")).exists()){
-//            ld_preload = imageFs.getLibDir() + "/libandroid-sysvshm.so";
-//        }
+        // if ((new File(imageFs.getLibDir(), "libandroid-sysvshm.so")).exists()){
+        // ld_preload = imageFs.getLibDir() + "/libandroid-sysvshm.so";
+        // }
 
-        //String nativeDir = context.getApplicationInfo().nativeLibraryDir; // e.g. /data/app/…/lib/arm64
+        // String nativeDir = context.getApplicationInfo().nativeLibraryDir; // e.g.
+        // /data/app/…/lib/arm64
 
         // Merge any additional environment variables from external sources
         if (this.envVars != null) {
@@ -417,40 +444,41 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
             for (String part : parts)
                 command += part + " ";
             command = command.trim();
-        }
-        else {
+        } else {
             command = getFinalCommand(winePath, emulator, envVars, imageFs.getBinDir(), guestExecutable);
         }
 
-        // **Maybe remove this: Set execute permissions for box64 if necessary (Glibc/Proot artifact)
+        // **Maybe remove this: Set execute permissions for box64 if necessary
+        // (Glibc/Proot artifact)
         File box64File = new File(rootDir, "/usr/bin/box64");
         if (box64File.exists()) {
             FileUtils.chmod(box64File, 0755);
         }
 
-        return ProcessHelper.exec(command, envVars.toStringArray(), workingDir != null ? workingDir : rootDir, (status) -> {
-            synchronized (lock) {
-                pid = -1;
-            }
-            if (!environment.isWinetricksRunning()) {
-                SteamService.setKeepAlive(false);
-                if (terminationCallback != null)
-                    terminationCallback.call(status);
-            }
-        });
+        return ProcessHelper.exec(command, envVars.toStringArray(), workingDir != null ? workingDir : rootDir,
+                (status) -> {
+                    synchronized (lock) {
+                        pid = -1;
+                    }
+                    if (!environment.isWinetricksRunning()) {
+                        SteamService.setKeepAlive(false);
+                        if (terminationCallback != null)
+                            terminationCallback.call(status);
+                    }
+                });
     }
 
     @NonNull
-    private String getFinalCommand(String winePath, String emulator, EnvVars envVars, File binDir, String guestExecutable) {
+    private String getFinalCommand(String winePath, String emulator, EnvVars envVars, File binDir,
+            String guestExecutable) {
         String command;
-        if (wineInfo.isArm64EC()) {
+        if (wineInfo != null && wineInfo.isArm64EC()) {
             command = winePath + "/" + guestExecutable;
             if (emulator.toLowerCase().equals("fexcore"))
                 envVars.put("HODLL", "libwow64fex.dll");
             else
                 envVars.put("HODLL", "wowbox64.dll");
-        }
-        else
+        } else
             command = binDir + "/box64 " + guestExecutable;
         return command;
     }
@@ -468,7 +496,8 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         if (profile != null) {
             contentsManager.applyContent(profile);
         } else {
-            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context.getAssets(), "box86_64/box64-" + box64Version + "-bionic.tzst", rootDir);
+            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context.getAssets(),
+                    "box86_64/box64-" + box64Version + "-bionic.tzst", rootDir);
         }
 
         // Update the metadata so the container knows which version is installed.
@@ -501,7 +530,8 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
             contentsManager.applyContent(wowboxprofile);
         } else {
             Log.d("Extraction", "Extracting box64Version: " + wowbox64Version);
-            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, environment.getContext(), "wowbox64/wowbox64-" + wowbox64Version + ".tzst", system32dir);
+            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, environment.getContext(),
+                    "wowbox64/wowbox64-" + wowbox64Version + ".tzst", system32dir);
         }
         container.putExtra("box64Version", wowbox64Version);
         containerDataChanged = true;
@@ -511,12 +541,14 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
             contentsManager.applyContent(fexprofile);
         } else {
             Log.d("Extraction", "Extracting fexcoreVersion: " + fexcoreVersion);
-            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, environment.getContext(), "fexcore/fexcore-" + fexcoreVersion + ".tzst", system32dir);
+            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, environment.getContext(),
+                    "fexcore/fexcore-" + fexcoreVersion + ".tzst", system32dir);
         }
         container.putExtra("fexcoreVersion", fexcoreVersion);
 
         containerDataChanged = true;
-        if (containerDataChanged) container.saveData();
+        if (containerDataChanged)
+            container.saveData();
     }
 
     private void addBox64EnvVars(EnvVars envVars, boolean enableLogs) {
@@ -572,21 +604,25 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         String evshimPath = imageFs.getLibDir() + "/libevshim.so";
         String replacePath = imageFs.getLibDir() + "/libredirect-bionic.so";
 
-        if (new File(sysvPath).exists()) ld_preload += "libandroid-sysvshm.so";
+        if (new File(sysvPath).exists())
+            ld_preload += sysvPath;
 
         if (new File(evshimPath).exists()) {
-            if (!ld_preload.isEmpty()) ld_preload += ":";
-            ld_preload += "libevshim.so";
+            if (!ld_preload.isEmpty())
+                ld_preload += ":";
+            ld_preload += evshimPath;
         }
         if (new File(replacePath).exists()) {
-            if (!ld_preload.isEmpty()) ld_preload += ":";
-            ld_preload += "libredirect-bionic.so";
+            if (!ld_preload.isEmpty())
+                ld_preload += ":";
+            ld_preload += replacePath;
         }
 
         envVars.put("LD_PRELOAD", ld_preload);
 
         String emulator = container.getEmulator();
-        if (this.envVars != null) envVars.putAll(this.envVars);
+        if (this.envVars != null)
+            envVars.putAll(this.envVars);
         String finalCommand = getFinalCommand(winePath, emulator, envVars, imageFs.getBinDir(), command);
 
         File box64File = new File(rootDir, "/usr/bin/box64");
@@ -597,34 +633,40 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         // Execute the command and capture its output
         try {
             Log.d("BionicProgramLauncherComponent", "Shell command is " + finalCommand);
-            java.lang.Process process = Runtime.getRuntime().exec(finalCommand, envVars.toStringArray(), workingDir != null ? workingDir : imageFs.getRootDir());
-            
+            java.lang.Process process = Runtime.getRuntime().exec(finalCommand, envVars.toStringArray(),
+                    workingDir != null ? workingDir : imageFs.getRootDir());
+
             final StringBuilder stdout = new StringBuilder();
             final StringBuilder stderr = new StringBuilder();
-            
+
             Thread stdoutThread = new Thread(() -> {
                 try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
                     String line;
-                    while ((line = reader.readLine()) != null) stdout.append(line).append("\n");
-                } catch (IOException e) {}
+                    while ((line = reader.readLine()) != null)
+                        stdout.append(line).append("\n");
+                } catch (IOException e) {
+                }
             });
-            
+
             Thread stderrThread = new Thread(() -> {
                 try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getErrorStream()))) {
                     String line;
-                    while ((line = reader.readLine()) != null) stderr.append(line).append("\n");
-                } catch (IOException e) {}
+                    while ((line = reader.readLine()) != null)
+                        stderr.append(line).append("\n");
+                } catch (IOException e) {
+                }
             });
-            
+
             stdoutThread.start();
             stderrThread.start();
-            
+
             process.waitFor();
             stdoutThread.join(5000);
             stderrThread.join(5000);
-            
+
             output.append(stdout);
-            if (includeStderr) output.append(stderr);
+            if (includeStderr)
+                output.append(stderr);
         } catch (Exception e) {
             output.append("Error: ").append(e.getMessage());
         }

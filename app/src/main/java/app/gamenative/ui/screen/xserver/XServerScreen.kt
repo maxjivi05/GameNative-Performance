@@ -348,6 +348,12 @@ fun XServerScreen(
     fun startExitWatchForUnmappedGameWindow(window: Window) {
         val winHandler = xServerView?.getxServer()?.winHandler ?: return
         if (exitWatchJob?.isActive == true) return
+        // Suppress exit watch while pre-game steps (VcRedist, OtherRedist, etc.) are running.
+        // Their installer windows unmapping is not a signal to exit the container.
+        if (LaunchSteps.isRunningPreGameStep.get()) {
+            Timber.d("Exit watch suppressed: pre-game LaunchStep is still running")
+            return
+        }
         val targetExecutable = extractExecutableBasename(container.executablePath)
         if (!windowMatchesExecutable(window, targetExecutable)) return
 
@@ -2701,10 +2707,23 @@ private fun getSteamlessTarget(
 
 private fun cleanupProcesses() {
     try {
+        // First, gracefully terminate all Wine processes
+        com.winlator.core.ProcessHelper.terminateAllWineProcesses()
+    } catch (e: Exception) {
+        Timber.w(e, "Failed to terminate wine processes (non-fatal)")
+    }
+    try {
+        // Force-kill all remaining sub-processes (box64, wineserver, etc.)
         com.winlator.core.ProcessHelper.killAllSubProcesses()
     } catch (e: Exception) {
-        Timber.e(e, "Failed to kill processes")
+        Timber.e(e, "Failed to kill sub-processes")
     }
+    // Brief delay to let OS clean up PIDs before second sweep
+    try { Thread.sleep(100) } catch (_: InterruptedException) {}
+    try {
+        // Second sweep to catch any stragglers
+        com.winlator.core.ProcessHelper.killAllSubProcesses()
+    } catch (_: Exception) {}
 }
 
 private fun exit(winHandler: WinHandler?, environment: XEnvironment?, frameRating: FrameRating?, appInfo: SteamApp?, container: Container, onExit: () -> Unit, navigateBack: () -> Unit) {
@@ -2733,6 +2752,7 @@ private fun exit(winHandler: WinHandler?, environment: XEnvironment?, frameRatin
     winHandler?.stop()
     environment?.stopEnvironmentComponents()
     cleanupProcesses()
+    LaunchSteps.isRunningPreGameStep.set(false)
     SteamService.keepAlive = false
     // AppUtils.restartApplication(this)
     // PluviaApp.xServerState = null
