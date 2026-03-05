@@ -665,45 +665,6 @@ internal fun LibraryFrontendPane(
         label = "headerOffset"
     )
 
-    val scope = rememberCoroutineScope()
-
-    val handleInstallClick: (LibraryItem) -> Unit = { item ->
-        scope.launch(Dispatchers.IO) {
-            val gameId = item.gameId
-            val installPath = when (item.gameSource) {
-                app.gamenative.data.GameSource.STEAM -> {
-                    app.gamenative.service.SteamService.getAppDirPath(gameId)
-                }
-                app.gamenative.data.GameSource.EPIC -> {
-                    app.gamenative.service.epic.EpicService.getInstallPath(gameId)
-                        ?: app.gamenative.service.epic.EpicConstants.getGameInstallPath(context, item.name)
-                }
-                app.gamenative.data.GameSource.GOG -> {
-                    app.gamenative.service.gog.GOGService.getInstallPath(gameId.toString())
-                        ?: app.gamenative.service.gog.GOGConstants.getGameInstallPath(item.name)
-                }
-                app.gamenative.data.GameSource.AMAZON -> {
-                    val bareId = item.appId.removePrefix("AMAZON_")
-                    app.gamenative.service.amazon.AmazonService.getInstallPath(bareId)
-                        ?: app.gamenative.service.amazon.AmazonConstants.getGameInstallPath(context, item.name)
-                }
-                else -> ""
-            }
-
-            if (installPath.isNotEmpty() && !app.gamenative.ui.components.requestPermissionsForPath(context, installPath, null)) {
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(context, "Storage permission required", Toast.LENGTH_LONG).show()
-                }
-                return@launch
-            }
-
-            app.gamenative.service.DownloadQueueManager.enqueue(context, item, installPath)
-            withContext(Dispatchers.Main) {
-                downloadingDialogItem = item
-            }
-        }
-    }
-
     val frontendFolderPicker = app.gamenative.ui.component.picker.rememberDownloadFolderPicker(
         onPathSelected = { path ->
             val item = installDialogItem ?: return@rememberDownloadFolderPicker
@@ -750,7 +711,11 @@ internal fun LibraryFrontendPane(
     // Helper: handle game click — if uninstalled on a storefront tab, show install dialog
     val handleGameClick: (LibraryItem) -> Unit = { item ->
         val isLibraryTab = tabs[selectedTabIdx] == FrontendTab.LIBRARY
-        if (!isLibraryTab && !item.isInstalled) {
+        val isDownloading = state.downloadProgressMap.containsKey(item.appId)
+        if (isDownloading) {
+            val downloadsIndex = tabs.indexOf(FrontendTab.DOWNLOADS)
+            if (downloadsIndex != -1) onTabChanged(downloadsIndex)
+        } else if (!isLibraryTab && !item.isInstalled) {
             installDialogItem = item
         } else {
             onClickPlay(item.appId, false)
@@ -818,6 +783,48 @@ internal fun LibraryFrontendPane(
                 FrontendTab.GOG -> state.gogItems.filter { currentFilter.contains(AppType.game) }
                 FrontendTab.AMAZON -> state.amazonItems.filter { currentFilter.contains(AppType.game) }
                 FrontendTab.DOWNLOADS -> emptyList() // Downloads tab handles its own list
+            }
+        }
+    }
+
+    val scope = rememberCoroutineScope()
+
+    val handleInstallClick: (LibraryItem) -> Unit = { item ->
+        scope.launch(Dispatchers.IO) {
+            val gameId = item.gameId
+            val installPath = when (item.gameSource) {
+                app.gamenative.data.GameSource.STEAM -> {
+                    app.gamenative.service.SteamService.getAppDirPath(gameId)
+                }
+                app.gamenative.data.GameSource.EPIC -> {
+                    app.gamenative.service.epic.EpicService.getInstallPath(gameId)
+                        ?: app.gamenative.service.epic.EpicConstants.getGameInstallPath(context, item.name)
+                }
+                app.gamenative.data.GameSource.GOG -> {
+                    app.gamenative.service.gog.GOGService.getInstallPath(gameId.toString())
+                        ?: app.gamenative.service.gog.GOGConstants.getGameInstallPath(item.name)
+                }
+                app.gamenative.data.GameSource.AMAZON -> {
+                    val bareId = item.appId.removePrefix("AMAZON_")
+                    app.gamenative.service.amazon.AmazonService.getInstallPath(bareId)
+                        ?: app.gamenative.service.amazon.AmazonConstants.getGameInstallPath(context, item.name)
+                }
+                else -> ""
+            }
+
+            if (installPath.isNotEmpty() && !app.gamenative.ui.components.requestPermissionsForPath(context, installPath, null)) {
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(context, "Storage permission required", Toast.LENGTH_LONG).show()
+                }
+                return@launch
+            }
+
+            app.gamenative.service.DownloadQueueManager.enqueue(context, item, installPath)
+            withContext(Dispatchers.Main) {
+                val downloadsIndex = tabs.indexOf(FrontendTab.DOWNLOADS)
+                if (downloadsIndex != -1) {
+                    onTabChanged(downloadsIndex)
+                }
             }
         }
     }

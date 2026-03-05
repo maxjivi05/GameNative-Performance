@@ -816,6 +816,11 @@ class GOGManager @Inject constructor(
         } else {
             val detectedPath = runBlocking { getInstalledExe(libraryItem) }
             Timber.d("Auto-detected executable path: $detectedPath")
+            if (detectedPath.isNotEmpty()) {
+                container.executablePath = detectedPath
+                val overrides = app.gamenative.utils.ContainerUtils.toContainerData(container)
+                app.gamenative.utils.ContainerUtils.applyToContainer(context, libraryItem.appId, overrides)
+            }
             detectedPath
         }
 
@@ -855,7 +860,10 @@ class GOGManager @Inject constructor(
         }
 
         val gameInstallDir = File(gameInstallPath)
-        val execFile = File(gameInstallPath, executablePath)
+        
+        // Ensure executablePath uses forward slashes for Linux File operations
+        val normalizedExecutablePath = executablePath.replace("\\", "/")
+        val execFile = File(gameInstallPath, normalizedExecutablePath)
         // Handle potential IllegalArgumentException if paths don't share a common ancestor
         val relativePath = try {
             execFile.relativeTo(gameInstallDir).path.replace('/', '\\')

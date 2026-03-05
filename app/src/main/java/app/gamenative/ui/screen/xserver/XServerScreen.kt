@@ -269,7 +269,7 @@ fun XServerScreen(
     var taskAffinityMaskWoW64 = 0
 
     val container = remember(appId) {
-        ContainerUtils.getContainer(context, appId)
+        ContainerUtils.getOrCreateContainerWithOverride(context, appId)
     }
 
     val xServerState = rememberSaveable(stateSaver = XServerState.Saver) {
@@ -2276,8 +2276,10 @@ private fun getWineStartCommand(
     if (isSteamGame) {
         // Steam-specific setup
         if (container.executablePath.isEmpty()){
-            container.executablePath = SteamService.getInstalledExe(gameId)
-            container.saveData()
+            val detectedPath = SteamService.getInstalledExe(gameId)
+            container.executablePath = detectedPath
+            val overrides = app.gamenative.utils.ContainerUtils.toContainerData(container)
+            app.gamenative.utils.ContainerUtils.applyToContainer(context, gameId.toString(), overrides)
         }
         if (!container.isUseLegacyDRM){
             // Create steamclient_loader_x64.ini file
@@ -2306,7 +2308,7 @@ private fun getWineStartCommand(
             gameSource = GameSource.GOG
         )
 
-        val gogCommand = GOGService.getGogWineStartCommand(
+        GOGService.getGogWineStartCommand(
             libraryItem = libraryItem,
             container = container,
             bootToContainer = bootToContainer,
@@ -2314,9 +2316,6 @@ private fun getWineStartCommand(
             envVars = envVars,
             guestProgramLauncherComponent = guestProgramLauncherComponent
         )
-
-        Timber.tag("XServerScreen").i("GOG launch command: $gogCommand")
-        return "winhandler.exe $gogCommand"
     } else if (isEpicGame) {
         // For Epic games, get the launch command
         Timber.tag("XServerScreen").i("Launching Epic game: $gameId")
@@ -2329,7 +2328,6 @@ private fun getWineStartCommand(
             return "\"explorer.exe\""
         }
 
-        // Use container's configured executable path if available, otherwise auto-detect and persist
         val exePath = if (container != null && container.executablePath.isNotEmpty()) {
             container.executablePath
         } else {
@@ -2338,7 +2336,8 @@ private fun getWineStartCommand(
             }
             if (detectedPath.isNotEmpty() && container != null) {
                 container.executablePath = detectedPath
-                container.saveData()
+                val overrides = app.gamenative.utils.ContainerUtils.toContainerData(container)
+                app.gamenative.utils.ContainerUtils.applyToContainer(context, appId, overrides)
             }
             detectedPath
         }
@@ -2350,10 +2349,6 @@ private fun getWineStartCommand(
 
         // Convert to relative path from install directory
         val relativePath = exePath.removePrefix(game.installPath).removePrefix("/")
-
-        // Use A: drive (or the mapped drive letter) instead of Z:
-        // The container setup in ContainerUtils maps the game install path to A: drive
-        val epicCommand = "A:\\$relativePath".replace("/", "\\")
 
         // Get Epic launch parameters (auth tokens) at launch time
         Timber.tag("XServerScreen").d("Building Epic launch parameters for ${game.appName}...")
@@ -2368,10 +2363,18 @@ private fun getWineStartCommand(
         }
 
         // Set working directory to the folder containing the executable
-        val executableDir = game.installPath + "/" + relativePath.substringBeforeLast("/", "")
+        val normalizedRelativePath = relativePath.replace("\\", "/")
+        val exeDirStr = normalizedRelativePath.substringBeforeLast("/", "")
+        val executableDir = if (exeDirStr.isNotEmpty()) game.installPath + "/" + exeDirStr else game.installPath
         guestProgramLauncherComponent.workingDir = File(executableDir)
 
-        Timber.tag("XServerScreen").i("Epic launch command: \"$epicCommand\"")
+        // Prevent double drive letters if user entered absolute path
+        val winRelativePath = relativePath.replace("/", "\\").removePrefix("\\")
+        val epicCommand = if (winRelativePath.length > 1 && winRelativePath[1] == ':') {
+            winRelativePath
+        } else {
+            "A:\\$winRelativePath"
+        }
 
         val launchCommand = if (runArguments.isNotEmpty()) {
             val args = runArguments.joinToString(" ") { arg ->
@@ -2394,9 +2397,9 @@ private fun getWineStartCommand(
         val redactedCommand = launchCommand
             .replace(Regex("-AUTH_PASSWORD=(\"[^\"]*\"|[^ ]+)"), "-AUTH_PASSWORD=[REDACTED]")
             .replace(Regex("-epicovt=(\"[^\"]*\"|[^ ]+)"), "-epicovt=[REDACTED]")
-        Timber.tag("XServerScreen").i("Epic launch command: $redactedCommand")
-
-        return launchCommand
+        Timber.tag("XServerScreen").i("Final Epic launch command: $redactedCommand")
+        Timber.tag("XServerScreen").i("Working directory: $executableDir")
+        launchCommand
     } else if (gameSource == GameSource.AMAZON) {
         // For Amazon games, get install path using the product ID string (not the Int gameId)
         val productId = appId.removePrefix("AMAZON_").substringBefore("(")
@@ -2445,15 +2448,34 @@ private fun getWineStartCommand(
             }
         }
 
-        // Resolve executable path (fuel.json command, or fallback to largest .exe heuristic)
-        val resolvedRelativePath = if (fuelCommand != null) {
+        // Resolve executable path (user override > fuel.json command, or fallback to largest .exe heuristic)
+        val resolvedRelativePath = if (container != null && container.executablePath.isNotEmpty()) {
+            container.executablePath.replace("\\", "/")
+        } else if (fuelCommand != null) {
             fuelCommand.replace("\\", "/")
         } else {
+            val excludedDirs = setOf(
+                "_commonredist", "commonredist", "__installer", "directx",
+                "redist", "redistributables", "_redist", "dotnetfx",
+                "support", "__support", "easyanticheat", "battleye",
+                "engine/binaries", "mono/etc"
+            )
+            val excludedNames = listOf(
+                "unins", "setup", "crash", "redist", "vcredist", "dxsetup",
+                "directx", "dotnet", "prereq", "ue4prereq", "unrealcefsubprocess",
+                "unitycrashhandler", "easyanticheat", "battleye", "beclient",
+                "beservice", "eac_launcher", "launch", "bootstrapper", "installer",
+                "cefsubprocess", "steamclient", "helper"
+            )
             val exeFile = File(installPath).walk()
-                .filter { it.extension.equals("exe", ignoreCase = true) }
+                .filter { it.isFile && it.extension.equals("exe", ignoreCase = true) }
                 .filter { file ->
-                    val name = file.name.lowercase()
-                    !name.contains("unins") && !name.contains("setup") && !name.contains("crash")
+                    val relPath = file.relativeTo(File(installPath)).path.lowercase().replace("\\", "/")
+                    excludedDirs.none { dir -> relPath.startsWith("$dir/") || relPath.contains("/$dir/") }
+                }
+                .filter { file ->
+                    val name = file.nameWithoutExtension.lowercase()
+                    excludedNames.none { pattern -> name.contains(pattern) }
                 }
                 .maxByOrNull { it.length() }
 
@@ -2462,20 +2484,32 @@ private fun getWineStartCommand(
                 return "\"explorer.exe\""
             }
             Timber.tag("XServerScreen").d("Heuristic selected exe: ${exeFile.path}")
-            exeFile.relativeTo(File(installPath)).path
+            val relPath = exeFile.relativeTo(File(installPath)).path
+            
+            if (container != null) {
+                container.executablePath = relPath
+                val overrides = app.gamenative.utils.ContainerUtils.toContainerData(container)
+                app.gamenative.utils.ContainerUtils.applyToContainer(context, appId, overrides)
+            }
+            relPath
         }
-
-        val winPath = resolvedRelativePath.replace("/", "\\")
-        val amazonCommand = "A:\\$winPath"
 
         // Set working directory: fuel.json override, or directory containing the executable
         val workDir = if (fuelWorkingDir != null) {
             installPath + "/" + fuelWorkingDir.replace("\\", "/")
         } else {
-            val exeDir = resolvedRelativePath.substringBeforeLast("/", "")
-            if (exeDir.isNotEmpty()) installPath + "/" + exeDir else installPath
+            val normalizedRelativePath = resolvedRelativePath.replace("\\", "/")
+            val exeDirStr = normalizedRelativePath.substringBeforeLast("/", "")
+            if (exeDirStr.isNotEmpty()) installPath + "/" + exeDirStr else installPath
         }
         guestProgramLauncherComponent.workingDir = File(workDir)
+
+        val winPath = resolvedRelativePath.replace("/", "\\").removePrefix("\\")
+        val amazonCommand = if (winPath.length > 1 && winPath[1] == ':') {
+            winPath
+        } else {
+            "A:\\$winPath"
+        }
 
         // Set FuelPump environment variables for Amazon Games SDK / DRM
         val configPath = "C:\\ProgramData"
@@ -2536,7 +2570,8 @@ private fun getWineStartCommand(
             Timber.tag("XServerScreen").i("Amazon launch command: \"$amazonCommand\"")
             "winhandler.exe \"$amazonCommand\""
         }
-        return amazonLaunchCommand
+        Timber.tag("XServerScreen").i("Working directory: $workDir")
+        amazonLaunchCommand
     } else if (isCustomGame) {
         // For Custom Games, dynamically find the drive letter
         var executablePath = container.executablePath
@@ -2589,7 +2624,8 @@ private fun getWineStartCommand(
                 Timber.tag("XServerScreen").i("Auto-selected Custom Game exe: $auto")
                 executablePath = auto
                 container.executablePath = auto
-                container.saveData()
+                val overrides = app.gamenative.utils.ContainerUtils.toContainerData(container)
+                app.gamenative.utils.ContainerUtils.applyToContainer(context, appId, overrides)
             } else {
                 Timber.tag("XServerScreen").w("No unique executable found for Custom Game: $appId")
                 return "winhandler.exe \"wfm.exe\""
@@ -2602,13 +2638,21 @@ private fun getWineStartCommand(
         }
 
         // Set working directory to the game folder
-        val executableDir = gameFolderPath + "/" + executablePath.substringBeforeLast("/", "")
+        val normalizedExecutablePath = executablePath.replace("\\", "/")
+        val exeDirStr = normalizedExecutablePath.substringBeforeLast("/", "")
+        val executableDir = if (exeDirStr.isNotEmpty()) gameFolderPath + "/" + exeDirStr else gameFolderPath
         guestProgramLauncherComponent.workingDir = File(executableDir)
 
         // Normalize path separators
-        val normalizedPath = executablePath.replace('/', '\\')
-        envVars.put("WINEPATH", "$driveLetter:\\")
-        "\"$driveLetter:\\${normalizedPath}\""
+        val normalizedPath = executablePath.replace('/', '\\').removePrefix("\\")
+        val finalCustomCommand = if (normalizedPath.length > 1 && normalizedPath[1] == ':') {
+            "\"$normalizedPath\""
+        } else {
+            "\"$driveLetter:\\${normalizedPath}\""
+        }
+        Timber.tag("XServerScreen").i("Custom game launch command: $finalCustomCommand")
+        Timber.tag("XServerScreen").i("Working directory: $executableDir")
+        finalCustomCommand
     } else if (appLaunchInfo == null) {
         // For Steam games, we need appLaunchInfo
         Timber.tag("XServerScreen").w("appLaunchInfo is null for Steam game: $appId")
@@ -2625,15 +2669,17 @@ private fun getWineStartCommand(
             } else {
                 executablePath = SteamService.getInstalledExe(gameId)
                 container.executablePath = executablePath
-                container.saveData()
+                val overrides = app.gamenative.utils.ContainerUtils.toContainerData(container)
+                app.gamenative.utils.ContainerUtils.applyToContainer(context, appId, overrides)
             }
             if (container.isUseLegacyDRM) {
                 val appDirPath = SteamService.getAppDirPath(gameId)
-                val executableDir = appDirPath + "/" + executablePath.substringBeforeLast("/", "")
+                val normalizedExecutablePath = executablePath.replace("\\", "/")
+                val exeDirStr = normalizedExecutablePath.substringBeforeLast("/", "")
+                val executableDir = if (exeDirStr.isNotEmpty()) appDirPath + "/" + exeDirStr else appDirPath
                 guestProgramLauncherComponent.workingDir = File(executableDir);
-                Timber.i("Working directory is ${executableDir}")
+                Timber.tag("XServerScreen").i("Steam Working Directory: $executableDir")
 
-                Timber.i("Final exe path is " + executablePath)
                 val drives = container.drives
                 
                 // Prioritize A: drive if it's already mapped to the game folder
@@ -2648,24 +2694,47 @@ private fun getWineStartCommand(
                 
                 if (!hasCorrectADrive) {
                     val driveIndex = drives.indexOf(appDirPath)
-                    // greater than 1 since there is the drive character and the colon before the app dir path
                     drive = if (driveIndex > 1) {
                         drives[driveIndex - 2]
                     } else {
-                        Timber.e("Could not locate game drive")
+                        Timber.tag("XServerScreen").e("Could not locate game drive for legacy Steam game")
                         'D'
                     }
                 }
                 
-                envVars.put("WINEPATH", "$drive:\\${appLaunchInfo.workingDir}")
-                "\"$drive:\\${executablePath.replace("/", "\\")}\""
+                val normalizedPath = executablePath.replace("/", "\\").removePrefix("\\")
+                val finalLegacyCommand = if (normalizedPath.length > 1 && normalizedPath[1] == ':') {
+                    "\"$normalizedPath\""
+                } else {
+                    "\"$drive:\\${normalizedPath}\""
+                }
+                Timber.tag("XServerScreen").i("Steam Legacy launch command: $finalLegacyCommand")
+                envVars.put("WINEPATH", if (normalizedPath.length > 1 && normalizedPath[1] == ':') normalizedPath else "$drive:\\${appLaunchInfo.workingDir}")
+                finalLegacyCommand
             } else {
+                Timber.tag("XServerScreen").i("Steam ColdClientLoader launch command")
+                val steamPath = File(container.getRootDir(), ".wine/drive_c/Program Files (x86)/Steam")
+                guestProgramLauncherComponent.workingDir = steamPath
+                Timber.tag("XServerScreen").i("Steam ColdClientLoader Working Directory: ${steamPath.absolutePath}")
                 "\"C:\\\\Program Files (x86)\\\\Steam\\\\steamclient_loader_x64.exe\""
             }
         }
     }
 
-    return "winhandler.exe $args"
+    // Now all branches above return a string that is the "args" part or the whole command.
+    // If it doesn't already start with winhandler.exe and is a Windows path, we prepend it.
+    val finalCommand = if (args.startsWith("winhandler.exe") || args.startsWith("explorer.exe") || args.startsWith("wfm.exe")) {
+        args
+    } else {
+        "winhandler.exe $args"
+    }
+
+    val redactedCommand = finalCommand
+        .replace(Regex("-AUTH_PASSWORD=(\"[^\"]*\"|[^ ]+)"), "-AUTH_PASSWORD=[REDACTED]")
+        .replace(Regex("-epicovt=(\"[^\"]*\"|[^ ]+)"), "-epicovt=[REDACTED]")
+    Timber.tag("XServerScreen").i("Final launch command (redacted): $redactedCommand")
+
+    return finalCommand
 }
 private fun getSteamlessTarget(
     appId: String,
@@ -2702,7 +2771,13 @@ private fun getSteamlessTarget(
             'D'
         }
     }
-    return "$drive:\\${executablePath}"
+    
+    val normalizedPath = executablePath.replace("/", "\\").removePrefix("\\")
+    return if (normalizedPath.length > 1 && normalizedPath[1] == ':') {
+        normalizedPath
+    } else {
+        "$drive:\\${normalizedPath}"
+    }
 }
 
 private fun cleanupProcesses() {

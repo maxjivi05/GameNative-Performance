@@ -137,6 +137,8 @@ class ContainerConfigState(
     val launchManifestDriverInstall: (ManifestEntry, () -> Unit) -> Unit,
     val getStartupSelectionOptions: () -> List<String>,
     val launchFolderPicker: () -> Unit,
+    val launchCustomDriverPicker: () -> Unit,
+    val reloadGraphicsDrivers: () -> Unit,
     val getVersionsForDriver: () -> List<String>,
     val getVersionsForBox64: () -> ManifestComponentHelper.VersionOptionList,
     val applyScreenSizeToConfig: () -> Unit,

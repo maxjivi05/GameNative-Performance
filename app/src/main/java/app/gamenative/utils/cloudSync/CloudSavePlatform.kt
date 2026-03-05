@@ -9,8 +9,8 @@ import com.winlator.container.Container
  * At most one applies per container; runs after [ensureLaunchDependencies] and container activation.
  */
 interface CloudSavePlatform {
-    /** Whether this sync applies to the given container. */
-    fun appliesTo(container: Container): Boolean
+    /** Whether this sync applies to the given game appId. */
+    fun appliesTo(appId: String, container: Container): Boolean
 
     /** Message shown while this sync is running. */
     fun getLoadingMessage(context: Context, container: Container): String

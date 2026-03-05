@@ -69,6 +69,7 @@ class LibraryViewModel @Inject constructor(
     var listState: LazyGridState by mutableStateOf(LazyGridState(0, 0))
 
     private val onInstallStatusChanged: (AndroidEvent.LibraryInstallStatusChanged) -> Unit = {
+        _state.update { it.copy(imageRefreshCounter = it.imageRefreshCounter + 1) }
         onFilterApps(paginationCurrentPage)
     }
 
@@ -879,7 +880,7 @@ class LibraryViewModel @Inject constructor(
     fun pauseDownload(appId: String) {
         val allDownloads = DownloadService.getAllDownloads()
         val info = allDownloads.find { it.first == appId }?.second
-        info?.setActive(false)
+        info?.cancel()
         updateActiveDownloads()
     }
 

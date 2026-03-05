@@ -34,7 +34,7 @@ public abstract class ProcessHelper {
 
     public static void terminateProcess(int pid) {
         Process.sendSignal(pid, SIGTERM);
-//        Log.d("ProcessHelper", "Process terminated with pid: " + pid);
+        // Log.d("ProcessHelper", "Process terminated with pid: " + pid);
     }
 
     public static void terminateAllWineProcesses() {
@@ -90,7 +90,8 @@ public abstract class ProcessHelper {
         int pid = -1;
         java.lang.Process process = null;
         try {
-            Log.d("ProcessHelper", "Executing: " + Arrays.toString(splitCommand(command)) + ", " + Arrays.toString(envp) + ", " + workingDir);
+            Log.d("ProcessHelper", "Executing: " + Arrays.toString(splitCommand(command)) + ", " + Arrays.toString(envp)
+                    + ", " + workingDir);
             process = Runtime.getRuntime().exec(splitCommand(command), envp, workingDir);
 
             Field pidField = process.getClass().getDeclaredField("pid");
@@ -101,12 +102,14 @@ public abstract class ProcessHelper {
             createDebugThread(process.getInputStream(), "STDOUT", pid);
             createDebugThread(process.getErrorStream(), "STDERR", pid);
 
-            if (terminationCallback != null) createWaitForThread(process, terminationCallback);
-        }
-        catch (Exception e) {
+            if (terminationCallback != null)
+                createWaitForThread(process, terminationCallback);
+        } catch (Exception e) {
             Log.e("ProcessHelper", "Failed to execute command: " + e);
-            if (process != null) process.destroyForcibly();
-            if (terminationCallback != null) terminationCallback.call(-1);
+            if (process != null)
+                process.destroyForcibly();
+            if (terminationCallback != null)
+                terminationCallback.call(-1);
         }
         return pid;
     }
@@ -175,15 +178,16 @@ public abstract class ProcessHelper {
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
                 String line;
                 while ((line = reader.readLine()) != null) {
-                    if (PRINT_DEBUG) System.out.println(line);
+                    if (PRINT_DEBUG)
+                        System.out.println(line);
                     synchronized (debugCallbacks) {
                         if (!debugCallbacks.isEmpty()) {
-                            for (Callback<String> callback : debugCallbacks) callback.call(line);
+                            for (Callback<String> callback : debugCallbacks)
+                                callback.call(line);
                         }
                     }
                 }
-            }
-            catch (IOException e) {
+            } catch (IOException e) {
                 Log.e("ProcessHelper", "Error on debug thread: " + e);
             }
         });
@@ -202,18 +206,19 @@ public abstract class ProcessHelper {
                         Log.d("ProcessOutput", line);
                     }
 
-                    if (PRINT_DEBUG) System.out.println(line);
+                    if (PRINT_DEBUG)
+                        System.out.println(line);
                     synchronized (debugCallbacks) {
                         if (!debugCallbacks.isEmpty()) {
-                            for (Callback<String> callback : debugCallbacks) callback.call(line);
+                            for (Callback<String> callback : debugCallbacks)
+                                callback.call(line);
                         }
                     }
                 }
+            } catch (IOException e) {
             }
-            catch (IOException e) {}
         });
     }
-
 
     private static void createWaitForThread(java.lang.Process process, final Callback<Integer> terminationCallback) {
         Executors.newSingleThreadExecutor().execute(new Runnable() {
@@ -222,8 +227,7 @@ public abstract class ProcessHelper {
                 try {
                     int status = process.waitFor();
                     terminationCallback.call(status);
-                }
-                catch (InterruptedException e) {
+                } catch (InterruptedException e) {
                     Log.e("ProcessHelper", "Error waiting for process termination", e);
                 }
             }
@@ -238,7 +242,8 @@ public abstract class ProcessHelper {
 
     public static void addDebugCallback(Callback<String> callback) {
         synchronized (debugCallbacks) {
-            if (!debugCallbacks.contains(callback)) debugCallbacks.add(callback);
+            if (!debugCallbacks.contains(callback))
+                debugCallbacks.add(callback);
         }
     }
 
@@ -252,47 +257,46 @@ public abstract class ProcessHelper {
         ArrayList<String> result = new ArrayList<>();
         boolean startedQuotes = false;
         String value = "";
+        char quoteChar = '"';
         char currChar, nextChar;
+
         for (int i = 0, count = command.length(); i < count; i++) {
             currChar = command.charAt(i);
-            char quoteChar = '"';
 
             if (startedQuotes) {
                 if (currChar == quoteChar) {
                     startedQuotes = false;
                     if (!value.isEmpty()) {
-                        value += quoteChar;
                         result.add(value);
                         value = "";
                     }
-                }
-                else value += currChar;
-            }
-            else if (currChar == '"' || currChar == '\'') {
-                if (currChar == '\'') quoteChar = '\'';
+                } else
+                    value += currChar;
+            } else if (currChar == '"' || currChar == '\'') {
+                quoteChar = currChar;
                 startedQuotes = true;
-                value += quoteChar;
-            }
-            else {
-                nextChar = i < count-1 ? command.charAt(i+1) : '\0';
+            } else {
+                nextChar = i < count - 1 ? command.charAt(i + 1) : '\0';
                 if (currChar == ' ' || (currChar == '\\' && nextChar == ' ')) {
                     if (currChar == '\\') {
                         value += ' ';
                         i++;
-                    }
-                    else if (!value.isEmpty()) {
+                    } else if (!value.isEmpty()) {
                         result.add(value);
                         value = "";
                     }
-                }
-                else {
+                } else {
                     value += currChar;
-                    if (i == count-1) {
+                    if (i == count - 1) {
                         result.add(value);
                         value = "";
                     }
                 }
             }
+        }
+
+        if (!value.isEmpty()) {
+            result.add(value);
         }
 
         return result.toArray(new String[0]);
@@ -303,18 +307,19 @@ public abstract class ProcessHelper {
         int affinityMask = 0;
         for (String value : values) {
             byte index = Byte.parseByte(value);
-            affinityMask |= (int)Math.pow(2, index);
+            affinityMask |= (int) Math.pow(2, index);
         }
         return Integer.toHexString(affinityMask);
     }
 
     public static int getAffinityMask(String cpuList) {
-        if (cpuList == null || cpuList.isEmpty()) return 0;
+        if (cpuList == null || cpuList.isEmpty())
+            return 0;
         String[] values = cpuList.split(",");
         int affinityMask = 0;
         for (String value : values) {
             byte index = Byte.parseByte(value);
-            affinityMask |= (int)Math.pow(2, index);
+            affinityMask |= (int) Math.pow(2, index);
         }
         return affinityMask;
     }
@@ -322,37 +327,39 @@ public abstract class ProcessHelper {
     public static int getAffinityMask(boolean[] cpuList) {
         int affinityMask = 0;
         for (int i = 0; i < cpuList.length; i++) {
-            if (cpuList[i]) affinityMask |= (int)Math.pow(2, i);
+            if (cpuList[i])
+                affinityMask |= (int) Math.pow(2, i);
         }
         return affinityMask;
     }
 
     public static int getAffinityMask(int from, int to) {
         int affinityMask = 0;
-        for (int i = from; i < to; i++) affinityMask |= (int)Math.pow(2, i);
+        for (int i = from; i < to; i++)
+            affinityMask |= (int) Math.pow(2, i);
         return affinityMask;
     }
 
-    public static ArrayList<String> listRunningWineProcesses(){
+    public static ArrayList<String> listRunningWineProcesses() {
         File proc = new File("/proc");
-        String[] filters = {"wine", "exe"};
+        String[] filters = { "wine", "exe" };
         String[] allPids;
         ArrayList<String> filteredPids = new ArrayList<String>();
         List<String> filterList = Arrays.asList(filters);
-        allPids = proc.list(new FilenameFilter(){
-            public boolean accept(File proc, String filename){
+        allPids = proc.list(new FilenameFilter() {
+            public boolean accept(File proc, String filename) {
                 return new File(proc, filename).isDirectory() && filename.matches("[0-9]+");
             }
         });
 
-        for (int index = 0; index < allPids.length; index++){
+        for (int index = 0; index < allPids.length; index++) {
             String data = "";
             try {
                 FileInputStream fr = new FileInputStream(proc + "/" + allPids[index] + "/stat");
                 BufferedReader br = new BufferedReader(new InputStreamReader(fr));
                 data = br.readLine();
+            } catch (IOException e) {
             }
-            catch (IOException e) {}
             for (String filter : filterList) {
                 if (data.contains(filter))
                     filteredPids.add(allPids[index]);

@@ -685,7 +685,13 @@ public class Container {
         };
     }
 
+    public Runnable onSaveDataCallback = null;
+
     public void saveData() {
+        if (onSaveDataCallback != null) {
+            onSaveDataCallback.run();
+            return;
+        }
         try {
             JSONObject data = new JSONObject();
             data.put("id", id);

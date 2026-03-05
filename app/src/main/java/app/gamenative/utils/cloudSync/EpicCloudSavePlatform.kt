@@ -14,8 +14,8 @@ import timber.log.Timber
 
 /** Epic cloud save sync and launch token cleanup before launch. */
 internal object EpicCloudSavePlatform : CloudSavePlatform {
-    override fun appliesTo(container: Container) =
-        ContainerUtils.extractGameSourceFromContainerId(container.id) == GameSource.EPIC
+    override fun appliesTo(appId: String, container: Container) =
+        ContainerUtils.extractGameSourceFromContainerId(appId) == GameSource.EPIC
 
     override fun getLoadingMessage(context: Context, container: Container) =
         context.getString(R.string.main_syncing_cloud_saves)

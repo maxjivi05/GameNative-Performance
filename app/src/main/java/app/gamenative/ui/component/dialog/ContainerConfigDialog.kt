@@ -290,6 +290,33 @@ fun ContainerConfigScreen(
     var customResolutionValidationError by customResolutionValidationErrorRef
 
     val isBionicVariant = config.containerVariant.equals(Container.BIONIC, ignoreCase = true)
+
+    val customDriverLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent(),
+        onResult = { uri: android.net.Uri? ->
+            if (uri != null) {
+                scope.launch {
+                    val name = com.winlator.contents.AdrenotoolsManager(context).installDriver(uri)
+                    if (name.isNotEmpty()) {
+                        android.widget.Toast.makeText(context, "Driver $name installed successfully", android.widget.Toast.LENGTH_SHORT).show()
+                        // Refresh drivers list inline
+                        val availabilityUpdated = ManifestComponentHelper.loadComponentAvailability(context)
+                        componentAvailability = availabilityUpdated
+                        wrapperVersions = (baseWrapperVersions + availabilityUpdated.installedDrivers).distinct()
+                        val updatedGD = baseGraphicsDrivers.toMutableList()
+                        availabilityUpdated.installedDrivers.forEach { dn ->
+                            val entry = "$dn (Adreno)"
+                            if (!updatedGD.contains(entry)) updatedGD.add(entry)
+                        }
+                        graphicsDrivers = updatedGD
+                    } else {
+                        android.widget.Toast.makeText(context, "Failed to install driver", android.widget.Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
+        }
+    )
+
     val manifestDownloadMessage = if (manifestDownloadStage.isNotEmpty() && manifestDownloadLabel.isNotEmpty()) {
         "$manifestDownloadStage $manifestDownloadLabel…"
     } else if (manifestDownloadLabel.isNotEmpty()) {
@@ -356,6 +383,17 @@ fun ContainerConfigScreen(
         wrapperVersions = (baseWrapperVersions + availabilityUpdated.installedDrivers).distinct()
         bionicWineEntries = (bionicWineEntriesBase + inst.proton + inst.wine).distinct()
         dxvkVersionsAll = (dxvkVersionsBase + inst.dxvk).distinct()
+        
+        // Refresh non-Bionic graphics drivers list to include custom Adreno drivers if needed
+        val installedDrivers = availabilityUpdated.installedDrivers ?: emptyList()
+        val updatedGraphicsDrivers = baseGraphicsDrivers.toMutableList()
+        installedDrivers.forEach { driverName ->
+            val entryName = "$driverName (Adreno)"
+            if (!updatedGraphicsDrivers.contains(entryName)) {
+                updatedGraphicsDrivers.add(entryName)
+            }
+        }
+        graphicsDrivers = updatedGraphicsDrivers
     }
 
     LaunchedEffect(Unit) {
@@ -912,6 +950,14 @@ fun ContainerConfigScreen(
         launchManifestDriverInstall = { entry, onInstalled -> launchManifestDriverInstall(entry, onInstalled) },
         getStartupSelectionOptions = { getStartupSelectionOptions() },
         launchFolderPicker = { showAddDriveDialogRef.value = false; pendingDriveLetterRef.value = selectedDriveLetterRef.value; SteamService.keepAlive = true; folderPicker.launchPicker() },
+        launchCustomDriverPicker = { customDriverLauncher.launch("application/zip") },
+        reloadGraphicsDrivers = { 
+            scope.launch {
+                val availability = ManifestComponentHelper.loadComponentAvailability(context)
+                componentAvailability = availability
+                wrapperVersions = (baseWrapperVersions + (availability.installedDrivers ?: emptyList())).distinct()
+            }
+        },
         getVersionsForDriver = { getVersionsForDriver() },
         getVersionsForBox64 = { getVersionsForBox64() },
         applyScreenSizeToConfig = applyScreenSizeToConfig,
@@ -1026,7 +1072,15 @@ internal fun ExecutablePathDropdown(modifier: Modifier = Modifier, value: String
     val context = LocalContext.current
     LaunchedEffect(containerData.drives) {
         isLoading = true
-        executables = withContext(Dispatchers.IO) { ContainerUtils.scanExecutablesInADrive(containerData.drives) }
+        executables = withContext(Dispatchers.IO) {
+            // Clean any old comma-corrupted drives format before scanning.
+            // The correct format is "D:/pathE:/path" (no commas).
+            // Old code inserted commas like "D:/path,A:/gamepath".
+            val cleanedDrives = containerData.drives.replace(Regex(",([A-Z]:)"), "$1")
+            timber.log.Timber.d("ExecutablePathDropdown: scanning drives='$cleanedDrives' (original='${containerData.drives}')")
+            ContainerUtils.scanExecutablesInADrive(cleanedDrives)
+        }
+        timber.log.Timber.d("ExecutablePathDropdown: found ${executables.size} executables")
         isLoading = false
     }
     ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }, modifier = modifier) {
@@ -1034,7 +1088,10 @@ internal fun ExecutablePathDropdown(modifier: Modifier = Modifier, value: String
         if (!isLoading && executables.isNotEmpty()) {
             ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                 executables.forEach { executable ->
-                    DropdownMenuItem(text = { Column { Text(text = executable.substringAfterLast('\\'), style = MaterialTheme.typography.bodyMedium); if (executable.contains('\\')) { Text(text = executable.substringBeforeLast('\\'), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) } } }, onClick = { onValueChange(executable); expanded = false })
+                    // Handle both / and \ separators in exe paths
+                    val fileName = executable.substringAfterLast('/').substringAfterLast('\\')
+                    val dirPath = executable.substringBeforeLast('/')
+                    DropdownMenuItem(text = { Column { Text(text = fileName, style = MaterialTheme.typography.bodyMedium); if (dirPath != executable && dirPath.isNotEmpty()) { Text(text = dirPath, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) } } }, onClick = { onValueChange(executable); expanded = false })
                 }
             }
         }

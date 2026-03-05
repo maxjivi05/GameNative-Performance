@@ -229,7 +229,7 @@ object SteamUtils {
     suspend fun replaceSteamclientDll(context: Context, appId: String) {
         val steamAppId = ContainerUtils.extractGameIdFromContainerId(appId)
         val appDirPath = SteamService.getAppDirPath(steamAppId)
-        val container = ContainerUtils.getContainer(context, appId)
+        val container = ContainerUtils.getOrCreateContainerWithOverride(context, appId)
 
         if (MarkerUtils.hasMarker(appDirPath, Marker.STEAM_COLDCLIENT_USED) && File(container.getRootDir(), ".wine/drive_c/Program Files (x86)/Steam/steamclient_loader_x64.exe").exists()) {
             return
@@ -263,6 +263,14 @@ object SteamUtils {
 
         // Game-specific Handling
         ensureSaveLocationsForGames(context, steamAppId)
+
+        // Create Steam ACF manifest and symlink (needed for ColdClientLoader to find the exe)
+        createAppManifest(context, steamAppId)
+
+        // Setup Steam login config for ColdClientLoader
+        val imageFs2 = ImageFs.find(context)
+        autoLoginUserChanges(imageFs2)
+        setupLightweightSteamConfig(imageFs2, SteamService.userSteamId?.toString())
 
         MarkerUtils.addMarker(appDirPath, Marker.STEAM_COLDCLIENT_USED)
     }
@@ -326,19 +334,23 @@ object SteamUtils {
     internal fun writeSteamclientLoaderIni(steamAppId: Int, container: Container) {
         val appInfo = getAppInfoOf(steamAppId)
         val gameName = getAppDirName(appInfo)
-        val executablePath = container.executablePath.replace("/", "\\")
-        
+        val executablePath = container.executablePath.replace("/", "\\").removePrefix("\\")
+
         // If it's a custom install path, the game folder is mapped to A:
         // Check if installDir is a full path (custom install)
         val customDir = appInfo?.installDir.orEmpty()
         val isCustomInstall = customDir.isNotEmpty() && (customDir.startsWith("/") || customDir.contains(File.separator))
-        
+
+        // ColdClientLoader expects the Exe path to be relative to the Steam directory 
+        // or a correct path within steamapps. We create a symlink in createAppManifest 
+        // that maps steamapps/common/$gameName to the actual game directory.
         val exePath = if (isCustomInstall) {
             "A:\\$executablePath"
+        } else if (executablePath.length > 1 && executablePath[1] == ':') {
+            executablePath
         } else {
             "steamapps\\common\\$gameName\\$executablePath"
-        }
-        
+        }        
         val exeCommandLine = container.execArgs
         
         val steamPath = File(container.getRootDir(), ".wine/drive_c/Program Files (x86)/Steam")
@@ -498,7 +510,7 @@ object SteamUtils {
             val appDirPath = SteamService.getAppDirPath(steamAppId)
 
             // Convert to Wine path format
-            val container = ContainerUtils.getContainer(context, "STEAM_$steamAppId")
+            val container = ContainerUtils.getOrCreateContainerWithOverride(context, "STEAM_$steamAppId")
             val executablePath = container.executablePath
             val drives = container.drives
             val driveIndex = drives.indexOf(appDirPath)

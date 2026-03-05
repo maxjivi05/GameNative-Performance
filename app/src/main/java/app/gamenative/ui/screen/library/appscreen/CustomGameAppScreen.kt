@@ -88,9 +88,16 @@ class CustomGameAppScreen : BaseAppScreen() {
                     imageRefreshCounter++
                 }
             }
+            val statusListener: (AndroidEvent.LibraryInstallStatusChanged) -> Unit = { event ->
+                if (event.appId == libraryItem.gameId) {
+                    imageRefreshCounter++
+                }
+            }
             PluviaApp.events.on<AndroidEvent.CustomGameImagesFetched, Unit>(listener)
+            PluviaApp.events.on<AndroidEvent.LibraryInstallStatusChanged, Unit>(statusListener)
             onDispose {
                 PluviaApp.events.off<AndroidEvent.CustomGameImagesFetched, Unit>(listener)
+                PluviaApp.events.off<AndroidEvent.LibraryInstallStatusChanged, Unit>(statusListener)
             }
         }
 
@@ -305,7 +312,7 @@ class CustomGameAppScreen : BaseAppScreen() {
             if (gameFolder.exists() && gameFolder.isDirectory) {
                 try {
                     if (ContainerUtils.hasContainer(context, libraryItem.appId)) {
-                        val container = ContainerUtils.getContainer(context, libraryItem.appId)
+                        val container = ContainerUtils.getOrCreateContainer(context, libraryItem.appId)
                         val relExe = container.executablePath
 
                         if (!relExe.isNullOrEmpty()) {
@@ -370,7 +377,7 @@ class CustomGameAppScreen : BaseAppScreen() {
 
     override fun loadContainerData(context: Context, libraryItem: LibraryItem): ContainerData {
         val container = ContainerUtils.getOrCreateContainer(context, libraryItem.appId)
-        return ContainerUtils.toContainerData(container)
+        return ContainerUtils.ensureGameDriveMounted(context, container.id, libraryItem.appId)
     }
 
     override fun saveContainerConfig(context: Context, libraryItem: LibraryItem, config: ContainerData) {

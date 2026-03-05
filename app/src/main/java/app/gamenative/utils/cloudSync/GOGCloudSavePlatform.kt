@@ -13,8 +13,8 @@ import kotlinx.coroutines.CancellationException
 
 /** GOG cloud save sync before launch. */
 internal object GOGCloudSavePlatform : CloudSavePlatform {
-    override fun appliesTo(container: Container) =
-        ContainerUtils.extractGameSourceFromContainerId(container.id) == GameSource.GOG
+    override fun appliesTo(appId: String, container: Container) =
+        ContainerUtils.extractGameSourceFromContainerId(appId) == GameSource.GOG
 
     override fun getLoadingMessage(context: Context, container: Container) =
         context.getString(R.string.main_syncing_cloud_saves)

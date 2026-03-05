@@ -164,9 +164,14 @@ class GOGManifestParser @Inject constructor() {
      * @return Total compressed size in bytes
      */
     fun calculateTotalSize(files: List<DepotFile>): Long {
+        val seen = mutableSetOf<String>()
         return files.sumOf { file ->
             file.chunks.sumOf { chunk ->
-                chunk.compressedSize ?: chunk.size
+                if (seen.add(chunk.compressedMd5)) {
+                    chunk.compressedSize ?: chunk.size
+                } else {
+                    0L
+                }
             }
         }
     }

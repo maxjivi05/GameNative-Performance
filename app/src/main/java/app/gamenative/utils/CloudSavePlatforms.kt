@@ -20,8 +20,8 @@ private val ALL_CLOUD_SAVE_PLATFORMS: List<CloudSavePlatform> = listOf(
 /**
  * Returns the cloud save platforms that apply to this container (e.g. GOG, Epic, Steam).
  */
-fun getCloudSyncPlatforms(container: Container): List<CloudSavePlatform> =
-    ALL_CLOUD_SAVE_PLATFORMS.filter { it.appliesTo(container) }
+fun getCloudSyncPlatforms(appId: String, container: Container): List<CloudSavePlatform> =
+    ALL_CLOUD_SAVE_PLATFORMS.filter { it.appliesTo(appId, container) }
 
 /** Callbacks for progress during cloud save. */
 data class CloudSaveCallbacks(
@@ -42,7 +42,7 @@ suspend fun syncCloudSaves(
     setLoadingProgress: (Float) -> Unit,
 ): CloudSyncOutcome {
     val callbacks = CloudSaveCallbacks(setLoadingMessage, setLoadingProgress)
-    val platforms = getCloudSyncPlatforms(container)
+    val platforms = getCloudSyncPlatforms(params.appId, container)
     for (platform in platforms) {
         setLoadingMessage(platform.getLoadingMessage(context, container))
         when (val outcome = platform.sync(context, container, params, callbacks)) {
@@ -73,7 +73,7 @@ suspend fun uploadCloudSaves(
         return
     }
     val callbacks = CloudSaveCallbacks(setLoadingMessage, setLoadingProgress)
-    val platforms = getCloudSyncPlatforms(container)
+    val platforms = getCloudSyncPlatforms(appId, container)
     for (platform in platforms) {
         setLoadingMessage(platform.getLoadingMessage(context, container))
         platform.upload(context, appId, gameId, isOffline, prefixToPath, callbacks)

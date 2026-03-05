@@ -362,17 +362,23 @@ class GOGService : Service() {
 
                     if (result.isFailure) {
                         val error = result.exceptionOrNull()
-                        Timber.e(error, "[Download] Failed for game $gameId")
-                        downloadInfo.setProgress(-1.0f)
-                        downloadInfo.setActive(false)
+                        if (error is kotlinx.coroutines.CancellationException || error?.message == "Download cancelled") {
+                            Timber.tag("GOG").i("Download paused/cancelled for game $gameId")
+                            downloadInfo.updateStatusMessage("Paused")
+                            downloadInfo.setActive(false)
+                        } else {
+                            Timber.e(error, "[Download] Failed for game $gameId")
+                            downloadInfo.setProgress(-1.0f)
+                            downloadInfo.setActive(false)
 
-                        // Show failure toast
-                        withContext(Dispatchers.Main) {
-                            android.widget.Toast.makeText(
-                                context,
-                                "Download failed: ${error?.message ?: "Unknown error"}",
-                                android.widget.Toast.LENGTH_LONG,
-                            ).show()
+                            // Show failure toast
+                            withContext(Dispatchers.Main) {
+                                android.widget.Toast.makeText(
+                                    context,
+                                    "Download failed: ${error?.message ?: "Unknown error"}",
+                                    android.widget.Toast.LENGTH_LONG,
+                                ).show()
+                            }
                         }
                     } else {
                         Timber.i("[Download] Completed successfully for game $gameId")
@@ -389,20 +395,29 @@ class GOGService : Service() {
                         }
                     }
                 } catch (e: Exception) {
-                    Timber.e(e, "[Download] Exception for game $gameId")
-                    downloadInfo.setProgress(-1.0f)
-                    downloadInfo.setActive(false)
+                    if (e is kotlinx.coroutines.CancellationException || e.message == "Download cancelled") {
+                        Timber.tag("GOG").i("Download paused/cancelled for game $gameId")
+                        downloadInfo.updateStatusMessage("Paused")
+                        downloadInfo.setActive(false)
+                    } else {
+                        Timber.e(e, "[Download] Exception for game $gameId")
+                        downloadInfo.setProgress(-1.0f)
+                        downloadInfo.setActive(false)
 
-                    // Show error toast
-                    withContext(Dispatchers.Main) {
-                        android.widget.Toast.makeText(
-                            context,
-                            "Download error: ${e.message ?: "Unknown error"}",
-                            android.widget.Toast.LENGTH_LONG,
-                        ).show()
+                        // Show error toast
+                        withContext(Dispatchers.Main) {
+                            android.widget.Toast.makeText(
+                                context,
+                                "Download error: ${e.message ?: "Unknown error"}",
+                                android.widget.Toast.LENGTH_LONG,
+                            ).show()
+                        }
                     }
                 } finally {
                     Timber.d("[Download] Finished for game $gameId, progress: ${downloadInfo.getProgress()}, active: ${downloadInfo.isActive()}")
+                    if (!downloadInfo.isActive()) {
+                        cleanupDownload(gameId)
+                    }
                 }
             }
             downloadInfo.setDownloadJob(job)

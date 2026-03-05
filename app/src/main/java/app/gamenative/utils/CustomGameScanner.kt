@@ -164,7 +164,7 @@ object CustomGameScanner {
         // 2) Try extracting from the selected container executable
         try {
             if (ContainerUtils.hasContainer(context, appId)) {
-                val container = ContainerUtils.getContainer(context, appId)
+                val container = ContainerUtils.getOrCreateContainer(context, appId)
                 val relExe = container.executablePath
                 if (!relExe.isNullOrEmpty()) {
                     val exeFile = File(folder, relExe.replace('/', File.separatorChar))
@@ -193,7 +193,7 @@ object CustomGameScanner {
         // 3) Try using the icon matching the selected container executable name if it exists as an extracted icon
         try {
             if (ContainerUtils.hasContainer(context, appId)) {
-                val container = ContainerUtils.getContainer(context, appId)
+                val container = ContainerUtils.getOrCreateContainer(context, appId)
                 val relExe = container.executablePath
                 if (!relExe.isNullOrEmpty()) {
                     val exeBase = relExe.substringAfterLast('/').substringBeforeLast('.')
@@ -488,7 +488,7 @@ object CustomGameScanner {
                     val context = DownloadService.appContext ?: return@launch
                     var targetExe: File? = null
                     if (ContainerUtils.hasContainer(context, appId)) {
-                        val container = ContainerUtils.getContainer(context, appId)
+                        val container = ContainerUtils.getOrCreateContainer(context, appId)
                         val relExe = container.executablePath
                         if (!relExe.isNullOrEmpty()) {
                             val exeFile = File(folder, relExe.replace('/', File.separatorChar))

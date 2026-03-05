@@ -47,14 +47,23 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
     public void setWineInfo(WineInfo wineInfo) {
         this.wineInfo = wineInfo;
     }
+
     public WineInfo getWineInfo() {
         return this.wineInfo;
     }
 
-    public Container getContainer() { return this.container; }
-    public void setContainer(Container container) { this.container = container; }
+    public Container getContainer() {
+        return this.container;
+    }
 
-    public void setPreUnpack(Runnable r) { this.preUnpack = r; }
+    public void setContainer(Container container) {
+        this.container = container;
+    }
+
+    public void setPreUnpack(Runnable r) {
+        this.preUnpack = r;
+    }
+
     @Override
     public void start() {
         // Log.d("GuestProgramLauncherComponent", "Starting...");
@@ -76,7 +85,8 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
                 pid = -1;
             }
             // Flush wineserver registry to disk BEFORE killing sub-processes.
-            // wineserver -k tells wineserver to save all registry hives and exit gracefully.
+            // wineserver -k tells wineserver to save all registry hives and exit
+            // gracefully.
             // Without this, winecfg changes made in the container are lost on exit
             // because wineserver gets killed before it can flush to disk.
             execShellCommand("wineserver -k");
@@ -87,8 +97,7 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
                         "Sub-process still running: "
                                 + subProcess.name + " | "
                                 + subProcess.pid + " | "
-                                + subProcess.ppid + ", stopping..."
-                );
+                                + subProcess.ppid + ", stopping...");
                 Process.killProcess(subProcess.pid);
             }
         }
@@ -102,7 +111,10 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
         this.terminationCallback = terminationCallback;
     }
 
-    public String getSteamType() { return steamType; }
+    public String getSteamType() {
+        return steamType;
+    }
+
     public void setSteamType(String steamType) {
         if (steamType == null) {
             this.steamType = Container.STEAM_TYPE_NORMAL;
@@ -153,13 +165,21 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
         this.envVars = envVars;
     }
 
-    public String getBox86Version() { return box86Version; }
+    public String getBox86Version() {
+        return box86Version;
+    }
 
-    public void setBox86Version(String box86Version) { this.box86Version = box86Version; }
+    public void setBox86Version(String box86Version) {
+        this.box86Version = box86Version;
+    }
 
-    public String getBox64Version() { return box64Version; }
+    public String getBox64Version() {
+        return box64Version;
+    }
 
-    public void setBox64Version(String box64Version) { this.box64Version = box64Version; }
+    public void setBox64Version(String box64Version) {
+        this.box64Version = box64Version;
+    }
 
     public String getBox86Preset() {
         return box86Preset;
@@ -192,16 +212,22 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
         boolean enableBox86_64Logs = PrefManager.getBoolean("enable_box86_64_logs", false);
 
         EnvVars envVars = new EnvVars();
-        if (!wow64Mode) addBox86EnvVars(envVars, enableBox86_64Logs);
+        if (!wow64Mode)
+            addBox86EnvVars(envVars, enableBox86_64Logs);
         addBox64EnvVars(envVars, enableBox86_64Logs);
-        if (this.envVars != null) envVars.putAll(this.envVars);
+        if (this.envVars != null)
+            envVars.putAll(this.envVars);
 
-        return exec(context, !wow64Mode, bindingPaths, envVars, terminationCallback, "box64 " + guestExecutable, workingDir);
+        return exec(context, !wow64Mode, bindingPaths, envVars, terminationCallback, "box64 " + guestExecutable,
+                workingDir);
     }
+
     public static int exec(Context context, String prootCmd) {
         return exec(context, false, new String[0], null, null, prootCmd, null);
     }
-    public static int exec(Context context, boolean proot32, String[] bindingPaths, EnvVars extraVars, Callback<Integer> terminationCallback, String prootCmd, File workingDir) {
+
+    public static int exec(Context context, boolean proot32, String[] bindingPaths, EnvVars extraVars,
+            Callback<Integer> terminationCallback, String prootCmd, File workingDir) {
         Log.d("GuestProgramLauncherComponent", "Executing guest program");
         // Context context = environment.getContext();
         // ImageFs imageFs = environment.getImageFs();
@@ -210,30 +236,38 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
         File tmpDir = XEnvironment.getTmpDir(context);
         String nativeLibraryDir = context.getApplicationInfo().nativeLibraryDir;
         File nativeLibs = new File(nativeLibraryDir);
-        // Log.d("GuestProgramLauncherComponent", nativeLibraryDir + " exists: " + nativeLibs.exists());
-        // Log.d("GuestProgramLauncherComponent", nativeLibraryDir + " is directory: " + nativeLibs.isDirectory());
-        Log.d("GuestProgramLauncherComponent", nativeLibraryDir + " contains: " + Arrays.toString(Arrays.stream(nativeLibs.listFiles()).map(File::getName).toArray()));
+        // Log.d("GuestProgramLauncherComponent", nativeLibraryDir + " exists: " +
+        // nativeLibs.exists());
+        // Log.d("GuestProgramLauncherComponent", nativeLibraryDir + " is directory: " +
+        // nativeLibs.isDirectory());
+        Log.d("GuestProgramLauncherComponent", nativeLibraryDir + " contains: "
+                + Arrays.toString(Arrays.stream(nativeLibs.listFiles()).map(File::getName).toArray()));
         // nativeLibraryDir = nativeLibraryDir.replace("arm64", "arm64-v8a");
-        // Log.d("GuestProgramLauncherComponent", nativeLibraryDir + " exists: " + (new File(nativeLibraryDir)).exists());
-        // Log.d("GuestProgramLauncherComponent", steamApiPath + " exists: " + new File(steamApiPath).exists());
+        // Log.d("GuestProgramLauncherComponent", nativeLibraryDir + " exists: " + (new
+        // File(nativeLibraryDir)).exists());
+        // Log.d("GuestProgramLauncherComponent", steamApiPath + " exists: " + new
+        // File(steamApiPath).exists());
         // ImageFs fs = ImageFs.find(context);
         // Path dllsDir = Paths.get(fs.getRootDir().getAbsolutePath(), "/usr/dlls");
         // Path steamApiTargetPath = Paths.get(dllsDir.toString(), "steam_api.dll.so");
-        // Path steamApiTargetPath = Paths.get(fs.getLib64Dir().toString(), "libsteam_api.dll.so");
+        // Path steamApiTargetPath = Paths.get(fs.getLib64Dir().toString(),
+        // "libsteam_api.dll.so");
         // try {
-        //     if (Files.exists(steamApiTargetPath)) {
-        //         Files.delete(steamApiTargetPath);
-        //     }
-        //     // Files.createDirectories(dllsDir);
-        //     Path steamApiPath = Paths.get(nativeLibraryDir, "libsteam_api.dll.so");
-        //     Files.copy(steamApiPath, steamApiTargetPath);
-        //     FileUtils.chmod(new File(steamApiTargetPath.toString()), 0771);
+        // if (Files.exists(steamApiTargetPath)) {
+        // Files.delete(steamApiTargetPath);
+        // }
+        // // Files.createDirectories(dllsDir);
+        // Path steamApiPath = Paths.get(nativeLibraryDir, "libsteam_api.dll.so");
+        // Files.copy(steamApiPath, steamApiTargetPath);
+        // FileUtils.chmod(new File(steamApiTargetPath.toString()), 0771);
         // } catch (IOException e) {
-        //     Log.e("GuestProgramLauncherComponent", "Failed to copy steam_api.dll.so to /usr/lib " + e);
+        // Log.e("GuestProgramLauncherComponent", "Failed to copy steam_api.dll.so to
+        // /usr/lib " + e);
         // }
 
         // PrefManager.init(context);
-        // boolean enableBox86_64Logs = PrefManager.getBoolean("enable_box86_64_logs", false);
+        // boolean enableBox86_64Logs = PrefManager.getBoolean("enable_box86_64_logs",
+        // false);
 
         EnvVars envVars = new EnvVars();
         // if (!wow64Mode) addBox86EnvVars(envVars, enableBox86_64Logs);
@@ -249,7 +283,8 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
         envVars.put("TMPDIR", "/tmp");
         envVars.put("LC_ALL", "en_US.utf8");
         envVars.put("DISPLAY", ":0");
-        envVars.put("PATH", imageFs.getWinePath() + "/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin");
+        envVars.put("PATH",
+                imageFs.getWinePath() + "/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin");
         envVars.put("LD_LIBRARY_PATH", "/usr/lib/aarch64-linux-gnu:/usr/lib/arm-linux-gnueabihf");
         envVars.put("ANDROID_SYSVSHM_SERVER", UnixSocketConfig.SYSVSHM_SERVER_PATH);
         envVars.put("ALSA_CONFIG_PATH", "/usr/share/alsa/alsa.conf:/usr/etc/alsa/conf.d/android_aserver.conf");
@@ -257,15 +292,17 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
         if ((new File(imageFs.getLib64Dir(), "libandroid-sysvshm.so")).exists() ||
                 (new File(imageFs.getLib32Dir(), "libandroid-sysvshm.so")).exists())
             envVars.put("LD_PRELOAD", "libandroid-sysvshm.so");
-        if (extraVars != null) envVars.putAll(extraVars);
+        if (extraVars != null)
+            envVars.putAll(extraVars);
 
         boolean bindSHM = envVars.get("WINEESYNC").equals("1");
 
         String command = nativeLibraryDir + "/libproot.so";
-        // Log.d("GuestProgramLauncherComponent", nativeLibraryDir + "/libproot.so exists: " + (new File(nativeLibraryDir + "/libproot.so")).exists());
+        // Log.d("GuestProgramLauncherComponent", nativeLibraryDir + "/libproot.so
+        // exists: " + (new File(nativeLibraryDir + "/libproot.so")).exists());
         command += " --kill-on-exit";
         command += " --rootfs=" + rootDir;
-        command += " --cwd=" + ImageFs.HOME_PATH;
+        command += " --cwd=\"" + (workingDir != null ? workingDir.getAbsolutePath() : ImageFs.HOME_PATH) + "\"";
         command += " --bind=/dev";
 
         if (bindSHM) {
@@ -291,16 +328,20 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
         envVars.clear();
         envVars.put("PROOT_TMP_DIR", tmpDir);
         envVars.put("PROOT_LOADER", nativeLibraryDir + "/libproot-loader.so");
-        if (proot32) envVars.put("PROOT_LOADER_32", nativeLibraryDir + "/libproot-loader32.so");
+        if (proot32)
+            envVars.put("PROOT_LOADER_32", nativeLibraryDir + "/libproot-loader32.so");
 
-        // ProcessHelper.exec(nativeLibraryDir+"/libproot.so ulimit -a", envVars.toStringArray(), rootDir);
-        return ProcessHelper.exec(command, envVars.toStringArray(), workingDir != null ? workingDir : rootDir, (status) -> {
-            Log.d("GuestProgramLauncherComponent", "Process terminated " + pid + " with status " + status);
-            synchronized (lock) {
-                pid = -1;
-            }
-            if (terminationCallback != null) terminationCallback.call(status);
-        });
+        // ProcessHelper.exec(nativeLibraryDir+"/libproot.so ulimit -a",
+        // envVars.toStringArray(), rootDir);
+        return ProcessHelper.exec(command, envVars.toStringArray(), workingDir != null ? workingDir : rootDir,
+                (status) -> {
+                    Log.d("GuestProgramLauncherComponent", "Process terminated " + pid + " with status " + status);
+                    synchronized (lock) {
+                        pid = -1;
+                    }
+                    if (terminationCallback != null)
+                        terminationCallback.call(status);
+                });
     }
 
     private void extractBox86_64Files() {
@@ -318,12 +359,14 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
                 PrefManager.putString("current_box86_version", "");
             }
         } else if (!box86Version.equals(currentBox86Version)) {
-            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context.getAssets(), "box86_64/box86-" + box86Version + ".tzst", rootDir);
+            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context.getAssets(),
+                    "box86_64/box86-" + box86Version + ".tzst", rootDir);
             PrefManager.putString("current_box86_version", box86Version);
         }
 
         if (!box64Version.equals(currentBox64Version)) {
-            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context.getAssets(), "box86_64/box64-" + box64Version + ".tzst", rootDir);
+            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context.getAssets(),
+                    "box86_64/box64-" + box64Version + ".tzst", rootDir);
             PrefManager.putString("current_box64_version", box64Version);
         }
     }
@@ -364,7 +407,8 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
     private void addBox64EnvVars(EnvVars envVars, boolean enableLogs) {
         envVars.put("BOX64_NOBANNER", ProcessHelper.PRINT_DEBUG && enableLogs ? "0" : "1");
         envVars.put("BOX64_DYNAREC", "1");
-        if (wow64Mode) envVars.put("BOX64_MMAP32", "1");
+        if (wow64Mode)
+            envVars.put("BOX64_MMAP32", "1");
         envVars.put("BOX64_AVX", "1");
 
         if (enableLogs) {
@@ -385,11 +429,11 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
         ProcessHelper.resumeAllWineProcesses();
     }
 
-    public String execShellCommand(String command){
+    public String execShellCommand(String command) {
         return execShellCommand(command, true);
     }
 
-    public String execShellCommand(String command, boolean includeStderr){
+    public String execShellCommand(String command, boolean includeStderr) {
         return "";
     }
 }

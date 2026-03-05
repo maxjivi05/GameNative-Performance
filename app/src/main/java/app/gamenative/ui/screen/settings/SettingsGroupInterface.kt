@@ -251,6 +251,7 @@ fun SettingsTile(
     enabled: Boolean = true,
     onClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
+    subtitleMaxLines: Int = 1,
     trailing: @Composable (() -> Unit)? = null
 ) {
     val alpha = if (enabled) 1f else 0.5f
@@ -276,7 +277,7 @@ fun SettingsTile(
             Column(modifier = Modifier.weight(1f)) {
                 Text(text = title, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                 if (subtitle != null) {
-                    Text(text = subtitle, color = Color.White.copy(alpha = 0.6f), fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(text = subtitle, color = Color.White.copy(alpha = 0.6f), fontSize = 13.sp, maxLines = subtitleMaxLines, overflow = if (subtitleMaxLines == 1) TextOverflow.Ellipsis else TextOverflow.Clip)
                 }
             }
             if (trailing != null) Box(modifier = Modifier.padding(start = 12.dp)) { trailing() }

@@ -346,39 +346,58 @@ class EpicManager @Inject constructor(
     }
 
     suspend fun getInstalledExe(appId: Int): String {
-        // Strip EPIC_ prefix to get the raw Epic app name
         val game = getGameById(appId)
         if (game == null || !game.isInstalled || game.installPath.isEmpty()) {
             Timber.tag("Epic").e("Game not installed: $appId")
             return ""
         }
 
-        // For now, return the install path - actual executable detection would require
-        // parsing the game's launch manifest or config files
-        // Most Epic games have a .exe in the root or Binaries folder
         val installDir = File(game.installPath)
         if (!installDir.exists()) {
             Timber.tag("Epic").e("Install directory does not exist: ${game.installPath}")
             return ""
         }
 
-        // Try to find the main executable
-        // Common patterns: Game.exe, GameName.exe, or in Binaries/Win64/
+        // Directories to skip entirely — these never contain the actual game binary
+        val excludedDirs = setOf(
+            "_commonredist", "commonredist", "__installer", "directx",
+            "redist", "redistributables", "_redist", "dotnetfx",
+            "support", "__support", "easyanticheat", "battleye",
+            "engine/binaries", "mono/etc"
+        )
+
+        // Filename patterns to exclude — helpers, not game binaries
+        val excludedNames = listOf(
+            "unins", "setup", "crash", "redist", "vcredist", "dxsetup",
+            "directx", "dotnet", "prereq", "ue4prereq", "unrealcefsubprocess",
+            "unitycrashhandler", "easyanticheat", "battleye", "beclient",
+            "beservice", "eac_launcher", "launch", "bootstrapper", "installer",
+            "unreal", "cefsubprocess", "steamclient", "helper"
+        )
+
         val exeFiles = installDir.walk()
-            .filter { it.extension.equals("exe", ignoreCase = true) }
-            .filter { !it.name.contains("UnityCrashHandler", ignoreCase = true) }
-            .filter { !it.name.contains("UnrealCEFSubProcess", ignoreCase = true) }
-            .sortedBy { it.absolutePath.length } // Prefer shorter paths (usually main exe)
+            .filter { it.isFile && it.extension.equals("exe", ignoreCase = true) }
+            .filter { file ->
+                // Exclude files inside excluded directories
+                val relPath = file.relativeTo(installDir).path.lowercase().replace("\\", "/")
+                excludedDirs.none { dir -> relPath.startsWith("$dir/") || relPath.contains("/$dir/") }
+            }
+            .filter { file ->
+                // Exclude common non-game executables by name
+                val name = file.nameWithoutExtension.lowercase()
+                excludedNames.none { pattern -> name.contains(pattern) }
+            }
             .toList()
 
-        val mainExe = exeFiles.firstOrNull()
-        if (mainExe != null) {
-            Timber.tag("Epic").i("Found executable: ${mainExe.absolutePath}")
-            return mainExe.absolutePath
+        if (exeFiles.isEmpty()) {
+            Timber.tag("Epic").w("No executable found in ${game.installPath}")
+            return ""
         }
 
-        Timber.tag("Epic").w("No executable found in ${game.installPath}")
-        return ""
+        // Prefer the largest exe — game binaries are typically the biggest file
+        val mainExe = exeFiles.maxByOrNull { it.length() }!!
+        Timber.tag("Epic").i("Found executable: ${mainExe.absolutePath} (${mainExe.length()} bytes, ${exeFiles.size} candidates)")
+        return mainExe.absolutePath
     }
 
     private suspend fun fetchGameInfo(

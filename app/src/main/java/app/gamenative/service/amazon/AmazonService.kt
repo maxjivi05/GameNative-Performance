@@ -348,10 +348,12 @@ class AmazonService : Service() {
             val instance = getInstance()
                 ?: return Result.failure(Exception("Amazon service is not running"))
 
-            // Already downloading?
+            // Already downloading and active?
             instance.activeDownloads[productId]?.let { existing ->
-                Timber.tag("Amazon").w("Download already in progress for $productId")
-                return Result.success(existing)
+                if (existing.isActive()) {
+                    Timber.tag("Amazon").w("Download already in progress for $productId")
+                    return Result.success(existing)
+                }
             }
 
             val game = withContext(Dispatchers.IO) {
@@ -398,22 +400,40 @@ class AmazonService : Service() {
                         )
                     } else {
                         val error = result.exceptionOrNull()
-                        Timber.tag("Amazon").e(error, "Download failed for $productId")
-                        withContext(Dispatchers.Main) {
-                            android.widget.Toast.makeText(
-                                context,
-                                "Download failed: ${error?.message ?: "Unknown error"}",
-                                android.widget.Toast.LENGTH_LONG,
-                            ).show()
+                        if (error is kotlinx.coroutines.CancellationException || error?.message == "Download cancelled") {
+                            Timber.tag("Amazon").i("Download paused/cancelled for $productId")
+                            downloadInfo.updateStatusMessage("Paused")
+                            downloadInfo.setActive(false)
+                        } else {
+                            Timber.tag("Amazon").e(error, "Download failed for $productId")
+                            downloadInfo.setProgress(-1.0f)
+                            downloadInfo.setActive(false)
+                            withContext(Dispatchers.Main) {
+                                android.widget.Toast.makeText(
+                                    context,
+                                    "Download failed: ${error?.message ?: "Unknown error"}",
+                                    android.widget.Toast.LENGTH_LONG,
+                                ).show()
+                            }
                         }
                     }
                 } catch (e: Exception) {
-                    Timber.tag("Amazon").e(e, "Download exception for $productId")
-                    downloadInfo.setActive(false)
+                    if (e is kotlinx.coroutines.CancellationException || e.message == "Download cancelled") {
+                        Timber.tag("Amazon").i("Download paused/cancelled for $productId")
+                        downloadInfo.updateStatusMessage("Paused")
+                        downloadInfo.setActive(false)
+                    } else {
+                        Timber.tag("Amazon").e(e, "Download exception for $productId")
+                        downloadInfo.setProgress(-1.0f)
+                        downloadInfo.setActive(false)
+                    }
                 } finally {
                     PluviaApp.events.emitJava(
                         AndroidEvent.DownloadStatusChanged(productId.hashCode(), false)
                     )
+                    if (!downloadInfo.isActive()) {
+                        instance.activeDownloads.remove(productId)
+                    }
                 }
             }
 
@@ -451,7 +471,10 @@ class AmazonService : Service() {
             return withContext(Dispatchers.IO) {
                 try {
                     // Cancel active download if any
-                    cancelDownload(productId)
+                    val info = instance.activeDownloads[productId]
+                    info?.cancel()
+                    info?.awaitCompletion()
+                    instance.activeDownloads.remove(productId)
 
                     val game = instance.amazonManager.getGameById(productId)
                         ?: return@withContext Result.failure(Exception("Game not found: $productId"))

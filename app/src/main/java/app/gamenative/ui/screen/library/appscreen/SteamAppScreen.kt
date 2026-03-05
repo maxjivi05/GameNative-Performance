@@ -1078,7 +1078,7 @@ class SteamAppScreen : BaseAppScreen() {
 
     override fun loadContainerData(context: Context, libraryItem: LibraryItem): ContainerData {
         val container = ContainerUtils.getOrCreateContainer(context, libraryItem.appId)
-        return ContainerUtils.toContainerData(container)
+        return ContainerUtils.ensureGameDriveMounted(context, container.id, libraryItem.appId)
     }
 
     override fun saveContainerConfig(context: Context, libraryItem: LibraryItem, config: ContainerData) {

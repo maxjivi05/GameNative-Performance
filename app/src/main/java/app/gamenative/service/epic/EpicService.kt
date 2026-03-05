@@ -197,7 +197,9 @@ class EpicService : Service() {
 
             return try {
                 // Cancel active download if any
-                cancelDownload(appId)
+                val downloadInfo = getDownloadInfo(appId)
+                downloadInfo?.cancel()
+                downloadInfo?.awaitCompletion()
 
                 // Get the game to find its install path
                 val game = instance.epicManager.getGameById(appId)
@@ -242,12 +244,6 @@ class EpicService : Service() {
         }
 
         suspend fun cleanupDownload(context: Context, appId: Int) {
-            withContext(Dispatchers.IO) {
-                getInstance()?.epicManager?.getGameById(appId)?.let { game ->
-                    val path = EpicConstants.getGameInstallPath(context, game.appName)
-                    MarkerUtils.removeMarker(path, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
-                }
-            }
             getInstance()?.activeDownloads?.remove(appId)
         }
 
@@ -400,10 +396,11 @@ class EpicService : Service() {
                 ?: return Result.failure(Exception("Game not found for appId: $appId"))
             val gameId = game.id ?: return Result.failure(Exception("Game ID not found for appId: $appId"))
 
-            // Check if already downloading
-            if (instance.activeDownloads.containsKey(appId)) {
+            // Check if already downloading and active
+            val existingDownload = instance.activeDownloads[appId]
+            if (existingDownload != null && existingDownload.isActive()) {
                 Timber.tag("Epic").w("Download already in progress for $appId")
-                return Result.success(instance.activeDownloads[appId]!!)
+                return Result.success(existingDownload)
             }
 
             // Create DownloadInfo before launching coroutine to avoid race condition
@@ -449,34 +446,49 @@ class EpicService : Service() {
                         }
                     } else {
                         val error = result.exceptionOrNull()
-                        Timber.e(error, "[Download] Failed for game $gameId")
+                        if (error is kotlinx.coroutines.CancellationException || error?.message == "Download cancelled") {
+                            Timber.tag("Epic").i("Download paused/cancelled for game $gameId")
+                            downloadInfo.updateStatusMessage("Paused")
+                            downloadInfo.setActive(false)
+                        } else {
+                            Timber.e(error, "[Download] Failed for game $gameId")
+                            downloadInfo.setProgress(-1.0f)
+                            downloadInfo.setActive(false)
+
+                            // Show failure toast
+                            withContext(Dispatchers.Main) {
+                                android.widget.Toast.makeText(
+                                    context,
+                                    "Download failed: ${error?.message ?: "Unknown error"}",
+                                    android.widget.Toast.LENGTH_LONG,
+                                ).show()
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    if (e is kotlinx.coroutines.CancellationException || e.message == "Download cancelled") {
+                        Timber.tag("Epic").i("Download paused/cancelled for game $gameId")
+                        downloadInfo.updateStatusMessage("Paused")
+                        downloadInfo.setActive(false)
+                    } else {
+                        Timber.e(e, "[Download] Exception for game $gameId")
                         downloadInfo.setProgress(-1.0f)
                         downloadInfo.setActive(false)
 
-                        // Show failure toast
+                        // Show error toast
                         withContext(Dispatchers.Main) {
                             android.widget.Toast.makeText(
                                 context,
-                                "Download failed: ${error?.message ?: "Unknown error"}",
+                                "Download error: ${e.message ?: "Unknown error"}",
                                 android.widget.Toast.LENGTH_LONG,
                             ).show()
                         }
                     }
-                } catch (e: Exception) {
-                    Timber.e(e, "[Download] Exception for game $gameId")
-                    downloadInfo.setProgress(-1.0f)
-                    downloadInfo.setActive(false)
-
-                    // Show error toast
-                    withContext(Dispatchers.Main) {
-                        android.widget.Toast.makeText(
-                            context,
-                            "Download error: ${e.message ?: "Unknown error"}",
-                            android.widget.Toast.LENGTH_LONG,
-                        ).show()
-                    }
                 } finally {
                     Timber.d("[Download] Finished for game $gameId, progress: ${downloadInfo.getProgress()}, active: ${downloadInfo.isActive()}")
+                    if (!downloadInfo.isActive()) {
+                        cleanupDownload(context, gameId)
+                    }
                 }
             }
             downloadInfo.setDownloadJob(job)

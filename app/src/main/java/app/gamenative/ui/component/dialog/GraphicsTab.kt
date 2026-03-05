@@ -15,6 +15,7 @@ import app.gamenative.ui.theme.settingsTileColors
 import app.gamenative.ui.theme.settingsTileColorsAlt
 import com.alorma.compose.settings.ui.SettingsGroup
 import com.alorma.compose.settings.ui.SettingsSwitch
+
 import com.winlator.contents.ContentProfile
 import com.winlator.container.Container
 import com.winlator.core.KeyValueSet

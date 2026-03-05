@@ -502,7 +502,7 @@ class GOGAppScreen : BaseAppScreen() {
         Timber.tag(TAG).d("loadContainerData: appId=${libraryItem.appId}")
         // Load GOG-specific container data using ContainerUtils
         val container = app.gamenative.utils.ContainerUtils.getOrCreateContainer(context, libraryItem.appId)
-        val containerData = app.gamenative.utils.ContainerUtils.toContainerData(container)
+        val containerData = app.gamenative.utils.ContainerUtils.ensureGameDriveMounted(context, container.id, libraryItem.appId)
         Timber.tag(TAG).d("loadContainerData: loaded container for ${libraryItem.appId}")
         return containerData
     }

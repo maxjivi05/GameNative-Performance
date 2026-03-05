@@ -91,6 +91,9 @@ data class ContainerData(
     val rootPerformanceMode: Boolean = false,
     val dxvkVersion: String? = null,
     val vkd3dVersion: String? = null,
+    val extraData: String = "{}",
+    val sessionMetadata: String = "{}",
+    val needsUnpacking: Boolean = false,
 ) {
     fun toJson(): String {
         val json = JSONObject()
@@ -157,6 +160,9 @@ data class ContainerData(
         json.put("sharpnessDenoise", sharpnessDenoise)
         json.put("forceAdrenoClocks", forceAdrenoClocks)
         json.put("rootPerformanceMode", rootPerformanceMode)
+        json.put("extraData", extraData)
+        json.put("sessionMetadata", sessionMetadata)
+        json.put("needsUnpacking", needsUnpacking)
         if (dxvkVersion != null) json.put("dxvkVersion", dxvkVersion)
         if (vkd3dVersion != null) json.put("vkd3dVersion", vkd3dVersion)
         return json.toString()
@@ -229,6 +235,9 @@ data class ContainerData(
                 sharpnessDenoise = json.optInt("sharpnessDenoise", 100),
                 forceAdrenoClocks = json.optBoolean("forceAdrenoClocks", false),
                 rootPerformanceMode = json.optBoolean("rootPerformanceMode", false),
+                extraData = json.optString("extraData", "{}"),
+                sessionMetadata = json.optString("sessionMetadata", "{}"),
+                needsUnpacking = json.optBoolean("needsUnpacking", false),
                 dxvkVersion = if (json.has("dxvkVersion")) json.getString("dxvkVersion") else null,
                 vkd3dVersion = if (json.has("vkd3dVersion")) json.getString("vkd3dVersion") else null,
             )
@@ -291,6 +300,9 @@ data class ContainerData(
                     "sharpnessDenoise" to state.sharpnessDenoise,
                     "forceAdrenoClocks" to state.forceAdrenoClocks,
                     "rootPerformanceMode" to state.rootPerformanceMode,
+                    "extraData" to state.extraData,
+                    "sessionMetadata" to state.sessionMetadata,
+                    "needsUnpacking" to state.needsUnpacking,
                     "dxvkVersion" to state.dxvkVersion,
                     "vkd3dVersion" to state.vkd3dVersion,
                     "renderer" to state.renderer,
@@ -360,6 +372,9 @@ data class ContainerData(
                     sharpnessDenoise = (savedMap["sharpnessDenoise"] as? Int) ?: 100,
                     forceAdrenoClocks = (savedMap["forceAdrenoClocks"] as? Boolean) ?: false,
                     rootPerformanceMode = (savedMap["rootPerformanceMode"] as? Boolean) ?: false,
+                    extraData = (savedMap["extraData"] as? String) ?: "{}",
+                    sessionMetadata = (savedMap["sessionMetadata"] as? String) ?: "{}",
+                    needsUnpacking = (savedMap["needsUnpacking"] as? Boolean) ?: false,
                     dxvkVersion = (savedMap["dxvkVersion"] as? String),
                     vkd3dVersion = (savedMap["vkd3dVersion"] as? String),
                     renderer = (savedMap["renderer"] as? String) ?: "gl",

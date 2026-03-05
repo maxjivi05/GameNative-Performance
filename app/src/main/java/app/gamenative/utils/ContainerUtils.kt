@@ -321,18 +321,27 @@ object ContainerUtils {
             rootPerformanceMode = container.isRootPerformanceMode,
             dxvkVersion = container.dxvkVersion,
             vkd3dVersion = container.vkd3dVersion,
+            extraData = try { org.json.JSONObject(container.containerJson).optJSONObject("extraData")?.toString() ?: "{}" } catch (e: Exception) { "{}" },
+            sessionMetadata = try { org.json.JSONObject(container.containerJson).optJSONObject("sessionMetadata")?.toString() ?: "{}" } catch (e: Exception) { "{}" },
+            needsUnpacking = container.isNeedsUnpacking,
         )
     }
 
     fun applyToContainer(context: Context, appId: String, containerData: ContainerData) {
         val container = getContainer(context, appId)
-        applyToContainer(context, container, containerData, saveToDisk = true)
-
-        // Save app-specific config to PrefManager
+        val isMasterContainer = PrefManager.masterContainers && container.id != appId
+        
+        // Save app-specific config to PrefManager (always do this for appId)
         val configs = PrefManager.appSpecificConfigs.toMutableMap()
         configs[appId] = containerData.toJson()
         PrefManager.appSpecificConfigs = configs
         Timber.i("Saved app-specific config for $appId")
+
+        // Only apply to the underlying container instance if it's NOT a shared master container
+        // OR if this app explicitly owns this container.
+        if (!isMasterContainer) {
+            applyToContainer(context, container, containerData, saveToDisk = true)
+        }
     }
 
     /**
@@ -405,6 +414,12 @@ object ContainerUtils {
     }
 
     fun applyToContainer(context: Context, container: Container, containerData: ContainerData) {
+        val isMasterContainer = PrefManager.masterContainers && container.id.startsWith("MASTER_")
+        if (isMasterContainer) {
+            applyToContainer(context, container, containerData, saveToDisk = false)
+            return
+        }
+
         // Try to find if this container is assigned to an app to save its config
         val appId = PrefManager.gameContainers.entries.find { it.value == container.id }?.key
         if (appId != null) {
@@ -541,6 +556,29 @@ object ContainerUtils {
         container.setUnpackFiles(containerData.unpackFiles)
         container.isForceAdrenoClocks = containerData.forceAdrenoClocks
         container.isRootPerformanceMode = containerData.rootPerformanceMode
+        container.isNeedsUnpacking = containerData.needsUnpacking
+
+        if (containerData.extraData.isNotEmpty() && containerData.extraData != "{}") {
+            try {
+                val extraJson = org.json.JSONObject(containerData.extraData)
+                for (key in extraJson.keys()) {
+                    container.putExtra(key, extraJson.get(key))
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to parse extraData JSON")
+            }
+        }
+        if (containerData.sessionMetadata.isNotEmpty() && containerData.sessionMetadata != "{}") {
+            try {
+                val sessionJson = org.json.JSONObject(containerData.sessionMetadata)
+                for (key in sessionJson.keys()) {
+                    container.putSessionMetadata(key, sessionJson.get(key))
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to parse sessionMetadata JSON")
+            }
+        }
+
         if (previousUnpackFiles != containerData.unpackFiles && containerData.unpackFiles) {
             container.setNeedsUnpacking(true)
         }
@@ -639,6 +677,23 @@ object ContainerUtils {
     }
 
     /**
+     * Overload for ensureGameDriveMounted that works with containerId and returns ContainerData.
+     * Used by AppScreen implementations to load config and ensure drives are mounted in one go.
+     */
+    fun ensureGameDriveMounted(context: Context, containerId: String, appId: String): ContainerData {
+        val container = ContainerManager(context).getContainerById(containerId)
+        ensureGameDriveMounted(context, container, appId)
+        
+        // Load effective config (app-specific or container-base)
+        val config = PrefManager.appSpecificConfigs[appId]?.let {
+            try { ContainerData.fromJson(it) } catch (e: Exception) { toContainerData(container) }
+        } ?: toContainerData(container)
+        
+        // Sync the drives from the modified container object to the returned config
+        return config.copy(drives = container.drives)
+    }
+
+    /**
      * Ensures that the container's A: drive points to the correct game directory.
      * This is crucial for Master Containers because their configuration is reused across
      * different games, meaning the A: drive could be pointing to the previously launched game.
@@ -657,7 +712,14 @@ object ContainerUtils {
             }
             GameSource.EPIC -> {
                 val gameId = extractGameIdFromContainerId(appId)
-                EpicService.getEpicGameOf(gameId)?.installPath
+                val game = EpicService.getEpicGameOf(gameId)
+                if (game?.installPath?.isNotEmpty() == true) {
+                    game.installPath
+                } else if (game != null) {
+                    app.gamenative.service.epic.EpicConstants.getGameInstallPath(context, game.title)
+                } else {
+                    null
+                }
             }
             GameSource.AMAZON -> {
                 val productId = appId.removePrefix("AMAZON_").substringBefore("(")
@@ -666,12 +728,16 @@ object ContainerUtils {
         }
 
         if (!gameInstallPath.isNullOrEmpty()) {
-            val baseDrives = container.drives.split(",").filter { !it.startsWith("A:") }.joinToString(",")
-            val newDrives = if (baseDrives.isEmpty()) {
-                "A:$gameInstallPath"
-            } else {
-                "$baseDrives,A:$gameInstallPath"
+            // Rebuild drives without A: using the correct concatenated format (LETTER:path)
+            // Container.drivesIterator parses "D:/pathE:/path" — NO comma separators.
+            val sb = StringBuilder()
+            for (drive in Container.drivesIterator(container.drives)) {
+                if (drive[0] != "A") {
+                    sb.append(drive[0]).append(':').append(drive[1])
+                }
             }
+            sb.append("A:").append(gameInstallPath)
+            val newDrives = sb.toString()
 
             if (container.drives != newDrives) {
                 Timber.i("Dynamically updating container drives for $appId: $newDrives")
@@ -710,7 +776,35 @@ object ContainerUtils {
         val containerManager = ContainerManager(context)
         val containerId = getContainerId(appId)
         return if (containerManager.hasContainer(containerId)) {
-            containerManager.getContainerById(containerId)
+            val container = containerManager.getContainerById(containerId)
+            // Always ensure the A: drive is mapped to the correct game folder.
+            // ContainerManager re-reads containers from disk, so any in-memory
+            // drive changes (e.g., from ensureGameDriveMounted in PluviaMain)
+            // are lost. Re-apply here so XServerScreen gets the correct drives.
+            ensureGameDriveMounted(context, container, appId)
+
+            // Apply app-specific config to in-memory container so settings are accurate
+            val configStr = PrefManager.appSpecificConfigs[appId]
+            if (configStr != null) {
+                try {
+                    val config = ContainerData.fromJson(configStr)
+                    applyToContainer(context, container, config, saveToDisk = false)
+                } catch (e: Exception) {
+                    Timber.e(e, "Failed to apply appSpecificConfigs in getContainer")
+                }
+            }
+
+            val isMasterContainer = PrefManager.masterContainers && containerId != appId
+            if (isMasterContainer) {
+                container.onSaveDataCallback = java.lang.Runnable {
+                    val updatedData = toContainerData(container)
+                    val configs = PrefManager.appSpecificConfigs.toMutableMap()
+                    configs[appId] = updatedData.toJson()
+                    PrefManager.appSpecificConfigs = configs
+                    Timber.i("Saved overridden container data to appSpecificConfigs for $appId")
+                }
+            }
+            container
         } else {
             throw Exception("Container $containerId does not exist for game $appId")
         }
@@ -867,7 +961,8 @@ object ContainerUtils {
         }
 
         // For Custom, GOG, and Amazon Games, pre-populate executablePath if there's exactly one valid .exe
-        if (gameSource == GameSource.CUSTOM_GAME || gameSource == GameSource.GOG || gameSource == GameSource.AMAZON) {
+        val isMasterContainer = PrefManager.masterContainers && containerId != appId
+        if (!isMasterContainer && (gameSource == GameSource.CUSTOM_GAME || gameSource == GameSource.GOG || gameSource == GameSource.AMAZON)) {
             try {
                 val gameFolderPath = when (gameSource) {
                     GameSource.CUSTOM_GAME -> CustomGameScanner.getFolderPathFromAppId(appId)
@@ -894,6 +989,7 @@ object ContainerUtils {
                 Timber.w(e, "Failed to auto-select exe during $gameSource creation for $appId")
             }
         }
+
 
         // Check for cached best config (only for Steam games, only if no custom config provided)
         var bestConfigMap: Map<String, Any?>? = null
@@ -1067,7 +1163,17 @@ object ContainerUtils {
         val containerId = getContainerId(appId)
 
         val container = if (containerManager.hasContainer(containerId)) {
-            containerManager.getContainerById(containerId)
+            val c = containerManager.getContainerById(containerId)
+            // Reload configuration from disk to clear any in-memory overrides from previous game
+            try {
+                val content = com.winlator.core.FileUtils.readString(c.configFile)
+                if (!content.isNullOrEmpty()) {
+                    c.loadData(org.json.JSONObject(content))
+                }
+            } catch (e: Exception) {
+                Timber.w("Failed to reload container data from disk for $containerId: ${e.message}")
+            }
+            c
         } else {
             createNewContainer(context, appId, containerId, containerManager)
         }
@@ -1094,12 +1200,20 @@ object ContainerUtils {
 
             GameSource.GOG -> {
                 val gameId = extractGameIdFromContainerId(appId)
-                GOGService.getInstallPath(gameId.toString())
+                GOGService.getInstallPath(gameId.toString()) ?: GOGService.getGOGGameOf(gameId.toString())?.let { game -> 
+                    app.gamenative.service.gog.GOGConstants.getGameInstallPath(game.title) 
+                }
             }
 
             GameSource.EPIC -> {
                 val gameId = extractGameIdFromContainerId(appId)
-                EpicService.getInstallPath(gameId)
+                var path = EpicService.getInstallPath(gameId)
+                if (path == null) {
+                    EpicService.getEpicGameOf(gameId)?.let { game ->
+                         path = app.gamenative.service.epic.EpicConstants.getGameInstallPath(context, game.title)
+                    }
+                }
+                path
             }
 
             GameSource.CUSTOM_GAME -> {
@@ -1111,30 +1225,29 @@ object ContainerUtils {
         if (gameFolderPath != null) {
             // Check if A: drive is already mapped to the correct path
             var hasCorrectADrive = false
-            for (drive in Container.drivesIterator(container.drives)) {
+            for (drive in Container.drivesIterator(containerData.drives)) {
                 if (drive[0] == "A" && drive[1] == gameFolderPath) {
                     hasCorrectADrive = true
                     break
                 }
             }
 
-            // If A: drive is not mapped correctly, update it
+                // If A: drive is not mapped correctly, update it
             if (!hasCorrectADrive) {
-                val currentDrives = container.drives
+                val currentDrives = containerData.drives
                 // Rebuild drives string, excluding existing A: drive and adding new one
-                val drivesBuilder = StringBuilder()
-                drivesBuilder.append("A:$gameFolderPath")
-
-                // Add all other drives (excluding A:)
-                for (drive in Container.drivesIterator(currentDrives)) {
-                    if (drive[0] != "A") {
-                        drivesBuilder.append("${drive[0]}:${drive[1]}")
-                    }
-                }
-
-                val updatedDrives = drivesBuilder.toString()
+                val otherDrives = Container.drivesIterator(currentDrives)
+                    .filter { it[0] != "A" }
+                    .joinToString(",") { "${it[0]}:${it[1]}" }
+                
+                val updatedDrives = if (otherDrives.isEmpty()) "A:$gameFolderPath" else "A:$gameFolderPath,$otherDrives"
                 container.drives = updatedDrives
-                container.saveData()
+                containerData = containerData.copy(drives = updatedDrives)
+                // Only save drives to disk if it's not a master container
+                val isMasterContainer = PrefManager.masterContainers && containerId != appId
+                if (!isMasterContainer) {
+                    container.saveData()
+                }
                 Timber.d("Updated container drives to include A: drive mapping: $updatedDrives")
             }
         } else {
@@ -1147,6 +1260,18 @@ object ContainerUtils {
         // Apply potentially updated/loaded data back to container
         applyToContainer(context, container, containerData)
 
+        // If this is a master container, intercept saveData() so per-game settings don't pollute the global master container
+        val isMasterContainer = PrefManager.masterContainers && containerId != appId
+        if (isMasterContainer) {
+            container.onSaveDataCallback = java.lang.Runnable {
+                val updatedData = toContainerData(container)
+                val configs = PrefManager.appSpecificConfigs.toMutableMap()
+                configs[appId] = updatedData.toJson()
+                PrefManager.appSpecificConfigs = configs
+                Timber.i("Saved overridden container data to appSpecificConfigs for $appId")
+            }
+        }
+
         return container
     }
 
@@ -1157,7 +1282,15 @@ object ContainerUtils {
         var containerData: ContainerData? = null
 
         val container = if (containerManager.hasContainer(containerId)) {
-            val container = containerManager.getContainerById(containerId)
+            val c = containerManager.getContainerById(containerId)
+            try {
+                val content = com.winlator.core.FileUtils.readString(c.configFile)
+                if (!content.isNullOrEmpty()) {
+                    c.loadData(org.json.JSONObject(content))
+                }
+            } catch (e: Exception) {
+                Timber.w("Failed to reload container data from disk for $containerId")
+            }
 
             // Apply temporary override if present (without saving to disk)
             if (IntentLaunchManager.hasTemporaryOverride(appId)) {
@@ -1165,7 +1298,7 @@ object ContainerUtils {
                 if (overrideConfig != null) {
                     // Backup original config before applying override (if not already backed up)
                     if (IntentLaunchManager.getOriginalConfig(appId) == null) {
-                        val originalConfig = toContainerData(container)
+                        val originalConfig = toContainerData(c)
                         IntentLaunchManager.setOriginalConfig(appId, originalConfig)
                     }
 
@@ -1177,7 +1310,7 @@ object ContainerUtils {
                 }
             }
 
-            container
+            c
         } else {
             // Create new container with override config if present
             val overrideConfig = if (IntentLaunchManager.hasTemporaryOverride(appId)) {
@@ -1207,6 +1340,18 @@ object ContainerUtils {
 
         // Apply potentially updated/loaded data back to container
         containerData?.let { applyToContainer(context, container, it) }
+
+        // If this is a master container, intercept saveData() so per-game settings don't pollute the global master container
+        val isMasterContainer = PrefManager.masterContainers && containerId != appId
+        if (isMasterContainer) {
+            container.onSaveDataCallback = Runnable {
+                val updatedData = toContainerData(container)
+                val configs = PrefManager.appSpecificConfigs.toMutableMap()
+                configs[appId] = updatedData.toJson()
+                PrefManager.appSpecificConfigs = configs
+                Timber.i("Saved overridden container data to appSpecificConfigs for $appId")
+            }
+        }
 
         return container
     }
@@ -1311,12 +1456,15 @@ object ContainerUtils {
      * Gets the file system path for the container's A: drive
      */
     fun getADrivePath(drives: String): String? {
+        Timber.d("getADrivePath: input drives='$drives'")
         // Use the existing Container.drivesIterator logic
         for (drive in Container.drivesIterator(drives)) {
+            Timber.d("getADrivePath: found drive ${drive[0]}: ${drive[1]}")
             if (drive[0] == "A") {
                 return drive[1]
             }
         }
+        Timber.w("getADrivePath: No A: drive found in drives string")
         return null
     }
 

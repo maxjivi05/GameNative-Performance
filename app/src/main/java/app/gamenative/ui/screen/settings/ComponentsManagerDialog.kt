@@ -173,7 +173,7 @@ fun ComponentsManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                             .shadow(8.dp, CircleShape)
                             .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.6f), CircleShape)
                     ) {
-                        Icon(Icons.Default.Add, "Install Custom", tint = Color.White)
+                        Icon(Icons.Default.Add, "Install ${selectedComponent.displayName}", tint = Color.White)
                     }
                 }
             }
@@ -534,6 +534,10 @@ private fun DriverContent(isBusy: Boolean, setBusy: (Boolean) -> Unit, setWorkMs
 
     LaunchedEffect(selectedSource) {
         refresh()
+        if (selectedSource == "Installed") {
+            isLoading = false
+            return@LaunchedEffect
+        }
         isLoading = true
         withContext(Dispatchers.IO) {
             try {
@@ -564,7 +568,7 @@ private fun DriverContent(isBusy: Boolean, setBusy: (Boolean) -> Unit, setWorkMs
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text("Drivers", style = MaterialTheme.typography.headlineSmall, color = Color.White, fontWeight = FontWeight.Bold)
             Spacer(Modifier.width(24.dp))
-            listOf("MTR", "GN").forEach { src ->
+            listOf("MTR", "GN", "Installed").forEach { src ->
                 FilterChip(
                     selected = selectedSource == src,
                     onClick = { selectedSource = src },
@@ -576,6 +580,29 @@ private fun DriverContent(isBusy: Boolean, setBusy: (Boolean) -> Unit, setWorkMs
         }
         Spacer(Modifier.height(16.dp))
         if (isLoading) { Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) { CircularProgressIndicator() } }
+        else if (selectedSource == "Installed") {
+            // Show only installed drivers
+            if (installed.isEmpty()) {
+                Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
+                    Text("No drivers installed", color = Color.White.copy(alpha = 0.5f))
+                }
+            } else {
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    items(installed.toList()) { id ->
+                        val name = driverMeta[id]?.first ?: id
+                        val version = driverMeta[id]?.second ?: ""
+                        ComponentTile(
+                            title = name,
+                            subtitle = if (version.isNotEmpty()) "Version: $version" else "Installed",
+                            isInstalled = true,
+                            isBusy = isBusy,
+                            onAction = { /* Reinstall not applicable from installed view */ },
+                            onDelete = { scope.launch(Dispatchers.IO) { AdrenotoolsManager(context).removeDriver(id); refresh() } ; Unit }
+                        )
+                    }
+                }
+            }
+        }
         else {
             val (installedDrivers, availableDrivers) = drivers.partition { item ->
                 installed.any { id -> (driverMeta[id]?.first ?: id).contains(item.name.removeSuffix(".zip"), true) }

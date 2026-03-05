@@ -22,8 +22,8 @@ const val LOADING_PROGRESS_UNKNOWN: Float = -1f
 
 /** Steam cloud save sync before launch. Resolves all sync outcomes (Proceed / ShowDialog / Retry) inline. */
 internal object SteamCloudSavePlatform : CloudSavePlatform {
-    override fun appliesTo(container: Container) =
-        ContainerUtils.extractGameSourceFromContainerId(container.id) == GameSource.STEAM
+    override fun appliesTo(appId: String, container: Container) =
+        ContainerUtils.extractGameSourceFromContainerId(appId) == GameSource.STEAM
 
     override fun getLoadingMessage(context: Context, container: Container) =
         context.getString(R.string.main_syncing_cloud_saves)

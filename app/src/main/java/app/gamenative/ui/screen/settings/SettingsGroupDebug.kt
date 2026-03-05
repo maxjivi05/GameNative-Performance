@@ -97,13 +97,27 @@ fun SettingsGroupDebug() {
     }
 
     var masterContainers by rememberSaveable { mutableStateOf(PrefManager.masterContainers) }
+    var showManageContainersDialog by rememberSaveable { mutableStateOf(false) }
+
+    if (showManageContainersDialog) {
+        app.gamenative.ui.component.dialog.ManageContainersDialog(
+            onDismiss = { showManageContainersDialog = false }
+        )
+    }
 
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         SettingsSectionHeader("Advanced")
         SettingsTile(
+            title = "Manage Containers",
+            subtitle = "View, manage, and delete installed containers",
+            icon = Icons.Default.Storage,
+            onClick = { showManageContainersDialog = true }
+        )
+        SettingsTile(
             title = "Master Containers",
             subtitle = "Share the same container for all games using the same Proton version and architecture.",
             icon = Icons.Default.Hub,
+            subtitleMaxLines = Int.MAX_VALUE,
             trailing = { Switch(checked = masterContainers, onCheckedChange = { masterContainers = it; PrefManager.masterContainers = it }) }
         )
 
