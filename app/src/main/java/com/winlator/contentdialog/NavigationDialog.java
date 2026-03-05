@@ -41,6 +41,10 @@ public class NavigationDialog extends ContentDialog {
     public static final int ACTION_TOUCH_TRANSPARENCY = 14;
     public static final int ACTION_SCREEN_EFFECT = 15;
     public static final int ACTION_NATIVE_RENDERING = 16;
+    public static final int ACTION_TOOLS_MENU = 17;
+    public static final int ACTION_CONTROLLER_MENU = 18;
+    private final boolean areControlsVisible;
+    private final boolean areJoysticksVisible;
 
     public interface NavigationListener {
         void onNavigationItemSelected(int itemId);
@@ -48,6 +52,8 @@ public class NavigationDialog extends ContentDialog {
 
     public NavigationDialog(@NonNull Context context, boolean areControlsVisible, boolean isGamePaused, boolean areJoysticksVisible, NavigationListener listener) {
         super(context, R.layout.navigation_dialog);
+        this.areControlsVisible = areControlsVisible;
+        this.areJoysticksVisible = areJoysticksVisible;
 
         if (getWindow() != null) {
             getWindow().setGravity(Gravity.CENTER);
@@ -85,27 +91,13 @@ public class NavigationDialog extends ContentDialog {
         int pauseText = isGamePaused ? R.string.resume_game : R.string.pause_game;
         addMenuItem(context, grid, pauseIcon, pauseText, ACTION_PAUSE_GAME, listener, 1.0f);
 
-        int controlsTextRes = areControlsVisible ? R.string.hide_controls : R.string.show_controls;
-        addMenuItem(context, grid, R.drawable.icon_input_controls, controlsTextRes, ACTION_INPUT_CONTROLS, listener, 1.0f);
+        addMenuItem(context, grid, R.drawable.icon_input_controls, R.string.touch_controller, ACTION_TOUCH_MENU, listener, 1.0f);
 
-        int joysticksTextRes = areJoysticksVisible ? R.string.hide_joysticks : R.string.show_joysticks;
-        addMenuItem(context, grid, R.drawable.icon_gamepad, joysticksTextRes, ACTION_SHOW_JOYSTICKS, listener, 1.0f);
+        addMenuItem(context, grid, R.drawable.icon_monitor, R.string.container_config_tab_graphics, ACTION_STRETCH_TO_FULLSCREEN, listener, 1.0f);
 
-        addMenuItem(context, grid, R.drawable.icon_screen_effect, R.string.screen_effect, ACTION_SCREEN_EFFECT, listener, 1.0f);
+        addMenuItem(context, grid, R.drawable.icon_settings, R.string.tools, ACTION_TOOLS_MENU, listener, 1.0f);
 
-        addMenuItem(context, grid, R.drawable.icon_settings, R.string.touch, ACTION_TOUCH_MENU, listener, 1.0f);
-
-        addMenuItem(context, grid, R.drawable.icon_gamepad, R.string.controller_manager, ACTION_CONTROLLER_MANAGER, listener, 1.0f);
-
-        addMenuItem(context, grid, R.drawable.icon_monitor, R.string.stretch_to_fullscreen, ACTION_STRETCH_TO_FULLSCREEN, listener, 1.0f);
-
-        addMenuItem(context, grid, R.drawable.icon_monitor, R.string.native_rendering, ACTION_NATIVE_RENDERING, listener, 1.0f);
-
-        addMenuItem(context, grid, R.drawable.icon_task_manager, R.string.task_manager, ACTION_TASK_MANAGER, listener, 1.0f);
-
-        addMenuItem(context, grid, R.drawable.icon_monitor, R.string.hud, ACTION_HUD, listener, 1.0f);
-
-        addMenuItem(context, grid, R.drawable.icon_keyboard, R.string.keyboard, ACTION_KEYBOARD, listener, 1.0f);
+        addMenuItem(context, grid, R.drawable.icon_gamepad, R.string.controller, ACTION_CONTROLLER_MENU, listener, 1.0f);
 
         addMenuItem(context, grid, R.drawable.icon_exit, R.string.exit_game, ACTION_EXIT_GAME, listener, 1.0f);
     }
@@ -119,7 +111,15 @@ public class NavigationDialog extends ContentDialog {
         layout.setBackgroundColor(Color.TRANSPARENT);
         
         layout.setOnClickListener(view -> {
-            listener.onNavigationItemSelected(itemId);
+            if (itemId == ACTION_TOUCH_MENU) {
+                showTouchMenu(context, areControlsVisible, areJoysticksVisible, listener);
+            } else if (itemId == ACTION_TOOLS_MENU) {
+                showToolsMenu(context, listener);
+            } else if (itemId == ACTION_CONTROLLER_MENU) {
+                showControllerMenu(context, listener);
+            } else {
+                listener.onNavigationItemSelected(itemId);
+            }
             dismiss();
         });
 
@@ -159,7 +159,29 @@ public class NavigationDialog extends ContentDialog {
         return (int) (dp * context.getResources().getDisplayMetrics().densityDpi / DisplayMetrics.DENSITY_DEFAULT);
     }
 
-    public static void showTouchMenu(Context context, NavigationListener listener) {
+    public static void showTouchMenu(Context context, boolean areControlsVisible, boolean areJoysticksVisible, NavigationListener listener) {
+        NavigationDialog dialog = new NavigationDialog(context, areControlsVisible, false, areJoysticksVisible, listener);
+        dialog.findViewById(R.id.LLTitleBar).setVisibility(View.GONE);
+        dialog.findViewById(R.id.LLTopPanel).setVisibility(View.GONE);
+        
+        GridLayout grid = dialog.findViewById(R.id.main_menu_grid);
+        grid.removeAllViews();
+        grid.setPadding(dialog.dpToPx(2, context), dialog.dpToPx(2, context), dialog.dpToPx(2, context), dialog.dpToPx(2, context));
+        grid.setColumnCount(2);
+        
+        int controlsTextRes = areControlsVisible ? R.string.hide_controls : R.string.show_controls;
+        dialog.addMenuItem(context, grid, R.drawable.icon_input_controls, controlsTextRes, ACTION_INPUT_CONTROLS, listener, 1.0f);
+
+        int joysticksTextRes = areJoysticksVisible ? R.string.hide_joysticks : R.string.show_joysticks;
+        dialog.addMenuItem(context, grid, R.drawable.icon_gamepad, joysticksTextRes, ACTION_SHOW_JOYSTICKS, listener, 1.0f);
+
+        dialog.addMenuItem(context, grid, R.drawable.icon_popup_menu_edit, R.string.edit_controls, ACTION_EDIT_CONTROLS, listener, 1.0f);
+        dialog.addMenuItem(context, grid, R.drawable.icon_settings, R.string.touch_transparency, ACTION_TOUCH_TRANSPARENCY, listener, 1.0f);
+        
+        dialog.show();
+    }
+
+    public static void showToolsMenu(Context context, NavigationListener listener) {
         NavigationDialog dialog = new NavigationDialog(context, false, false, false, listener);
         dialog.findViewById(R.id.LLTitleBar).setVisibility(View.GONE);
         dialog.findViewById(R.id.LLTopPanel).setVisibility(View.GONE);
@@ -167,9 +189,27 @@ public class NavigationDialog extends ContentDialog {
         GridLayout grid = dialog.findViewById(R.id.main_menu_grid);
         grid.removeAllViews();
         grid.setPadding(dialog.dpToPx(2, context), dialog.dpToPx(2, context), dialog.dpToPx(2, context), dialog.dpToPx(2, context));
+        grid.setColumnCount(2);
         
-        dialog.addMenuItem(context, grid, R.drawable.icon_popup_menu_edit, R.string.edit_controls, ACTION_EDIT_CONTROLS, listener, 1.0f);
-        dialog.addMenuItem(context, grid, R.drawable.icon_settings, R.string.touch_transparency, ACTION_TOUCH_TRANSPARENCY, listener, 1.0f);
+        dialog.addMenuItem(context, grid, R.drawable.icon_task_manager, R.string.task_manager, ACTION_TASK_MANAGER, listener, 1.0f);
+        dialog.addMenuItem(context, grid, R.drawable.icon_keyboard, R.string.keyboard, ACTION_KEYBOARD, listener, 1.0f);
+        
+        dialog.show();
+    }
+
+    public static void showControllerMenu(Context context, NavigationListener listener) {
+        NavigationDialog dialog = new NavigationDialog(context, false, false, false, listener);
+        dialog.findViewById(R.id.LLTitleBar).setVisibility(View.GONE);
+        dialog.findViewById(R.id.LLTopPanel).setVisibility(View.GONE);
+        
+        GridLayout grid = dialog.findViewById(R.id.main_menu_grid);
+        grid.removeAllViews();
+        grid.setPadding(dialog.dpToPx(2, context), dialog.dpToPx(2, context), dialog.dpToPx(2, context), dialog.dpToPx(2, context));
+        grid.setColumnCount(3);
+        
+        dialog.addMenuItem(context, grid, R.drawable.icon_gamepad, R.string.controller_manager, ACTION_CONTROLLER_MANAGER, listener, 1.0f);
+        dialog.addMenuItem(context, grid, R.drawable.icon_settings, R.string.edit_physical_controller, ACTION_EDIT_PHYSICAL_CONTROLLER, listener, 1.0f);
+        dialog.addMenuItem(context, grid, R.drawable.icon_motion_controls, R.string.motion_controls, ACTION_MOTION_CONTROLS, listener, 1.0f);
         
         dialog.show();
     }

@@ -1028,4 +1028,14 @@ object PrefManager {
         set(value) {
             setPref(SETUP_COMPLETED, value)
         }
+
+    private val GLOBAL_NATIVE_RENDERING = booleanPreferencesKey("global_native_rendering")
+    var globalNativeRendering: Boolean
+        get() = getPref(GLOBAL_NATIVE_RENDERING, false)
+        set(value) = setPref(GLOBAL_NATIVE_RENDERING, value)
+
+    private val GLOBAL_SHOW_HUD = booleanPreferencesKey("global_show_hud")
+    var globalShowHUD: Boolean
+        get() = getPref(GLOBAL_SHOW_HUD, false)
+        set(value) = setPref(GLOBAL_SHOW_HUD, value)
 }

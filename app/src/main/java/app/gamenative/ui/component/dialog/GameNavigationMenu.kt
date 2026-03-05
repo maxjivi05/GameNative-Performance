@@ -71,9 +71,10 @@ fun GameNavigationMenu(
                 ) {
                     val title = when (currentMenu) {
                         "main" -> stringResource(R.string.touchpad_help_main_menu_title)
-                        "controls" -> stringResource(R.string.input_controls)
+                        "touch" -> stringResource(R.string.touch_controller)
                         "display" -> stringResource(R.string.container_config_tab_graphics)
-                        "touch" -> stringResource(R.string.touch)
+                        "tools" -> stringResource(R.string.tools)
+                        "controller" -> stringResource(R.string.controller)
                         else -> stringResource(R.string.touchpad_help_main_menu_title)
                     }
 
@@ -86,12 +87,7 @@ fun GameNavigationMenu(
                         if (currentMenu != "main") {
                             IconButton(
                                 onClick = {
-                                    currentMenu = when (currentMenu) {
-                                        "controls" -> "main"
-                                        "display" -> "main"
-                                        "touch" -> "controls"
-                                        else -> "main"
-                                    }
+                                    currentMenu = "main"
                                 },
                                 modifier = Modifier
                                     .align(Alignment.CenterStart)
@@ -132,8 +128,10 @@ fun GameNavigationMenu(
                                 isGamePaused = isGamePaused,
                                 onAction = { action ->
                                     when (action) {
-                                        -1 -> currentMenu = "controls"
+                                        -1 -> currentMenu = "touch"
                                         -2 -> currentMenu = "display"
+                                        -3 -> currentMenu = "tools"
+                                        -4 -> currentMenu = "controller"
                                         else -> {
                                             onAction(action)
                                             onDismiss()
@@ -142,18 +140,13 @@ fun GameNavigationMenu(
                                 },
                                 focusRequester = focusRequester
                             )
-                            "controls" -> ControlsMenuGrid(
+                            "touch" -> TouchMenuGrid(
                                 areControlsVisible = areControlsVisible,
                                 areJoysticksVisible = areJoysticksVisible,
                                 onAction = { action ->
-                                    if (action == NavigationDialog.ACTION_TOUCH_MENU) {
-                                        currentMenu = "touch"
-                                    } else {
-                                        onAction(action)
-                                        onDismiss()
-                                    }
+                                    onAction(action)
+                                    onDismiss()
                                 },
-                                onBack = { currentMenu = "main" },
                                 focusRequester = focusRequester
                             )
                             "display" -> DisplayMenuGrid(
@@ -161,15 +154,20 @@ fun GameNavigationMenu(
                                     onAction(action)
                                     onDismiss()
                                 },
-                                onBack = { currentMenu = "main" },
                                 focusRequester = focusRequester
                             )
-                            "touch" -> TouchMenuGrid(
+                            "tools" -> ToolsMenuGrid(
                                 onAction = { action ->
                                     onAction(action)
                                     onDismiss()
                                 },
-                                onBack = { currentMenu = "controls" },
+                                focusRequester = focusRequester
+                            )
+                            "controller" -> ControllerMenuGrid(
+                                onAction = { action ->
+                                    onAction(action)
+                                    onDismiss()
+                                },
                                 focusRequester = focusRequester
                             )
                         }
@@ -197,9 +195,9 @@ private fun MainMenuGrid(
             icon = if (isGamePaused) Icons.Default.PlayArrow else Icons.Default.Pause
         ),
         NavigationItem(
-            id = -1, // Controls sub-menu
-            title = stringResource(R.string.input_controls),
-            icon = Icons.Default.SportsEsports
+            id = -1, // Touch Controller sub-menu
+            title = stringResource(R.string.touch_controller),
+            icon = Icons.Default.TouchApp
         ),
         NavigationItem(
             id = -2, // Display sub-menu
@@ -207,14 +205,14 @@ private fun MainMenuGrid(
             icon = Icons.Default.Monitor
         ),
         NavigationItem(
-            id = NavigationDialog.ACTION_TASK_MANAGER,
-            title = stringResource(R.string.task_manager),
-            icon = Icons.Default.Dns
+            id = -3, // Tools sub-menu
+            title = stringResource(R.string.tools),
+            icon = Icons.Default.Construction
         ),
         NavigationItem(
-            id = NavigationDialog.ACTION_KEYBOARD,
-            title = stringResource(R.string.keyboard),
-            icon = Icons.Default.Keyboard
+            id = -4, // Controller sub-menu
+            title = stringResource(R.string.controller),
+            icon = Icons.Default.SportsEsports
         ),
         NavigationItem(
             id = NavigationDialog.ACTION_EXIT_GAME,
@@ -242,11 +240,10 @@ private fun MainMenuGrid(
 }
 
 @Composable
-private fun ControlsMenuGrid(
+private fun TouchMenuGrid(
     areControlsVisible: Boolean,
     areJoysticksVisible: Boolean,
     onAction: (Int) -> Unit,
-    onBack: () -> Unit,
     focusRequester: FocusRequester
 ) {
     val items = listOf(
@@ -261,51 +258,30 @@ private fun ControlsMenuGrid(
             icon = Icons.Default.Gamepad
         ),
         NavigationItem(
-            id = NavigationDialog.ACTION_CONTROLLER_MANAGER,
-            title = stringResource(R.string.controller_manager),
-            icon = Icons.Default.SettingsInputComponent
+            id = NavigationDialog.ACTION_EDIT_CONTROLS,
+            title = stringResource(R.string.edit_controls),
+            icon = Icons.Default.Edit
         ),
         NavigationItem(
-            id = NavigationDialog.ACTION_EDIT_PHYSICAL_CONTROLLER,
-            title = stringResource(R.string.edit_physical_controller),
-            icon = Icons.Default.Tune
-        ),
-        NavigationItem(
-            id = NavigationDialog.ACTION_MOTION_CONTROLS,
-            title = stringResource(R.string.motion_controls),
-            icon = Icons.Default.ScreenRotation
-        ),
-        NavigationItem(
-            id = NavigationDialog.ACTION_TOUCH_MENU,
-            title = stringResource(R.string.touch),
-            icon = Icons.Default.TouchApp
+            id = NavigationDialog.ACTION_TOUCH_TRANSPARENCY,
+            title = stringResource(R.string.touch_transparency),
+            icon = Icons.Default.Opacity
         )
     )
 
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(3),
-            contentPadding = PaddingValues(4.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            items(items) { item ->
-                NavigationMenuItem(
-                    item = item,
-                    onClick = { onAction(item.id) },
-                    modifier = if (items.indexOf(item) == 0) Modifier.focusRequester(focusRequester) else Modifier
-                )
-            }
-        }
-
-        TextButton(
-            onClick = onBack,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
-            Spacer(Modifier.width(8.dp))
-            Text(stringResource(R.string.button_back))
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(2),
+        contentPadding = PaddingValues(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        items(items) { item ->
+            NavigationMenuItem(
+                item = item,
+                onClick = { onAction(item.id) },
+                modifier = if (items.indexOf(item) == 0) Modifier.focusRequester(focusRequester) else Modifier
+            )
         }
     }
 }
@@ -313,7 +289,6 @@ private fun ControlsMenuGrid(
 @Composable
 private fun DisplayMenuGrid(
     onAction: (Int) -> Unit,
-    onBack: () -> Unit,
     focusRequester: FocusRequester
 ) {
     val items = listOf(
@@ -339,77 +314,94 @@ private fun DisplayMenuGrid(
         )
     )
 
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
-            contentPadding = PaddingValues(4.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            items(items) { item ->
-                NavigationMenuItem(
-                    item = item,
-                    onClick = { onAction(item.id) },
-                    modifier = if (items.indexOf(item) == 0) Modifier.focusRequester(focusRequester) else Modifier
-                )
-            }
-        }
-
-        TextButton(
-            onClick = onBack,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
-            Spacer(Modifier.width(8.dp))
-            Text(stringResource(R.string.button_back))
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(2),
+        contentPadding = PaddingValues(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        items(items) { item ->
+            NavigationMenuItem(
+                item = item,
+                onClick = { onAction(item.id) },
+                modifier = if (items.indexOf(item) == 0) Modifier.focusRequester(focusRequester) else Modifier
+            )
         }
     }
 }
 
 @Composable
-private fun TouchMenuGrid(
+private fun ToolsMenuGrid(
     onAction: (Int) -> Unit,
-    onBack: () -> Unit,
     focusRequester: FocusRequester
 ) {
     val items = listOf(
         NavigationItem(
-            id = NavigationDialog.ACTION_EDIT_CONTROLS,
-            title = stringResource(R.string.edit_controls),
-            icon = Icons.Default.Edit
+            id = NavigationDialog.ACTION_TASK_MANAGER,
+            title = stringResource(R.string.task_manager),
+            icon = Icons.Default.Dns
         ),
         NavigationItem(
-            id = NavigationDialog.ACTION_TOUCH_TRANSPARENCY,
-            title = stringResource(R.string.touch_transparency),
-            icon = Icons.Default.Opacity
+            id = NavigationDialog.ACTION_KEYBOARD,
+            title = stringResource(R.string.keyboard),
+            icon = Icons.Default.Keyboard
         )
     )
 
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
-            contentPadding = PaddingValues(4.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            items(items) { item ->
-                NavigationMenuItem(
-                    item = item,
-                    onClick = { onAction(item.id) },
-                    modifier = if (items.indexOf(item) == 0) Modifier.focusRequester(focusRequester) else Modifier
-                )
-            }
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(2),
+        contentPadding = PaddingValues(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        items(items) { item ->
+            NavigationMenuItem(
+                item = item,
+                onClick = { onAction(item.id) },
+                modifier = if (items.indexOf(item) == 0) Modifier.focusRequester(focusRequester) else Modifier
+            )
         }
+    }
+}
 
-        TextButton(
-            onClick = onBack,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
-            Spacer(Modifier.width(8.dp))
-            Text(stringResource(R.string.button_back))
+@Composable
+private fun ControllerMenuGrid(
+    onAction: (Int) -> Unit,
+    focusRequester: FocusRequester
+) {
+    val items = listOf(
+        NavigationItem(
+            id = NavigationDialog.ACTION_CONTROLLER_MANAGER,
+            title = stringResource(R.string.controller_manager),
+            icon = Icons.Default.SettingsInputComponent
+        ),
+        NavigationItem(
+            id = NavigationDialog.ACTION_EDIT_PHYSICAL_CONTROLLER,
+            title = stringResource(R.string.edit_physical_controller),
+            icon = Icons.Default.Tune
+        ),
+        NavigationItem(
+            id = NavigationDialog.ACTION_MOTION_CONTROLS,
+            title = stringResource(R.string.motion_controls),
+            icon = Icons.Default.ScreenRotation
+        )
+    )
+
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(3),
+        contentPadding = PaddingValues(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        items(items) { item ->
+            NavigationMenuItem(
+                item = item,
+                onClick = { onAction(item.id) },
+                modifier = if (items.indexOf(item) == 0) Modifier.focusRequester(focusRequester) else Modifier
+            )
         }
     }
 }

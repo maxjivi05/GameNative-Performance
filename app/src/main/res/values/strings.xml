@@ -1644,4 +1644,8 @@ E.g. <b>META</b> for <i>META key</i>, \n
     <string name="edit_container">Edit Container</string>
     <string name="new_container">New Container</string>
     <string name="no_items_to_display">No items to display</string>
-<string name="native_rendering">Native Rendering</string></resources>
+    <string name="native_rendering">Native Rendering</string>
+    <string name="touch_controller">Touch Controller</string>
+    <string name="tools">Tools</string>
+    <string name="controller">Controller</string>
+    </resources>

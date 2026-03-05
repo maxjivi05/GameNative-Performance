@@ -31,8 +31,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -428,6 +430,49 @@ fun XServerScreen(
         }
     }
 
+    fun updateHUD(show: Boolean) {
+        var parent = xServerView?.parent as? ViewGroup
+        while (parent != null && parent !is FrameLayout) {
+            parent = parent.parent as? ViewGroup
+        }
+        val targetLayout = parent as? FrameLayout ?: xServerView?.parent as? FrameLayout
+
+        if (show) {
+            if (performanceHUD == null) {
+                performanceHUD = PerformanceHUD(context)
+                performanceHUD?.let { hud ->
+                    val lp = FrameLayout.LayoutParams(
+                        FrameLayout.LayoutParams.WRAP_CONTENT,
+                        FrameLayout.LayoutParams.WRAP_CONTENT
+                    )
+                    targetLayout?.addView(hud, lp)
+                    hud.bringToFront()
+                }
+            }
+        } else {
+            performanceHUD?.let { hud ->
+                targetLayout?.removeView(hud)
+                performanceHUD = null
+            }
+        }
+    }
+
+    // Apply global settings (HUD, Native Rendering) when xServerView is ready
+    LaunchedEffect(xServerView) {
+        if (xServerView != null) {
+            // Apply global HUD setting
+            if (PrefManager.globalShowHUD) updateHUD(true)
+
+            // Apply global Native Rendering setting
+            val globalNative = PrefManager.globalNativeRendering
+            if (container.isFullscreenStretched() != globalNative) {
+                container.setFullscreenStretched(globalNative)
+                container.saveData()
+                xServerView?.renderer?.setViewportNeedsUpdate(true)
+            }
+        }
+    }
+
     val handleNavigationAction: (Int) -> Unit = { itemId ->
         when (itemId) {
             NavigationDialog.ACTION_TOUCH_TRANSPARENCY -> {
@@ -586,26 +631,9 @@ fun XServerScreen(
             }
 
             NavigationDialog.ACTION_HUD -> {
-                var parent = xServerView?.parent as? ViewGroup
-                while (parent != null && parent !is FrameLayout) {
-                    parent = parent.parent as? ViewGroup
-                }
-                val targetLayout = parent as? FrameLayout ?: xServerView?.parent as? FrameLayout
-
-                if (performanceHUD == null) {
-                    performanceHUD = PerformanceHUD(context)
-                    performanceHUD?.let { hud ->
-                        val lp = FrameLayout.LayoutParams(
-                            FrameLayout.LayoutParams.WRAP_CONTENT,
-                            FrameLayout.LayoutParams.WRAP_CONTENT
-                        )
-                        targetLayout?.addView(hud, lp)
-                        hud.bringToFront()
-                    }
-                } else {
-                    targetLayout?.removeView(performanceHUD)
-                    performanceHUD = null
-                }
+                val newState = performanceHUD == null
+                updateHUD(newState)
+                PrefManager.globalShowHUD = newState
             }
 
             NavigationDialog.ACTION_STRETCH_TO_FULLSCREEN -> {
@@ -617,14 +645,18 @@ fun XServerScreen(
             }
 
             NavigationDialog.ACTION_NATIVE_RENDERING -> {
-                // Toggle fullscreen stretched mode in container settings
-                container.setFullscreenStretched(!container.isFullscreenStretched())
+                // Toggle global native rendering setting
+                val newState = !PrefManager.globalNativeRendering
+                PrefManager.globalNativeRendering = newState
+                
+                // Apply to current container for immediate effect and persistence
+                container.setFullscreenStretched(newState)
                 container.saveData()
 
                 // Update renderer state
                 xServerView?.renderer?.setViewportNeedsUpdate(true)
 
-                val status = if (container.isFullscreenStretched()) "Enabled" else "Disabled"
+                val status = if (newState) "Enabled" else "Disabled"
                 com.winlator.core.AppUtils.showToast(context, "Native Rendering: $status")
             }
 
