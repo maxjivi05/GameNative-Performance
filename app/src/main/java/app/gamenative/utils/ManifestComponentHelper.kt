@@ -10,10 +10,13 @@ import com.winlator.core.StringUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import android.util.Log
+import app.gamenative.PrefManager
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.decodeFromString
 import timber.log.Timber
 import java.util.Locale
 
@@ -208,12 +211,28 @@ object ManifestComponentHelper {
 
     suspend fun loadComponentAvailability(
         context: Context,
+        forceRefresh: Boolean = false
     ): ComponentAvailability = withContext(Dispatchers.IO) {
         val installed = loadInstalledContentLists(context)
         var manifest = ManifestRepository.loadManifest(context) ?: ManifestData.empty()
         
-        // Fetch ALL online releases and merge them into the manifest
-        val onlineReleases = fetchAllOnlineReleases()
+        val now = System.currentTimeMillis()
+        val cachedAt = PrefManager.onlineReleasesFetchedAt
+        val isStale = forceRefresh || (now - cachedAt >= 24 * 60 * 60 * 1000L) // 24 hours
+        
+        val onlineReleases = if (!isStale) {
+            val cachedJson = PrefManager.onlineReleasesJson
+            try {
+                if (cachedJson.isNotEmpty()) {
+                    Json.decodeFromString<Map<String, List<ManifestEntry>>>(cachedJson)
+                } else fetchAllOnlineReleases().also { saveOnlineReleases(it) }
+            } catch (e: Exception) {
+                fetchAllOnlineReleases().also { saveOnlineReleases(it) }
+            }
+        } else {
+            fetchAllOnlineReleases().also { saveOnlineReleases(it) }
+        }
+
         if (onlineReleases.isNotEmpty()) {
             val updatedItems = manifest.items.toMutableMap()
             onlineReleases.forEach { (type, entries) ->
@@ -228,6 +247,15 @@ object ManifestComponentHelper {
             installed = installed.installed,
             installedDrivers = installed.installedDrivers,
         )
+    }
+
+    private fun saveOnlineReleases(releases: Map<String, List<ManifestEntry>>) {
+        try {
+            PrefManager.onlineReleasesJson = Json.encodeToString(releases)
+            PrefManager.onlineReleasesFetchedAt = System.currentTimeMillis()
+        } catch (e: Exception) {
+            Timber.e(e, "ManifestHelper: save failed")
+        }
     }
 
     fun buildAvailableVersions(

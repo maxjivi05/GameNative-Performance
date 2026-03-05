@@ -21,6 +21,7 @@ import app.gamenative.ui.enums.AppOptionMenuType
 import com.winlator.container.ContainerData
 import app.gamenative.ui.component.picker.rememberDownloadFolderPicker
 import app.gamenative.enums.Marker
+import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.MarkerUtils
 import java.io.File
 import java.util.Locale
@@ -499,12 +500,8 @@ class GOGAppScreen : BaseAppScreen() {
     }
 
     override fun loadContainerData(context: Context, libraryItem: LibraryItem): ContainerData {
-        Timber.tag(TAG).d("loadContainerData: appId=${libraryItem.appId}")
-        // Load GOG-specific container data using ContainerUtils
-        val container = app.gamenative.utils.ContainerUtils.getOrCreateContainer(context, libraryItem.appId)
-        val containerData = app.gamenative.utils.ContainerUtils.ensureGameDriveMounted(context, container.id, libraryItem.appId)
-        Timber.tag(TAG).d("loadContainerData: loaded container for ${libraryItem.appId}")
-        return containerData
+        val container = ContainerUtils.getOrCreateContainer(context, libraryItem.appId)
+        return ContainerUtils.loadContainerDataForGame(context, container, libraryItem.appId)
     }
 
     override fun saveContainerConfig(context: Context, libraryItem: LibraryItem, config: ContainerData) {

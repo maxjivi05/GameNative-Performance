@@ -386,16 +386,16 @@ internal fun LibraryListPane(
                                         bottom = 72.dp
                                     ),
                                 ) {
-                                    items(items = state.appInfoList, key = { it.index }) { item ->
+                                    items(items = state.appInfoList, key = { it.appId }) { item ->
                                         // Fade-in animation for items
-                                        var isVisible by remember(item.index) { mutableStateOf(false) }
+                                        var isVisible by remember(item.appId) { mutableStateOf(false) }
                                         val alpha by animateFloatAsState(
                                             targetValue = if (isVisible) 1f else 0f,
                                             animationSpec = tween(durationMillis = 300),
                                             label = "fadeIn"
                                         )
 
-                                        LaunchedEffect(item.index) {
+                                        LaunchedEffect(item.appId) {
                                             isVisible = true
                                         }
 

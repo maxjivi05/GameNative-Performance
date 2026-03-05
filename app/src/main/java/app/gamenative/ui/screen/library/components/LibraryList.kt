@@ -53,7 +53,7 @@ internal fun LibraryList(
             state = listState,
             contentPadding = contentPaddingValues,
         ) {
-            items(items = list, key = { it.index }) { item ->
+            items(items = list, key = { it.appId }) { item ->
                 AppItem(
                     modifier = Modifier.animateItem(),
                     appInfo = item,

@@ -170,14 +170,14 @@ public abstract class GPUInformation {
 
     public static boolean isAdreno8Elite(Context context) {
         String r = getRenderer(context).toLowerCase(Locale.ENGLISH);
-        // “adreno … 83x / 84x / 85x”
-        return r.contains("adreno") && r.matches(".*\\b8(3[0-9]|4[0-9]|5[0-9])\\b.*");
+        // Match Adreno 830, 840, 850, or generic 8xx
+        return r.contains("adreno") && (r.matches(".*\\b8[0-9]{2}\\b.*") || r.contains("adreno 8"));
     }
 
     public static boolean isTurnipCapable(Context context) {
         String r = getRenderer(context).toLowerCase(Locale.ENGLISH);
-        // match “adreno 610…699” or “adreno 710…799”
-        return r.contains("adreno") && r.matches(".*\\b[67][0-9]{2}\\b.*");
+        // match “adreno 6xx”, “adreno 7xx”, or “adreno 8xx”
+        return r.contains("adreno") && r.matches(".*\\b[678][0-9]{2}\\b.*");
     }
 
     /**

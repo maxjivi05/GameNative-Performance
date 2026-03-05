@@ -1,0 +1,87 @@
+--------- beginning of system
+03-05 09:23:10.947  1515  1515 V Configuration: Updating configuration, locales updated from [] to [en_IN]
+03-05 09:23:11.349  1515  1515 D ResourcesManagerExtImpl: applyConfigurationToAppResourcesLocked app.getDisplayId() return callback.displayId:-1
+03-05 09:23:11.414  1515  1569 I DisplayManager: Choreographer implicitly registered for the refresh rate.
+03-05 09:23:11.415  1515  1515 D ResourcesManagerExtImpl: applyConfigurationToAppResourcesLocked app.getDisplayId() return callback.displayId:0
+03-05 09:23:11.492  1515  1515 D ActivityThread: ComponentInfo{app.gamenative/app.gamenative.MainActivityAliasDefault} checkFinished=false 2
+03-05 09:23:11.492  1515  1515 D ResourcesManagerExtImpl: applyConfigurationToAppResourcesLocked app.getDisplayId() return callback.displayId:0
+03-05 09:23:11.500  1515  1515 D OplusInputMethodUtil: init sDebug to false, init sDebugIme to false, init sAlwaysOn to false
+03-05 09:23:11.500  1515  1515 D OplusInputMethodUtil: updateDebugToClass InputMethodManager.DEBUG = false
+03-05 09:23:11.500  1515  1515 D OplusInputMethodUtil: updateDebugToClass ImeFocusController.DEBUG = false
+03-05 09:23:11.500  1515  1515 D OplusInputMethodUtil: updateDebugToClass OnBackInvokedDispatcher.DEBUG = false
+03-05 09:23:11.500  1515  1515 D OplusInputMethodUtil: updateDebugToClass InsetsController.DEBUG = false
+03-05 09:23:11.500  1515  1515 D OplusInputMethodUtil: updateDebugToClass BaseInputConnection.DEBUG = false
+03-05 09:23:11.519  1515  1515 D InsetsController: Setting requestedVisibleTypes to -12 (was -9)
+03-05 09:23:11.529  1515  1515 D ResourcesManagerExtImpl: applyConfigurationToAppResourcesLocked app.getDisplayId() return callback.displayId:0
+03-05 09:23:11.699  1515  1515 D VRI[MainActivityAliasDefault]: relayoutWindow result, sizeChanged:true, surfaceControlChanged:true, transformHintChanged:false, mSurfaceSize:Point(2376, 1080), mLastSurfaceSize:Point(0, 0), mWidth:-1, mHeight:-1, requestedWidth:1080, requestedHeight:2376, transformHint:0, installOrientation:0, displayRotation:0, isSurfaceValid:true, attr.flag:-2122251904, tmpFrames:ClientWindowFrames{frame=[0,0][2376,1080] display=[0,0][2376,1080] parentFrame=[0,0][0,0]}, relayoutAsync:false, mSyncSeqId:0
+03-05 09:23:11.699  1515  1515 W VRI[MainActivityAliasDefault]: updateBlastSurfaceIfNeeded, surfaceSize:Point(2376, 1080), lastSurfaceSize:Point(0, 0), format:-1, blastBufferQueue:null
+03-05 09:23:11.700  1515  1515 D ResourcesManagerExtImpl: applyConfigurationToAppResourcesLocked app.getDisplayId() return callback.displayId:0
+03-05 09:23:11.758  1515  1515 D VRI[MainActivityAliasDefault]: relayoutWindow result, sizeChanged:false, surfaceControlChanged:false, transformHintChanged:true, mSurfaceSize:Point(2376, 1080), mLastSurfaceSize:Point(2376, 1080), mWidth:2376, mHeight:1080, requestedWidth:2376, requestedHeight:1080, transformHint:4, installOrientation:0, displayRotation:1, isSurfaceValid:true, attr.flag:-2122251904, tmpFrames:ClientWindowFrames{frame=[0,0][2376,1080] display=[0,0][2376,1080] parentFrame=[0,0][2376,1080]}, relayoutAsync:true, mSyncSeqId:0
+03-05 09:23:11.758  1515  1515 W VRI[MainActivityAliasDefault]: updateBlastSurfaceIfNeeded, surfaceSize:Point(2376, 1080), lastSurfaceSize:Point(2376, 1080), format:-1, blastBufferQueue:android.graphics.BLASTBufferQueue@900ede2
+03-05 09:23:11.774  1515  1515 W VRI[MainActivityAliasDefault]: handleResized, msg:, frameChanged:false, configChanged:false, displayChanged:false, attachedFrameChanged:false, compatScaleChanged:false, pendingDragResizing=false
+03-05 09:23:18.938  1515  1515 D OplusInputMethodManagerInternal: get inputMethodManager extension: com.android.internal.view.IInputMethodManager$Stub$Proxy@36f2f1f
+--------- beginning of main
+03-05 09:25:03.710  1515  1515 I DynamicFramerate [AnimationSpeedAware]: onEventHandled: info: InputEventInfo: mX = 0, mY = 0, mAction = 0, mVsyncTime = 1604933, mIsMoving = true, mUpdated = true
+03-05 09:25:03.710  1515  1515 V AutofillManager: requestHideFillUi(null): anchor = null
+03-05 09:25:03.984  1515  1515 I DynamicFramerate [AnimationSpeedAware]: onEventHandled: info: InputEventInfo: mX = 0, mY = 0, mAction = 1, mVsyncTime = 1605207, mIsMoving = false, mUpdated = true
+03-05 09:25:03.985  1515  1515 D ViewRootImplExtImpl: the up motion event handled by client, just return
+03-05 09:25:05.418  1515  1515 I DynamicFramerate [AnimationSpeedAware]: onEventHandled: info: InputEventInfo: mX = 0, mY = 0, mAction = 0, mVsyncTime = 1606641, mIsMoving = true, mUpdated = true
+03-05 09:25:05.418  1515  1515 E IJankManager: slideSceneEnd unknown scene 1000 mScene:-1
+03-05 09:25:05.418  1515  1515 V AutofillManager: requestHideFillUi(null): anchor = null
+03-05 09:25:05.513  1515  1515 I DynamicFramerate [AnimationSpeedAware]: onEventHandled: info: InputEventInfo: mX = 0, mY = 0, mAction = 1, mVsyncTime = 1606736, mIsMoving = false, mUpdated = true
+03-05 09:25:05.525  1515  1515 D ViewRootImplExtImpl: the up motion event handled by client, just return
+03-05 09:25:05.532  1515  1515 D PulseAudioComponent: Pausing...
+03-05 09:25:05.532  1515  1515 I Process : Sending signal. PID: 2023 SIG: 19
+03-05 09:25:05.532  1515  1515 D MainActivity: Game paused due to app backgrounded
+03-05 09:25:05.548  1515  1515 D VRI[MainActivityAliasDefault]: onFocusEvent false
+03-05 09:25:05.984  1515  1540 D VRI[MainActivityAliasDefault]: dispatchAppVisibility visible:false mUpcomingWindowFocus:false
+03-05 09:25:05.984  1515  1515 D VRI[MainActivityAliasDefault]: visibilityChanged oldVisibility=true newVisibility=false
+03-05 09:25:05.990  1515  1515 D HWUI    : RenderProxy::destroy: this=0x6f2d9b4c00, mContext=0x6f4ad8e7c0
+03-05 09:25:05.990  1515  1569 D HWUI    : SkiaVulkanPipeline::setSurface: this=0x6f4ab60ec0, surface=NULL
+03-05 09:25:05.991  1515  1569 D BufferQueueProducer: [VRI[MainActivityAliasDefault]#0(BLAST Consumer)0](id:5eb00000000,api:1,p:1515,c:1515) disconnect: api 1
+03-05 09:25:05.997  1515  1515 D ViewRootImplExtImpl: wrapConfigInfoIntoFlags rotation=1, smallestScreenWidthDp=360, residentWS=false, scenario=0, bounds=Rect(0, 0 - 2376, 1080), relayoutAsync=false, flags=0, newFlags=1245719816, title=app.gamenative/app.gamenative.MainActivityAliasDefault
+03-05 09:25:05.999  1515  1515 D VRI[MainActivityAliasDefault]: relayoutWindow result, sizeChanged:false, surfaceControlChanged:true, transformHintChanged:false, mSurfaceSize:Point(2376, 1080), mLastSurfaceSize:Point(2376, 1080), mWidth:2376, mHeight:1080, requestedWidth:2376, requestedHeight:1080, transformHint:4, installOrientation:0, displayRotation:1, isSurfaceValid:false, attr.flag:-2122251904, tmpFrames:ClientWindowFrames{frame=[0,0][2376,1080] display=[0,0][2376,1080] parentFrame=[0,0][0,0]}, relayoutAsync:false, mSyncSeqId:0
+03-05 09:25:05.999  1515  1515 D BLASTBufferQueue: [VRI[MainActivityAliasDefault]#0](f:0,a:1) destructor()
+03-05 09:25:05.999  1515  1515 D BufferQueueConsumer: [VRI[MainActivityAliasDefault]#0(BLAST Consumer)0](id:5eb00000000,api:0,p:-1,c:1515) disconnect
+03-05 09:25:06.000  1515  1515 D VRI[MainActivityAliasDefault]: setWindowStopped stopped:true
+03-05 09:25:06.002  1515  1515 D MainActivity: onStop - Index: 0, Connected: true, Logged-In: false, Changing-Config: false, Keep Alive: true, Is Importing: false
+03-05 09:25:06.046  1515  1537 D StrictMode: StrictMode policy violation: android.os.strictmode.LeakedClosableViolation: A resource was acquired at attached stack trace but never released. See java.io.Closeable for information on avoiding resource leaks.
+03-05 09:25:06.046  1515  1537 D StrictMode: 	at android.os.StrictMode$AndroidCloseGuardReporter.report(StrictMode.java:2202)
+03-05 09:25:06.046  1515  1537 D StrictMode: 	at dalvik.system.CloseGuard.warnIfOpen(CloseGuard.java:349)
+03-05 09:25:06.046  1515  1537 D StrictMode: 	at java.io.FileInputStream.finalize(FileInputStream.java:662)
+03-05 09:25:06.046  1515  1537 D StrictMode: 	at java.lang.Daemons$FinalizerDaemon.doFinalize(Daemons.java:389)
+03-05 09:25:06.046  1515  1537 D StrictMode: 	at java.lang.Daemons$FinalizerDaemon.processReference(Daemons.java:369)
+03-05 09:25:06.046  1515  1537 D StrictMode: 	at java.lang.Daemons$FinalizerDaemon.runInternal(Daemons.java:341)
+03-05 09:25:06.046  1515  1537 D StrictMode: 	at java.lang.Daemons$Daemon.run(Daemons.java:135)
+03-05 09:25:06.046  1515  1537 D StrictMode: 	at java.lang.Thread.run(Thread.java:1563)
+03-05 09:25:06.046  1515  1537 D StrictMode: Caused by: dalvik.system.CloseGuard$CloseGuardException: Explicit termination method 'close' not called
+03-05 09:25:06.046  1515  1537 D StrictMode: 	at dalvik.system.CloseGuard.openWithCallSite(CloseGuard.java:287)
+03-05 09:25:06.046  1515  1537 D StrictMode: 	at dalvik.system.CloseGuard.open(CloseGuard.java:257)
+03-05 09:25:06.046  1515  1537 D StrictMode: 	at java.io.FileInputStream.<init>(FileInputStream.java:195)
+03-05 09:25:06.046  1515  1537 D StrictMode: 	at java.io.FileInputStream.<init>(FileInputStream.java:133)
+03-05 09:25:06.046  1515  1537 D StrictMode: 	at com.winlator.core.ProcessHelper.listRunningWineProcesses(ProcessHelper.java:358)
+03-05 09:25:06.046  1515  1537 D StrictMode: 	at com.winlator.core.ProcessHelper.pauseAllWineProcesses(ProcessHelper.java:54)
+03-05 09:25:06.046  1515  1537 D StrictMode: 	at com.winlator.xenvironment.components.GuestProgramLauncherComponent.suspendProcess(GuestProgramLauncherComponent.java:425)
+03-05 09:25:06.046  1515  1537 D StrictMode: 	at com.winlator.xenvironment.XEnvironment.onPause(XEnvironment.java:98)
+03-05 09:25:06.046  1515  1537 D StrictMode: 	at app.gamenative.MainActivity.onPause(MainActivity.kt:358)
+03-05 09:25:06.046  1515  1537 D StrictMode: 	at android.app.Activity.performPause(Activity.java:9626)
+03-05 09:25:06.046  1515  1537 D StrictMode: 	at android.app.Instrumentation.callActivityOnPause(Instrumentation.java:1791)
+03-05 09:25:06.046  1515  1537 D StrictMode: 	at android.app.ActivityThread.performPauseActivityIfNeeded(ActivityThread.java:6401)
+03-05 09:25:06.046  1515  1537 D StrictMode: 	at android.app.ActivityThread.performPauseActivity(ActivityThread.java:6362)
+03-05 09:25:06.046  1515  1537 D StrictMode: 	at android.app.ActivityThread.handlePauseActivity(ActivityThread.java:6314)
+03-05 09:25:06.046  1515  1537 D StrictMode: 	at android.app.servertransaction.PauseActivityItem.execute(PauseActivityItem.java:70)
+03-05 09:25:06.046  1515  1537 D StrictMode: 	at android.app.servertransaction.ActivityTransactionItem.execute(ActivityTransactionItem.java:63)
+03-05 09:25:06.046  1515  1537 D StrictMode: 	at android.app.servertransaction.TransactionExecutor.executeLifecycleItem(TransactionExecutor.java:174)
+03-05 09:25:06.046  1515  1537 D StrictMode: 	at android.app.servertransaction.TransactionExecutor.executeTransactionItems(TransactionExecutor.java:106)
+03-05 09:25:06.046  1515  1537 D StrictMode: 	at android.app.servertransaction.TransactionExecutor.execute(TransactionExecutor.java:85)
+03-05 09:25:06.046  1515  1537 D StrictMode: 	at android.app.ActivityThread$H.handleMessage(ActivityThread.java:3116)
+03-05 09:25:06.046  1515  1537 D StrictMode: 	at android.os.Handler.dispatchMessage(Handler.java:115)
+03-05 09:25:06.046  1515  1537 D StrictMode: 	at android.os.Looper.loopOnce(Looper.java:298)
+03-05 09:25:06.046  1515  1537 D StrictMode: 	at android.os.Looper.loop(Looper.java:408)
+03-05 09:25:06.046  1515  1537 D StrictMode: 	at android.app.ActivityThread.main(ActivityThread.java:9964)
+03-05 09:25:06.046  1515  1537 D StrictMode: 	at java.lang.reflect.Method.invoke(Native Method)
+03-05 09:25:06.046  1515  1537 D StrictMode: 	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:613)
+03-05 09:25:06.046  1515  1537 D StrictMode: 	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:1074)
+03-05 09:25:06.549  1515  1582 D OplusScrollToTopManager: app.gamenative/app.gamenative.MainActivityAliasDefault,This com.android.internal.policy.DecorView{b195e22 I.E...... R.....ID 0,0-2376,1080 aid=0 alpha=1.0 viewInfo = }[MainActivityAliasDefault] change focus to false
+03-05 09:25:08.121  1515  1640 I SteamService$logger: [WebSocketConnection] -> Watchdog: No response for 25 seconds
+03-05 09:25:09.145  1515  1539 D VRI[MainActivityAliasDefault]: dispatchAppVisibility visible:true mUpcomingWindowFocus:false

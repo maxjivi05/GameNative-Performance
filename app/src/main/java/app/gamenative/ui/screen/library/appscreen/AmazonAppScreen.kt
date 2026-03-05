@@ -752,7 +752,7 @@ override fun isInstalled(context: Context, libraryItem: LibraryItem): Boolean =
 
     override fun loadContainerData(context: Context, libraryItem: LibraryItem): ContainerData {
         val container = ContainerUtils.getOrCreateContainer(context, libraryItem.appId)
-        return ContainerUtils.ensureGameDriveMounted(context, container.id, libraryItem.appId)
+        return ContainerUtils.loadContainerDataForGame(context, container, libraryItem.appId)
     }
 
     override fun saveContainerConfig(

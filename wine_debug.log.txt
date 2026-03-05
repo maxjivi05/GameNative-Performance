@@ -1,0 +1,912 @@
+EVSHIM starting up…
+Bound to SDL 2.32.6  Axis=0x7eab97e804
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/tmp/gamepad.mem -> /data/data/app.gamenative/files/imagefs/tmp/gamepad.mem
+>>> VJOY UPDATER for Player 0 is LIVE in PID 24189 <<<
+[BOX64] Box64 arm64 v0.4.1  with Dynarec built on Mar  2 2026 04:58:48
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/tmp/gamepad.mem -> /data/data/app.gamenative/files/imagefs/tmp/gamepad.mem
+sh: lscpu: inaccessible or not found
+[BOX64] Dynarec for ARM64, with extension: ASIMD AES CRC32 PMULL ATOMICS SHA1 SHA2 USCAT FLAGM FLAGM2 FRINT AFP RNDR
+[BOX64] Running on Unknown CPU with 8 cores, pagesize: 4096
+[BOX64] Will use hardware counter measured at 19.2 MHz emulating 2.4 GHz
+[BOX64] Wine64 detected, WINEPRELOADRESERVE=""
+[BOX64] Didn't detect 48bits of address space, considering it's 39bits
+[BOX64] Warning, program break not found
+[BOX64] WINE prereserve of 0x10000:0x8000 done
+[BOX64] WINE prereserve of 0x110000:0x30000000 done
+[BOX64] WINE prereserve of 0x7f000000:0x3000000 done
+[BOX64] Detected running wine with "explorer"
+[BOX64] Warning, older then 2.34 pthread_kill not found, using current one
+[BOX64] Counted 101 Env var
+[BOX64] BOX64 trying to Preload /data/app/~~xvWFyISAbF-pHl34U2x8xw==/app.gamenative-vqGUTiHQ2E8F8I-i8nclcg==/lib/arm64/libhook_impl.so /data/app/~~xvWFyISAbF-pHl34U2x8xw==/app.gamenative-vqGUTiHQ2E8F8I-i8nclcg==/lib/arm64/libfile_redirect_hook.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libandroid-sysvshm.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libevshim.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libredirect-bionic.so 
+[BOX64] BOX64 trying to Preload /data/app/~~xvWFyISAbF-pHl34U2x8xw==/app.gamenative-vqGUTiHQ2E8F8I-i8nclcg==/lib/arm64/libhook_impl.so /data/app/~~xvWFyISAbF-pHl34U2x8xw==/app.gamenative-vqGUTiHQ2E8F8I-i8nclcg==/lib/arm64/libfile_redirect_hook.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libandroid-sysvshm.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libevshim.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libredirect-bionic.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libandroid-sysvshm.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libevshim.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libredirect-bionic.so 
+[BOX64] Library search path: 
+[BOX64] Binary search path: ./:bin/:/data/user/0/app.gamenative/files/imagefs/opt/proton-10.0-4-x86_64/bin/:/data/user/0/app.gamenative/files/imagefs/usr/bin/
+[BOX64] Looking for wine
+[BOX64] argv[1]="explorer"
+[BOX64] argv[2]="/desktop=shell,1280x720"
+[BOX64] argv[3]="winhandler.exe"
+[BOX64] argv[4]=""C:\\Program Files (x86)\\Steam\\steamclient_loader_x64.exe""
+[BOX64] Rename process to "wine"
+[BOX64] Warning, cannot pre-load /data/app/~~xvWFyISAbF-pHl34U2x8xw==/app.gamenative-vqGUTiHQ2E8F8I-i8nclcg==/lib/arm64/libhook_impl.so
+[BOX64] Warning, cannot pre-load /data/app/~~xvWFyISAbF-pHl34U2x8xw==/app.gamenative-vqGUTiHQ2E8F8I-i8nclcg==/lib/arm64/libfile_redirect_hook.so
+[BOX64] Warning, cannot pre-load /data/user/0/app.gamenative/files/imagefs/usr/lib/libandroid-sysvshm.so
+[BOX64] Warning, cannot pre-load /data/user/0/app.gamenative/files/imagefs/usr/lib/libevshim.so
+[BOX64] Warning, cannot pre-load /data/user/0/app.gamenative/files/imagefs/usr/lib/libredirect-bionic.so
+[BOX64] Warning, cannot pre-load /data/user/0/app.gamenative/files/imagefs/usr/lib/libandroid-sysvshm.so
+[BOX64] Warning, cannot pre-load /data/user/0/app.gamenative/files/imagefs/usr/lib/libevshim.so
+[BOX64] Warning, cannot pre-load /data/user/0/app.gamenative/files/imagefs/usr/lib/libredirect-bionic.so
+[BOX64] Warning, program break not found
+[BOX64] Using native(wrapped) libdl.so
+[BOX64] Warning, program break not found
+[BOX64] Using native(wrapped) libc.so
+[BOX64] Warning, program break not found
+[BOX64] Using native(wrapped) libpthread.so
+[BOX64] Using native(wrapped) libm.so
+[BOX64] Using native(wrapped) libbsd.so
+[BOX64] Warning, program break not found
+[BOX64] Using emulated /data/user/0/app.gamenative/files/imagefs/opt/proton-10.0-4-x86_64/bin/../lib/wine/x86_64-unix/ntdll.so
+EVSHIM starting up…
+Bound to SDL 2.32.6  Axis=0x7b8cea9804
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/tmp/gamepad.mem -> /data/data/app.gamenative/files/imagefs/tmp/gamepad.mem
+>>> VJOY UPDATER for Player 0 is LIVE in PID 24189 <<<
+[BOX64] Box64 arm64 v0.4.1  with Dynarec built on Mar  2 2026 04:58:48
+[BOX64] Dynarec for ARM64, with extension: ASIMD AES CRC32 PMULL ATOMICS SHA1 SHA2 USCAT FLAGM FLAGM2 FRINT AFP RNDR
+[BOX64] Running on Unknown CPU with 8 cores, pagesize: 4096
+[BOX64] Will use hardware counter measured at 19.2 MHz emulating 2.4 GHz
+[BOX64] Wine preloader detected, loading "/data/user/0/app.gamenative/files/imagefs/opt/proton-10.0-4-x86_64/lib/wine/../../bin/wine" directly
+[BOX64] Wine64 detected, WINEPRELOADRESERVE=""
+[BOX64] Didn't detect 48bits of address space, considering it's 39bits
+[BOX64] Warning, program break not found
+[BOX64] WINE prereserve of 0x10000:0x8000 done
+[BOX64] WINE prereserve of 0x110000:0x30000000 done
+[BOX64] WINE prereserve of 0x7f000000:0x3000000 done
+[BOX64] Detected running wine with "explorer"
+[BOX64] Warning, older then 2.34 pthread_kill not found, using current one
+[BOX64] Counted 103 Env var
+[BOX64] BOX64 trying to Preload /data/app/~~xvWFyISAbF-pHl34U2x8xw==/app.gamenative-vqGUTiHQ2E8F8I-i8nclcg==/lib/arm64/libhook_impl.so /data/app/~~xvWFyISAbF-pHl34U2x8xw==/app.gamenative-vqGUTiHQ2E8F8I-i8nclcg==/lib/arm64/libfile_redirect_hook.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libandroid-sysvshm.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libevshim.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libredirect-bionic.so 
+[BOX64] BOX64 trying to Preload /data/app/~~xvWFyISAbF-pHl34U2x8xw==/app.gamenative-vqGUTiHQ2E8F8I-i8nclcg==/lib/arm64/libhook_impl.so /data/app/~~xvWFyISAbF-pHl34U2x8xw==/app.gamenative-vqGUTiHQ2E8F8I-i8nclcg==/lib/arm64/libfile_redirect_hook.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libandroid-sysvshm.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libevshim.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libredirect-bionic.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libandroid-sysvshm.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libevshim.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libredirect-bionic.so 
+[BOX64] Library search path: 
+[BOX64] Binary search path: ./:bin/:/data/user/0/app.gamenative/files/imagefs/opt/proton-10.0-4-x86_64/bin/:/data/user/0/app.gamenative/files/imagefs/usr/bin/
+[BOX64] Looking for /data/user/0/app.gamenative/files/imagefs/opt/proton-10.0-4-x86_64/lib/wine/../../bin/wine
+[BOX64] argv[1]="explorer"
+[BOX64] argv[2]="/desktop=shell,1280x720"
+[BOX64] argv[3]="winhandler.exe"
+[BOX64] argv[4]=""C:\\Program Files (x86)\\Steam\\steamclient_loader_x64.exe""
+[BOX64] Rename process to "wine"
+[BOX64] Warning, cannot pre-load /data/app/~~xvWFyISAbF-pHl34U2x8xw==/app.gamenative-vqGUTiHQ2E8F8I-i8nclcg==/lib/arm64/libhook_impl.so
+[BOX64] Warning, cannot pre-load /data/app/~~xvWFyISAbF-pHl34U2x8xw==/app.gamenative-vqGUTiHQ2E8F8I-i8nclcg==/lib/arm64/libfile_redirect_hook.so
+[BOX64] Warning, cannot pre-load /data/user/0/app.gamenative/files/imagefs/usr/lib/libandroid-sysvshm.so
+[BOX64] Warning, cannot pre-load /data/user/0/app.gamenative/files/imagefs/usr/lib/libevshim.so
+[BOX64] Warning, cannot pre-load /data/user/0/app.gamenative/files/imagefs/usr/lib/libredirect-bionic.so
+[BOX64] Warning, cannot pre-load /data/user/0/app.gamenative/files/imagefs/usr/lib/libandroid-sysvshm.so
+[BOX64] Warning, cannot pre-load /data/user/0/app.gamenative/files/imagefs/usr/lib/libevshim.so
+[BOX64] Warning, cannot pre-load /data/user/0/app.gamenative/files/imagefs/usr/lib/libredirect-bionic.so
+[BOX64] Warning, program break not found
+[BOX64] Using native(wrapped) libdl.so
+[BOX64] Warning, program break not found
+[BOX64] Using native(wrapped) libc.so
+[BOX64] Warning, program break not found
+[BOX64] Using native(wrapped) libpthread.so
+[BOX64] Using native(wrapped) libm.so
+[BOX64] Using native(wrapped) libbsd.so
+[BOX64] Warning, program break not found
+[BOX64] Using emulated /data/user/0/app.gamenative/files/imagefs/opt/proton-10.0-4-x86_64/bin/../lib/wine/x86_64-unix/ntdll.so
+[BOX64] posix_spawn(0x7b8bbfe358, "/data/user/0/app.gamenative/files/imagefs/opt/proton-10.0-4-x86_64/lib/wine/../../bin/wineserver", 0x0, 0x0, 0x7b8bbfe360["/data/user/0/app.gamenative/files/imagefs/opt/proton-10.0-4-x86_64/lib/wine/../../bin/wineserver", "", ...], 0x7b8bbfe720), IsX64=1, IsX86=0 IsScript=0 envp is context->envv
+[BOX64]  => posix_spawn(0x7b8bbfe358, "/data/user/0/app.gamenative/files/imagefs/usr/bin/box64", 0x0, 0x0, 0x7fca7c84e0 ["/data/user/0/app.gamenative/files/imagefs/usr/bin/box64", "/data/user/0/app.gamenative/files/imagefs/opt/proton-10.0-4-x86_64/lib/wine/../../bin/wineserver", ""...:1], 0x7fca7c8bb8)
+[BOX64] posix_spawn returned 0
+EVSHIM starting up…
+Bound to SDL 2.32.6  Axis=0x78f596f804
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/tmp/gamepad.mem -> /data/data/app.gamenative/files/imagefs/tmp/gamepad.mem
+>>> VJOY UPDATER for Player 0 is LIVE in PID 24210 <<<
+[BOX64] Box64 arm64 v0.4.1  with Dynarec built on Mar  2 2026 04:58:48
+[BOX64] Dynarec for ARM64, with extension: ASIMD AES CRC32 PMULL ATOMICS SHA1 SHA2 USCAT FLAGM FLAGM2 FRINT AFP RNDR
+[BOX64] Running on Unknown CPU with 8 cores, pagesize: 4096
+[BOX64] Will use hardware counter measured at 19.2 MHz emulating 2.4 GHz
+[BOX64] Didn't detect 48bits of address space, considering it's 39bits
+[BOX64] Warning, program break not found
+[BOX64] Warning, older then 2.34 pthread_kill not found, using current one
+[BOX64] Counted 103 Env var
+[BOX64] BOX64 trying to Preload /data/app/~~xvWFyISAbF-pHl34U2x8xw==/app.gamenative-vqGUTiHQ2E8F8I-i8nclcg==/lib/arm64/libhook_impl.so /data/app/~~xvWFyISAbF-pHl34U2x8xw==/app.gamenative-vqGUTiHQ2E8F8I-i8nclcg==/lib/arm64/libfile_redirect_hook.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libandroid-sysvshm.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libevshim.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libredirect-bionic.so 
+[BOX64] BOX64 trying to Preload /data/app/~~xvWFyISAbF-pHl34U2x8xw==/app.gamenative-vqGUTiHQ2E8F8I-i8nclcg==/lib/arm64/libhook_impl.so /data/app/~~xvWFyISAbF-pHl34U2x8xw==/app.gamenative-vqGUTiHQ2E8F8I-i8nclcg==/lib/arm64/libfile_redirect_hook.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libandroid-sysvshm.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libevshim.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libredirect-bionic.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libandroid-sysvshm.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libevshim.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libredirect-bionic.so 
+[BOX64] Library search path: 
+[BOX64] Binary search path: ./:bin/:/data/user/0/app.gamenative/files/imagefs/opt/proton-10.0-4-x86_64/bin/:/data/user/0/app.gamenative/files/imagefs/usr/bin/
+[BOX64] Looking for /data/user/0/app.gamenative/files/imagefs/opt/proton-10.0-4-x86_64/lib/wine/../../bin/wineserver
+[BOX64] Rename process to "wineserver"
+[BOX64] Warning, cannot pre-load /data/app/~~xvWFyISAbF-pHl34U2x8xw==/app.gamenative-vqGUTiHQ2E8F8I-i8nclcg==/lib/arm64/libhook_impl.so
+[BOX64] Warning, cannot pre-load /data/app/~~xvWFyISAbF-pHl34U2x8xw==/app.gamenative-vqGUTiHQ2E8F8I-i8nclcg==/lib/arm64/libfile_redirect_hook.so
+[BOX64] Warning, cannot pre-load /data/user/0/app.gamenative/files/imagefs/usr/lib/libandroid-sysvshm.so
+[BOX64] Warning, cannot pre-load /data/user/0/app.gamenative/files/imagefs/usr/lib/libevshim.so
+[BOX64] Warning, cannot pre-load /data/user/0/app.gamenative/files/imagefs/usr/lib/libredirect-bionic.so
+[BOX64] Warning, cannot pre-load /data/user/0/app.gamenative/files/imagefs/usr/lib/libandroid-sysvshm.so
+[BOX64] Warning, cannot pre-load /data/user/0/app.gamenative/files/imagefs/usr/lib/libevshim.so
+[BOX64] Warning, cannot pre-load /data/user/0/app.gamenative/files/imagefs/usr/lib/libredirect-bionic.so
+[BOX64] Warning, program break not found
+[BOX64] Using native(wrapped) libdl.so
+[BOX64] Warning, program break not found
+[BOX64] Using native(wrapped) libc.so
+[BOX64] Warning, program break not found
+[BOX64] Using native(wrapped) libpthread.so
+[BOX64] Using native(wrapped) libm.so
+[BOX64] Using native(wrapped) libbsd.so
+esync: up and running.
+Failed to open /etc/machine-id, error No such file or directory.
+0024:fixme:fsync:do_fsync futexes not supported on this platform.
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/tmp/gamepad.mem -> /data/data/app.gamenative/files/imagefs/tmp/gamepad.mem
+[BOX64] Box64 arm64 v0.4.1  with Dynarec built on Mar  2 2026 04:58:48
+[BOX64] Dynarec for ARM64, with extension: ASIMD AES CRC32 PMULL ATOMICS SHA1 SHA2 USCAT FLAGM FLAGM2 FRINT AFP RNDR
+[BOX64] Running on Unknown CPU with 8 cores, pagesize: 4096
+[BOX64] Will use hardware counter measured at 19.2 MHz emulating 2.4 GHz
+[BOX64] Wine preloader detected, loading "/data/user/0/app.gamenative/files/imagefs/opt/proton-10.0-4-x86_64/lib/wine/../../bin/wine" directly
+[BOX64] Wine64 detected, WINEPRELOADRESERVE="140000000-14006a000"
+[BOX64] Didn't detect 48bits of address space, considering it's 39bits
+[BOX64] Warning, program break not found
+[BOX64] WINE prereserve of 0x10000:0x8000 done
+[BOX64] WINE prereserve of 0x110000:0x30000000 done
+[BOX64] WINE prereserve of 0x7f000000:0x3000000 done
+[BOX64] WINE prereserve of 0x140000000:0x14006a000 done
+[BOX64] Detected running wine with "wineboot.exe"
+[BOX64] Warning, older then 2.34 pthread_kill not found, using current one
+[BOX64] Counted 106 Env var
+[BOX64] BOX64 trying to Preload /data/app/~~xvWFyISAbF-pHl34U2x8xw==/app.gamenative-vqGUTiHQ2E8F8I-i8nclcg==/lib/arm64/libhook_impl.so /data/app/~~xvWFyISAbF-pHl34U2x8xw==/app.gamenative-vqGUTiHQ2E8F8I-i8nclcg==/lib/arm64/libfile_redirect_hook.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libandroid-sysvshm.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libevshim.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libredirect-bionic.so 
+[BOX64] BOX64 trying to Preload /data/app/~~xvWFyISAbF-pHl34U2x8xw==/app.gamenative-vqGUTiHQ2E8F8I-i8nclcg==/lib/arm64/libhook_impl.so /data/app/~~xvWFyISAbF-pHl34U2x8xw==/app.gamenative-vqGUTiHQ2E8F8I-i8nclcg==/lib/arm64/libfile_redirect_hook.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libandroid-sysvshm.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libevshim.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libredirect-bionic.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libandroid-sysvshm.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libevshim.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libredirect-bionic.so 
+[BOX64] Library search path: 
+[BOX64] Binary search path: ./:bin/:/data/user/0/app.gamenative/files/imagefs/opt/proton-10.0-4-x86_64/bin/:/data/user/0/app.gamenative/files/imagefs/usr/bin/
+[BOX64] Looking for /data/user/0/app.gamenative/files/imagefs/opt/proton-10.0-4-x86_64/lib/wine/../../bin/wine
+[BOX64] argv[1]="C:\windows\system32\wineboot.exe"
+[BOX64] argv[2]="--init"
+[BOX64] Rename process to "wine"
+[BOX64] Warning, cannot pre-load /data/app/~~xvWFyISAbF-pHl34U2x8xw==/app.gamenative-vqGUTiHQ2E8F8I-i8nclcg==/lib/arm64/libhook_impl.so
+[BOX64] Warning, cannot pre-load /data/app/~~xvWFyISAbF-pHl34U2x8xw==/app.gamenative-vqGUTiHQ2E8F8I-i8nclcg==/lib/arm64/libfile_redirect_hook.so
+[BOX64] Warning, cannot pre-load /data/user/0/app.gamenative/files/imagefs/usr/lib/libandroid-sysvshm.so
+[BOX64] Warning, cannot pre-load /data/user/0/app.gamenative/files/imagefs/usr/lib/libevshim.so
+[BOX64] Warning, cannot pre-load /data/user/0/app.gamenative/files/imagefs/usr/lib/libredirect-bionic.so
+[BOX64] Warning, cannot pre-load /data/user/0/app.gamenative/files/imagefs/usr/lib/libandroid-sysvshm.so
+[BOX64] Warning, cannot pre-load /data/user/0/app.gamenative/files/imagefs/usr/lib/libevshim.so
+[BOX64] Warning, cannot pre-load /data/user/0/app.gamenative/files/imagefs/usr/lib/libredirect-bionic.so
+[BOX64] Warning, program break not found
+[BOX64] Using native(wrapped) libdl.so
+[BOX64] Warning, program break not found
+[BOX64] Using native(wrapped) libc.so
+[BOX64] Warning, program break not found
+[BOX64] Using native(wrapped) libpthread.so
+[BOX64] Using native(wrapped) libm.so
+[BOX64] Using native(wrapped) libbsd.so
+[BOX64] Warning, program break not found
+[BOX64] Using emulated /data/user/0/app.gamenative/files/imagefs/opt/proton-10.0-4-x86_64/bin/../lib/wine/x86_64-unix/ntdll.so
+002c:fixme:fsync:do_fsync futexes not supported on this platform.
+002c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\wineboot.exe" at 0000000140000000: builtin
+002c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\kernelbase.dll" at 0000007FFF880000: builtin
+002c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\kernel32.dll" at 0000007FFFBE0000: builtin
+002c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\ucrtbase.dll" at 0000007FFF400000: builtin
+002c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\sechost.dll" at 0000007FFF730000: builtin
+002c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\msvcrt.dll" at 0000007FFF160000: builtin
+002c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\advapi32.dll" at 0000007FFF7A0000: builtin
+[BOX64] Warning, program break not found
+[BOX64] Using emulated /data/user/0/app.gamenative/files/imagefs/opt/proton-10.0-4-x86_64/lib/wine/x86_64-unix/ws2_32.so
+002c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\ws2_32.dll" at 0000007FFF0E0000: builtin
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/tmp/gamepad.mem -> /data/data/app.gamenative/files/imagefs/tmp/gamepad.mem
+[BOX64] Box64 arm64 v0.4.1  with Dynarec built on Mar  2 2026 04:58:48
+[BOX64] Dynarec for ARM64, with extension: ASIMD AES CRC32 PMULL ATOMICS SHA1 SHA2 USCAT FLAGM FLAGM2 FRINT AFP RNDR
+[BOX64] Running on Unknown CPU with 8 cores, pagesize: 4096
+[BOX64] Will use hardware counter measured at 19.2 MHz emulating 2.4 GHz
+[BOX64] Wine preloader detected, loading "/data/user/0/app.gamenative/files/imagefs/opt/proton-10.0-4-x86_64/lib/wine/../../bin/wine" directly
+[BOX64] Wine64 detected, WINEPRELOADRESERVE="140000000-140051000"
+[BOX64] Didn't detect 48bits of address space, considering it's 39bits
+[BOX64] Warning, program break not found
+[BOX64] WINE prereserve of 0x10000:0x8000 done
+[BOX64] WINE prereserve of 0x110000:0x30000000 done
+[BOX64] WINE prereserve of 0x7f000000:0x3000000 done
+[BOX64] WINE prereserve of 0x140000000:0x140051000 done
+[BOX64] Detected running wine with "services.exe"
+[BOX64] Warning, older then 2.34 pthread_kill not found, using current one
+[BOX64] Counted 106 Env var
+[BOX64] BOX64 trying to Preload /data/app/~~xvWFyISAbF-pHl34U2x8xw==/app.gamenative-vqGUTiHQ2E8F8I-i8nclcg==/lib/arm64/libhook_impl.so /data/app/~~xvWFyISAbF-pHl34U2x8xw==/app.gamenative-vqGUTiHQ2E8F8I-i8nclcg==/lib/arm64/libfile_redirect_hook.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libandroid-sysvshm.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libevshim.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libredirect-bionic.so 
+[BOX64] BOX64 trying to Preload /data/app/~~xvWFyISAbF-pHl34U2x8xw==/app.gamenative-vqGUTiHQ2E8F8I-i8nclcg==/lib/arm64/libhook_impl.so /data/app/~~xvWFyISAbF-pHl34U2x8xw==/app.gamenative-vqGUTiHQ2E8F8I-i8nclcg==/lib/arm64/libfile_redirect_hook.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libandroid-sysvshm.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libevshim.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libredirect-bionic.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libandroid-sysvshm.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libevshim.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libredirect-bionic.so 
+[BOX64] Library search path: 
+[BOX64] Binary search path: ./:bin/:/data/user/0/app.gamenative/files/imagefs/opt/proton-10.0-4-x86_64/bin/:/data/user/0/app.gamenative/files/imagefs/usr/bin/
+[BOX64] Looking for /data/user/0/app.gamenative/files/imagefs/opt/proton-10.0-4-x86_64/lib/wine/../../bin/wine
+[BOX64] argv[1]="C:\windows\system32\services.exe"
+[BOX64] Rename process to "wine"
+[BOX64] Warning, cannot pre-load /data/app/~~xvWFyISAbF-pHl34U2x8xw==/app.gamenative-vqGUTiHQ2E8F8I-i8nclcg==/lib/arm64/libhook_impl.so
+[BOX64] Warning, cannot pre-load /data/app/~~xvWFyISAbF-pHl34U2x8xw==/app.gamenative-vqGUTiHQ2E8F8I-i8nclcg==/lib/arm64/libfile_redirect_hook.so
+[BOX64] Warning, cannot pre-load /data/user/0/app.gamenative/files/imagefs/usr/lib/libandroid-sysvshm.so
+[BOX64] Warning, cannot pre-load /data/user/0/app.gamenative/files/imagefs/usr/lib/libevshim.so
+[BOX64] Warning, cannot pre-load /data/user/0/app.gamenative/files/imagefs/usr/lib/libredirect-bionic.so
+[BOX64] Warning, cannot pre-load /data/user/0/app.gamenative/files/imagefs/usr/lib/libandroid-sysvshm.so
+[BOX64] Warning, cannot pre-load /data/user/0/app.gamenative/files/imagefs/usr/lib/libevshim.so
+[BOX64] Warning, cannot pre-load /data/user/0/app.gamenative/files/imagefs/usr/lib/libredirect-bionic.so
+[BOX64] Warning, program break not found
+[BOX64] Using native(wrapped) libdl.so
+[BOX64] Warning, program break not found
+[BOX64] Using native(wrapped) libc.so
+[BOX64] Warning, program break not found
+[BOX64] Using native(wrapped) libpthread.so
+[BOX64] Using native(wrapped) libm.so
+[BOX64] Using native(wrapped) libbsd.so
+[BOX64] Warning, program break not found
+[BOX64] Using emulated /data/user/0/app.gamenative/files/imagefs/opt/proton-10.0-4-x86_64/bin/../lib/wine/x86_64-unix/ntdll.so
+0034:fixme:fsync:do_fsync futexes not supported on this platform.
+0034:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\services.exe" at 0000000140000000: builtin
+0034:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\kernelbase.dll" at 0000007FFF880000: builtin
+0034:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\kernel32.dll" at 0000007FFFBE0000: builtin
+0034:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\ucrtbase.dll" at 0000007FFF230000: builtin
+0034:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\sechost.dll" at 0000007FFF560000: builtin
+0034:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\msvcrt.dll" at 0000007FFEF90000: builtin
+0034:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\advapi32.dll" at 0000007FFF5D0000: builtin
+0034:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\rpcrt4.dll" at 0000007FFF6B0000: builtin
+0034:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\userenv.dll" at 0000007FFEF70000: builtin
+0034:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\setupapi.dll" at 0000007FFEE10000: builtin
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/tmp/gamepad.mem -> /data/data/app.gamenative/files/imagefs/tmp/gamepad.mem
+[BOX64] Box64 arm64 v0.4.1  with Dynarec built on Mar  2 2026 04:58:48
+[BOX64] Dynarec for ARM64, with extension: ASIMD AES CRC32 PMULL ATOMICS SHA1 SHA2 USCAT FLAGM FLAGM2 FRINT AFP RNDR
+[BOX64] Running on Unknown CPU with 8 cores, pagesize: 4096
+[BOX64] Will use hardware counter measured at 19.2 MHz emulating 2.4 GHz
+[BOX64] Wine preloader detected, loading "/data/user/0/app.gamenative/files/imagefs/opt/proton-10.0-4-x86_64/lib/wine/../../bin/wine" directly
+[BOX64] Wine64 detected, WINEPRELOADRESERVE="140000000-14001b000"
+[BOX64] Didn't detect 48bits of address space, considering it's 39bits
+[BOX64] Warning, program break not found
+[BOX64] WINE prereserve of 0x10000:0x8000 done
+[BOX64] WINE prereserve of 0x110000:0x30000000 done
+[BOX64] WINE prereserve of 0x7f000000:0x3000000 done
+[BOX64] WINE prereserve of 0x140000000:0x14001b000 done
+[BOX64] Detected running wine with "winedevice.exe"
+[BOX64] Warning, older then 2.34 pthread_kill not found, using current one
+[BOX64] Counted 106 Env var
+[BOX64] BOX64 trying to Preload /data/app/~~xvWFyISAbF-pHl34U2x8xw==/app.gamenative-vqGUTiHQ2E8F8I-i8nclcg==/lib/arm64/libhook_impl.so /data/app/~~xvWFyISAbF-pHl34U2x8xw==/app.gamenative-vqGUTiHQ2E8F8I-i8nclcg==/lib/arm64/libfile_redirect_hook.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libandroid-sysvshm.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libevshim.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libredirect-bionic.so 
+[BOX64] BOX64 trying to Preload /data/app/~~xvWFyISAbF-pHl34U2x8xw==/app.gamenative-vqGUTiHQ2E8F8I-i8nclcg==/lib/arm64/libhook_impl.so /data/app/~~xvWFyISAbF-pHl34U2x8xw==/app.gamenative-vqGUTiHQ2E8F8I-i8nclcg==/lib/arm64/libfile_redirect_hook.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libandroid-sysvshm.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libevshim.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libredirect-bionic.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libandroid-sysvshm.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libevshim.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libredirect-bionic.so 
+[BOX64] Library search path: 
+[BOX64] Binary search path: ./:bin/:/data/user/0/app.gamenative/files/imagefs/opt/proton-10.0-4-x86_64/bin/:/data/user/0/app.gamenative/files/imagefs/usr/bin/
+[BOX64] Looking for /data/user/0/app.gamenative/files/imagefs/opt/proton-10.0-4-x86_64/lib/wine/../../bin/wine
+[BOX64] argv[1]="C:\windows\system32\winedevice.exe"
+[BOX64] Rename process to "wine"
+[BOX64] Warning, cannot pre-load /data/app/~~xvWFyISAbF-pHl34U2x8xw==/app.gamenative-vqGUTiHQ2E8F8I-i8nclcg==/lib/arm64/libhook_impl.so
+[BOX64] Warning, cannot pre-load /data/app/~~xvWFyISAbF-pHl34U2x8xw==/app.gamenative-vqGUTiHQ2E8F8I-i8nclcg==/lib/arm64/libfile_redirect_hook.so
+[BOX64] Warning, cannot pre-load /data/user/0/app.gamenative/files/imagefs/usr/lib/libandroid-sysvshm.so
+[BOX64] Warning, cannot pre-load /data/user/0/app.gamenative/files/imagefs/usr/lib/libevshim.so
+[BOX64] Warning, cannot pre-load /data/user/0/app.gamenative/files/imagefs/usr/lib/libredirect-bionic.so
+[BOX64] Warning, cannot pre-load /data/user/0/app.gamenative/files/imagefs/usr/lib/libandroid-sysvshm.so
+[BOX64] Warning, cannot pre-load /data/user/0/app.gamenative/files/imagefs/usr/lib/libevshim.so
+[BOX64] Warning, cannot pre-load /data/user/0/app.gamenative/files/imagefs/usr/lib/libredirect-bionic.so
+[BOX64] Warning, program break not found
+[BOX64] Using native(wrapped) libdl.so
+[BOX64] Warning, program break not found
+[BOX64] Using native(wrapped) libc.so
+[BOX64] Warning, program break not found
+[BOX64] Using native(wrapped) libpthread.so
+[BOX64] Using native(wrapped) libm.so
+[BOX64] Using native(wrapped) libbsd.so
+[BOX64] Warning, program break not found
+[BOX64] Using emulated /data/user/0/app.gamenative/files/imagefs/opt/proton-10.0-4-x86_64/bin/../lib/wine/x86_64-unix/ntdll.so
+0040:fixme:fsync:do_fsync futexes not supported on this platform.
+0040:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\winedevice.exe" at 0000000140000000: builtin
+0040:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\kernelbase.dll" at 0000007FFF880000: builtin
+0040:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\kernel32.dll" at 0000007FFFBE0000: builtin
+0040:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\ucrtbase.dll" at 0000007FFF400000: builtin
+0040:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\sechost.dll" at 0000007FFF730000: builtin
+0040:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\msvcrt.dll" at 0000007FFF160000: builtin
+0040:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\advapi32.dll" at 0000007FFF7A0000: builtin
+0040:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\ntoskrnl.exe" at 0000007FFF070000: builtin
+0040:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\rpcrt4.dll" at 0000007FFEEA0000: builtin
+004c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\drivers\\sharedgpures.sys" at 0000007FFEE80000: builtin
+004c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\setupapi.dll" at 0000007FFED20000: builtin
+[BOX64] Warning, program break not found
+[BOX64] Using emulated /data/user/0/app.gamenative/files/imagefs/opt/proton-10.0-4-x86_64/lib/wine/x86_64-unix/mountmgr.so
+004c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\drivers\\mountmgr.sys" at 0000007FFECE0000: builtin
+[BOX64] Warning, program break not found
+[BOX64] Using emulated /data/user/0/app.gamenative/files/imagefs/opt/proton-10.0-4-x86_64/lib/wine/x86_64-unix/nsiproxy.so
+004c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\drivers\\nsiproxy.sys" at 0000007FFECC0000: builtin
+0060:err:nsi:poll_events bind failed, errno 13.
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/tmp/gamepad.mem -> /data/data/app.gamenative/files/imagefs/tmp/gamepad.mem
+[BOX64] Box64 arm64 v0.4.1  with Dynarec built on Mar  2 2026 04:58:48
+[BOX64] Dynarec for ARM64, with extension: ASIMD AES CRC32 PMULL ATOMICS SHA1 SHA2 USCAT FLAGM FLAGM2 FRINT AFP RNDR
+[BOX64] Running on Unknown CPU with 8 cores, pagesize: 4096
+[BOX64] Will use hardware counter measured at 19.2 MHz emulating 2.4 GHz
+[BOX64] Wine preloader detected, loading "/data/user/0/app.gamenative/files/imagefs/opt/proton-10.0-4-x86_64/lib/wine/../../bin/wine" directly
+[BOX64] Wine64 detected, WINEPRELOADRESERVE="140000000-14001b000"
+[BOX64] Didn't detect 48bits of address space, considering it's 39bits
+[BOX64] Warning, program break not found
+[BOX64] WINE prereserve of 0x10000:0x8000 done
+[BOX64] WINE prereserve of 0x110000:0x30000000 done
+[BOX64] WINE prereserve of 0x7f000000:0x3000000 done
+[BOX64] WINE prereserve of 0x140000000:0x14001b000 done
+[BOX64] Detected running wine with "winedevice.exe"
+[BOX64] Warning, older then 2.34 pthread_kill not found, using current one
+[BOX64] Counted 106 Env var
+[BOX64] BOX64 trying to Preload /data/app/~~xvWFyISAbF-pHl34U2x8xw==/app.gamenative-vqGUTiHQ2E8F8I-i8nclcg==/lib/arm64/libhook_impl.so /data/app/~~xvWFyISAbF-pHl34U2x8xw==/app.gamenative-vqGUTiHQ2E8F8I-i8nclcg==/lib/arm64/libfile_redirect_hook.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libandroid-sysvshm.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libevshim.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libredirect-bionic.so 
+[BOX64] BOX64 trying to Preload /data/app/~~xvWFyISAbF-pHl34U2x8xw==/app.gamenative-vqGUTiHQ2E8F8I-i8nclcg==/lib/arm64/libhook_impl.so /data/app/~~xvWFyISAbF-pHl34U2x8xw==/app.gamenative-vqGUTiHQ2E8F8I-i8nclcg==/lib/arm64/libfile_redirect_hook.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libandroid-sysvshm.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libevshim.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libredirect-bionic.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libandroid-sysvshm.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libevshim.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libredirect-bionic.so 
+[BOX64] Library search path: 
+[BOX64] Binary search path: ./:bin/:/data/user/0/app.gamenative/files/imagefs/opt/proton-10.0-4-x86_64/bin/:/data/user/0/app.gamenative/files/imagefs/usr/bin/
+[BOX64] Looking for /data/user/0/app.gamenative/files/imagefs/opt/proton-10.0-4-x86_64/lib/wine/../../bin/wine
+[BOX64] argv[1]="C:\windows\system32\winedevice.exe"
+[BOX64] Rename process to "wine"
+[BOX64] Warning, cannot pre-load /data/app/~~xvWFyISAbF-pHl34U2x8xw==/app.gamenative-vqGUTiHQ2E8F8I-i8nclcg==/lib/arm64/libhook_impl.so
+[BOX64] Warning, cannot pre-load /data/app/~~xvWFyISAbF-pHl34U2x8xw==/app.gamenative-vqGUTiHQ2E8F8I-i8nclcg==/lib/arm64/libfile_redirect_hook.so
+[BOX64] Warning, cannot pre-load /data/user/0/app.gamenative/files/imagefs/usr/lib/libandroid-sysvshm.so
+[BOX64] Warning, cannot pre-load /data/user/0/app.gamenative/files/imagefs/usr/lib/libevshim.so
+[BOX64] Warning, cannot pre-load /data/user/0/app.gamenative/files/imagefs/usr/lib/libredirect-bionic.so
+[BOX64] Warning, cannot pre-load /data/user/0/app.gamenative/files/imagefs/usr/lib/libandroid-sysvshm.so
+[BOX64] Warning, cannot pre-load /data/user/0/app.gamenative/files/imagefs/usr/lib/libevshim.so
+[BOX64] Warning, cannot pre-load /data/user/0/app.gamenative/files/imagefs/usr/lib/libredirect-bionic.so
+[BOX64] Warning, program break not found
+[BOX64] Using native(wrapped) libdl.so
+[BOX64] Warning, program break not found
+[BOX64] Using native(wrapped) libc.so
+[BOX64] Warning, program break not found
+[BOX64] Using native(wrapped) libpthread.so
+[BOX64] Using native(wrapped) libm.so
+[BOX64] Using native(wrapped) libbsd.so
+[BOX64] Warning, program break not found
+[BOX64] Using emulated /data/user/0/app.gamenative/files/imagefs/opt/proton-10.0-4-x86_64/bin/../lib/wine/x86_64-unix/ntdll.so
+0068:fixme:fsync:do_fsync futexes not supported on this platform.
+0068:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\winedevice.exe" at 0000000140000000: builtin
+0068:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\kernelbase.dll" at 0000007FFF880000: builtin
+0068:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\kernel32.dll" at 0000007FFFBE0000: builtin
+0068:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\ucrtbase.dll" at 0000007FFF400000: builtin
+0068:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\sechost.dll" at 0000007FFF730000: builtin
+0068:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\msvcrt.dll" at 0000007FFF160000: builtin
+0068:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\advapi32.dll" at 0000007FFF7A0000: builtin
+0068:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\ntoskrnl.exe" at 0000007FFF070000: builtin
+0068:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\rpcrt4.dll" at 0000007FFEEA0000: builtin
+[BOX64] Warning, program break not found
+[BOX64] Using emulated /data/user/0/app.gamenative/files/imagefs/opt/proton-10.0-4-x86_64/lib/wine/x86_64-unix/winebus.so
+0070:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\drivers\\hidparse.sys" at 0000007FFEE40000: builtin
+0070:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\drivers\\winebus.sys" at 0000007FFEE70000: builtin
+0070:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\setupapi.dll" at 0000007FFECE0000: builtin
+[BOX64] Warning, program break not found
+[BOX64] Using emulated /data/user/0/app.gamenative/files/imagefs/opt/proton-10.0-4-x86_64/lib/wine/x86_64-unix/win32u.so
+0070:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\win32u.dll" at 0000007FFE5C0000: builtin
+0070:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\gdi32.dll" at 0000007FFE610000: builtin
+[BOX64] Warning, program break not found
+[BOX64] Using emulated /data/user/0/app.gamenative/files/imagefs/opt/proton-10.0-4-x86_64/lib/wine/x86_64-unix/ws2_32.so
+0070:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\ws2_32.dll" at 0000007FFE540000: builtin
+0070:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\user32.dll" at 0000007FFE800000: builtin
+0070:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\drivers\\hidclass.sys" at 0000007FFEC90000: builtin
+0070:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\drivers\\winehid.sys" at 0000007FFECC0000: builtin
+[BOX64] Warning, program break not found
+[BOX64] Using native(wrapped) libfreetype.so
+[BOX64] Warning, program break not found
+[BOX64] Using native(wrapped) libfontconfig.so
+[BOX64] Warning, program break not found
+[BOX64] Using native(wrapped) libexpat.so.1
+[BOX64] Using native(wrapped) libfreetype.so.6
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/share/fonts
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/share/fonts
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts/.uuid -> /data/data/app.gamenative/files/imagefs/usr/share/fonts/.uuid
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts/.uuid -> /data/data/app.gamenative/files/imagefs/usr/share/fonts/.uuid
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/share/fonts
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/share/fonts
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts/.uuid -> /data/data/app.gamenative/files/imagefs/usr/share/fonts/.uuid
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts/.uuid -> /data/data/app.gamenative/files/imagefs/usr/share/fonts/.uuid
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+0070:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\imm32.dll" at 0000007FFE4E0000: builtin
+[BOX64] Warning, program break not found
+[BOX64] Using native(wrapped) libSDL2-2.0.so.0
+[BOX64] Warning, program break not found
+[BOX64] Using native(wrapped) libdl.so.2
+[BOX64] Using native(wrapped) libm.so.6
+[BOX64] Using native(wrapped) librt.so.1
+[BOX64] Using native(wrapped) libpthread.so.0
+0084:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\drivers\\winexinput.sys" at 0000007FFE4C0000: builtin
+002c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\shcore.dll" at 0000007FFE470000: builtin
+[BOX64] Warning, program break not found
+[BOX64] Using emulated /data/user/0/app.gamenative/files/imagefs/opt/proton-10.0-4-x86_64/lib/wine/x86_64-unix/win32u.so
+0084:fixme:xinput:pdo_pnp code 0xc, not implemented!
+002c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\win32u.dll" at 0000007FFDDA0000: builtin
+002c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\gdi32.dll" at 0000007FFDDF0000: builtin
+002c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\user32.dll" at 0000007FFDFE0000: builtin
+002c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\shlwapi.dll" at 0000007FFE4B0000: builtin
+002c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\shell32.dll" at 0000007FFE580000: builtin
+[BOX64] Warning, program break not found
+[BOX64] Using native(wrapped) libfreetype.so
+[BOX64] Warning, program break not found
+[BOX64] Using native(wrapped) libfontconfig.so
+[BOX64] Warning, program break not found
+[BOX64] Using native(wrapped) libexpat.so.1
+[BOX64] Using native(wrapped) libfreetype.so.6
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/share/fonts
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/share/fonts
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts/.uuid -> /data/data/app.gamenative/files/imagefs/usr/share/fonts/.uuid
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts/.uuid -> /data/data/app.gamenative/files/imagefs/usr/share/fonts/.uuid
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+0084:fixme:xinput:pdo_pnp code 0xc, not implemented!
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/share/fonts
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/share/fonts
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts/.uuid -> /data/data/app.gamenative/files/imagefs/usr/share/fonts/.uuid
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts/.uuid -> /data/data/app.gamenative/files/imagefs/usr/share/fonts/.uuid
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+002c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\imm32.dll" at 0000007FFDD40000: builtin
+002c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\rpcrt4.dll" at 0000007FFD790000: builtin
+002c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\combase.dll" at 0000007FFD960000: builtin
+002c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\coml2.dll" at 0000007FFD740000: builtin
+002c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\ole32.dll" at 0000007FFDA90000: builtin
+0024:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\start.exe" at 0000000140000000: builtin
+0024:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\kernelbase.dll" at 0000007FFF880000: builtin
+0024:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\kernel32.dll" at 0000007FFFBE0000: builtin
+0024:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\ucrtbase.dll" at 0000007FFE790000: builtin
+0024:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\sechost.dll" at 0000007FFEAC0000: builtin
+0024:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\msvcrt.dll" at 0000007FFE4F0000: builtin
+0024:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\advapi32.dll" at 0000007FFEB30000: builtin
+0024:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\shcore.dll" at 0000007FFEC10000: builtin
+[BOX64] Warning, program break not found
+[BOX64] Using emulated /data/user/0/app.gamenative/files/imagefs/opt/proton-10.0-4-x86_64/lib/wine/x86_64-unix/win32u.so
+0024:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\win32u.dll" at 0000007FFDE20000: builtin
+0024:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\gdi32.dll" at 0000007FFDE70000: builtin
+[BOX64] Warning, program break not found
+[BOX64] Using emulated /data/user/0/app.gamenative/files/imagefs/opt/proton-10.0-4-x86_64/lib/wine/x86_64-unix/ws2_32.so
+0024:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\ws2_32.dll" at 0000007FFDDA0000: builtin
+0024:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\user32.dll" at 0000007FFE060000: builtin
+0024:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\shlwapi.dll" at 0000007FFEC50000: builtin
+0024:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\shell32.dll" at 0000007FFED20000: builtin
+[BOX64] Warning, program break not found
+[BOX64] Using native(wrapped) libfreetype.so
+[BOX64] Warning, program break not found
+[BOX64] Using native(wrapped) libfontconfig.so
+[BOX64] Warning, program break not found
+[BOX64] Using native(wrapped) libexpat.so.1
+[BOX64] Using native(wrapped) libfreetype.so.6
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/share/fonts
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/share/fonts
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts/.uuid -> /data/data/app.gamenative/files/imagefs/usr/share/fonts/.uuid
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts/.uuid -> /data/data/app.gamenative/files/imagefs/usr/share/fonts/.uuid
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/share/fonts
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/share/fonts
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts/.uuid -> /data/data/app.gamenative/files/imagefs/usr/share/fonts/.uuid
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts/.uuid -> /data/data/app.gamenative/files/imagefs/usr/share/fonts/.uuid
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+0024:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\imm32.dll" at 0000007FFDD40000: builtin
+EVSHIM starting up…
+Bound to SDL 2.32.6  Axis=0x73f3ede804
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/tmp/gamepad.mem -> /data/data/app.gamenative/files/imagefs/tmp/gamepad.mem
+>>> VJOY UPDATER for Player 0 is LIVE in PID 24256 <<<
+[BOX64] Box64 arm64 v0.4.1  with Dynarec built on Mar  2 2026 04:58:48
+[BOX64] Dynarec for ARM64, with extension: ASIMD AES CRC32 PMULL ATOMICS SHA1 SHA2 USCAT FLAGM FLAGM2 FRINT AFP RNDR
+[BOX64] Running on Unknown CPU with 8 cores, pagesize: 4096
+[BOX64] Will use hardware counter measured at 19.2 MHz emulating 2.4 GHz
+[BOX64] Wine preloader detected, loading "/data/user/0/app.gamenative/files/imagefs/opt/proton-10.0-4-x86_64/lib/wine/../../bin/wine" directly
+[BOX64] Wine64 detected, WINEPRELOADRESERVE="140000000-140083000"
+[BOX64] Didn't detect 48bits of address space, considering it's 39bits
+[BOX64] Warning, program break not found
+[BOX64] WINE prereserve of 0x10000:0x8000 done
+[BOX64] WINE prereserve of 0x110000:0x30000000 done
+[BOX64] WINE prereserve of 0x7f000000:0x3000000 done
+[BOX64] WINE prereserve of 0x140000000:0x140083000 done
+[BOX64] Detected running wine with "explorer.exe"
+[BOX64] Warning, older then 2.34 pthread_kill not found, using current one
+[BOX64] Counted 106 Env var
+[BOX64] BOX64 trying to Preload /data/app/~~xvWFyISAbF-pHl34U2x8xw==/app.gamenative-vqGUTiHQ2E8F8I-i8nclcg==/lib/arm64/libhook_impl.so /data/app/~~xvWFyISAbF-pHl34U2x8xw==/app.gamenative-vqGUTiHQ2E8F8I-i8nclcg==/lib/arm64/libfile_redirect_hook.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libandroid-sysvshm.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libevshim.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libredirect-bionic.so 
+[BOX64] BOX64 trying to Preload /data/app/~~xvWFyISAbF-pHl34U2x8xw==/app.gamenative-vqGUTiHQ2E8F8I-i8nclcg==/lib/arm64/libhook_impl.so /data/app/~~xvWFyISAbF-pHl34U2x8xw==/app.gamenative-vqGUTiHQ2E8F8I-i8nclcg==/lib/arm64/libfile_redirect_hook.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libandroid-sysvshm.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libevshim.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libredirect-bionic.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libandroid-sysvshm.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libevshim.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libredirect-bionic.so 
+[BOX64] Library search path: 
+[BOX64] Binary search path: ./:bin/:/data/user/0/app.gamenative/files/imagefs/opt/proton-10.0-4-x86_64/bin/:/data/user/0/app.gamenative/files/imagefs/usr/bin/
+[BOX64] Looking for /data/user/0/app.gamenative/files/imagefs/opt/proton-10.0-4-x86_64/lib/wine/../../bin/wine
+[BOX64] argv[1]="C:\windows\system32\explorer.exe"
+[BOX64] argv[2]="/desktop=shell,1280x720"
+[BOX64] argv[3]="winhandler.exe"
+[BOX64] argv[4]=""C:\\Program Files (x86)\\Steam\\steamclient_loader_x64.exe""
+[BOX64] Rename process to "wine"
+[BOX64] Warning, cannot pre-load /data/app/~~xvWFyISAbF-pHl34U2x8xw==/app.gamenative-vqGUTiHQ2E8F8I-i8nclcg==/lib/arm64/libhook_impl.so
+[BOX64] Warning, cannot pre-load /data/app/~~xvWFyISAbF-pHl34U2x8xw==/app.gamenative-vqGUTiHQ2E8F8I-i8nclcg==/lib/arm64/libfile_redirect_hook.so
+[BOX64] Warning, cannot pre-load /data/user/0/app.gamenative/files/imagefs/usr/lib/libandroid-sysvshm.so
+[BOX64] Warning, cannot pre-load /data/user/0/app.gamenative/files/imagefs/usr/lib/libevshim.so
+[BOX64] Warning, cannot pre-load /data/user/0/app.gamenative/files/imagefs/usr/lib/libredirect-bionic.so
+[BOX64] Warning, cannot pre-load /data/user/0/app.gamenative/files/imagefs/usr/lib/libandroid-sysvshm.so
+[BOX64] Warning, cannot pre-load /data/user/0/app.gamenative/files/imagefs/usr/lib/libevshim.so
+[BOX64] Warning, cannot pre-load /data/user/0/app.gamenative/files/imagefs/usr/lib/libredirect-bionic.so
+[BOX64] Warning, program break not found
+[BOX64] Using native(wrapped) libdl.so
+[BOX64] Warning, program break not found
+[BOX64] Using native(wrapped) libc.so
+[BOX64] Warning, program break not found
+[BOX64] Using native(wrapped) libpthread.so
+[BOX64] Using native(wrapped) libm.so
+[BOX64] Using native(wrapped) libbsd.so
+[BOX64] Warning, program break not found
+[BOX64] Using emulated /data/user/0/app.gamenative/files/imagefs/opt/proton-10.0-4-x86_64/bin/../lib/wine/x86_64-unix/ntdll.so
+009c:fixme:fsync:do_fsync futexes not supported on this platform.
+009c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\explorer.exe" at 0000000140000000: builtin
+009c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\kernelbase.dll" at 0000007FFF880000: builtin
+009c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\kernel32.dll" at 0000007FFFBE0000: builtin
+009c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\ucrtbase.dll" at 0000007FFF230000: builtin
+009c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\sechost.dll" at 0000007FFF560000: builtin
+009c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\msvcrt.dll" at 0000007FFEF90000: builtin
+009c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\advapi32.dll" at 0000007FFF5D0000: builtin
+009c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\rpcrt4.dll" at 0000007FFF6B0000: builtin
+[BOX64] Warning, program break not found
+[BOX64] Using emulated /data/user/0/app.gamenative/files/imagefs/opt/proton-10.0-4-x86_64/lib/wine/x86_64-unix/win32u.so
+009c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\win32u.dll" at 0000007FFE8C0000: builtin
+009c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\gdi32.dll" at 0000007FFE910000: builtin
+[BOX64] Warning, program break not found
+[BOX64] Using emulated /data/user/0/app.gamenative/files/imagefs/opt/proton-10.0-4-x86_64/lib/wine/x86_64-unix/ws2_32.so
+009c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\ws2_32.dll" at 0000007FFE840000: builtin
+009c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\user32.dll" at 0000007FFEB00000: builtin
+[BOX64] Warning, program break not found
+[BOX64] Using native(wrapped) libfreetype.so
+[BOX64] Warning, program break not found
+[BOX64] Using native(wrapped) libfontconfig.so
+[BOX64] Warning, program break not found
+[BOX64] Using native(wrapped) libexpat.so.1
+[BOX64] Using native(wrapped) libfreetype.so.6
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/share/fonts
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/share/fonts
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts/.uuid -> /data/data/app.gamenative/files/imagefs/usr/share/fonts/.uuid
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts/.uuid -> /data/data/app.gamenative/files/imagefs/usr/share/fonts/.uuid
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/share/fonts
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/share/fonts
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts/.uuid -> /data/data/app.gamenative/files/imagefs/usr/share/fonts/.uuid
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts/.uuid -> /data/data/app.gamenative/files/imagefs/usr/share/fonts/.uuid
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+009c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\imm32.dll" at 0000007FFE7E0000: builtin
+[BOX64] Warning, program break not found
+[BOX64] Using emulated /data/user/0/app.gamenative/files/imagefs/opt/proton-10.0-4-x86_64/lib/wine/x86_64-unix/winex11.so
+[BOX64] Warning, program break not found
+[BOX64] Using native(wrapped) libXext.so
+[BOX64] Warning, program break not found
+[BOX64] Using native(wrapped) libX11.so.6
+[BOX64] Warning, program break not found
+[BOX64] Using native(wrapped) libxcb.so.1
+[BOX64] Warning, program break not found
+[BOX64] Using native(wrapped) libXau.so.6
+[BOX64] Using native(wrapped) libXdmcp.so.6
+[BOX64] Using native(wrapped) libdl.so.2
+009c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\winex11.drv" at 0000007FFE7D0000: builtin
+[BOX64] Warning, program break not found
+[BOX64] Using native(wrapped) libvulkan.so.1
+Memory mapping flag was not specified
+hook_android_load_sphal_library: filename: vulkan.adreno.so
+hook_android_dlopen_ext: filename: vulkan.adreno.so
+hook_android_dlopen_ext: loading custom driver: /data/user/0/app.gamenative/files/contents/adrenotools/Turnip MTR v2.0.0-p Axxx/libvulkan_freedreno.so
+009c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\uxtheme.dll" at 0000007FFE740000: builtin
+009c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\combase.dll" at 0000007FFDCD0000: builtin
+009c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\coml2.dll" at 0000007FFDC80000: builtin
+009c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\ole32.dll" at 0000007FFDE00000: builtin
+009c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\oleaut32.dll" at 0000007FFE0B0000: builtin
+009c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\oleacc.dll" at 0000007FFE330000: builtin
+009c:trace:loaddll:build_module Loaded L"C:\\windows\\winsxs\\amd64_microsoft.windows.common-controls_6595b64144ccf1df_6.0.2600.2982_none_deadbeef\\comctl32.dll" at 0000007FFE390000: builtin
+009c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\shcore.dll" at 0000007FFD010000: builtin
+009c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\shlwapi.dll" at 0000007FFD050000: builtin
+009c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\shell32.dll" at 0000007FFD120000: builtin
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/tmp/gamepad.mem -> /data/data/app.gamenative/files/imagefs/tmp/gamepad.mem
+[BOX64] Box64 arm64 v0.4.1  with Dynarec built on Mar  2 2026 04:58:48
+[BOX64] Dynarec for ARM64, with extension: ASIMD AES CRC32 PMULL ATOMICS SHA1 SHA2 USCAT FLAGM FLAGM2 FRINT AFP RNDR
+[BOX64] Running on Unknown CPU with 8 cores, pagesize: 4096
+[BOX64] Will use hardware counter measured at 19.2 MHz emulating 2.4 GHz
+[BOX64] Wine preloader detected, loading "/data/user/0/app.gamenative/files/imagefs/opt/proton-10.0-4-x86_64/lib/wine/../../bin/wine" directly
+[BOX64] Wine64 detected, WINEPRELOADRESERVE="140000000-140014000"
+[BOX64] Didn't detect 48bits of address space, considering it's 39bits
+[BOX64] Warning, program break not found
+[BOX64] WINE prereserve of 0x10000:0x8000 done
+[BOX64] WINE prereserve of 0x110000:0x30000000 done
+[BOX64] WINE prereserve of 0x7f000000:0x3000000 done
+[BOX64] WINE prereserve of 0x140000000:0x140014000 done
+[BOX64] Detected running wine with "winhandler.exe"
+[BOX64] Warning, older then 2.34 pthread_kill not found, using current one
+[BOX64] Counted 106 Env var
+[BOX64] BOX64 trying to Preload /data/app/~~xvWFyISAbF-pHl34U2x8xw==/app.gamenative-vqGUTiHQ2E8F8I-i8nclcg==/lib/arm64/libhook_impl.so /data/app/~~xvWFyISAbF-pHl34U2x8xw==/app.gamenative-vqGUTiHQ2E8F8I-i8nclcg==/lib/arm64/libfile_redirect_hook.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libandroid-sysvshm.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libevshim.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libredirect-bionic.so 
+[BOX64] BOX64 trying to Preload /data/app/~~xvWFyISAbF-pHl34U2x8xw==/app.gamenative-vqGUTiHQ2E8F8I-i8nclcg==/lib/arm64/libhook_impl.so /data/app/~~xvWFyISAbF-pHl34U2x8xw==/app.gamenative-vqGUTiHQ2E8F8I-i8nclcg==/lib/arm64/libfile_redirect_hook.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libandroid-sysvshm.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libevshim.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libredirect-bionic.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libandroid-sysvshm.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libevshim.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libredirect-bionic.so 
+[BOX64] Library search path: 
+[BOX64] Binary search path: ./:bin/:/data/user/0/app.gamenative/files/imagefs/opt/proton-10.0-4-x86_64/bin/:/data/user/0/app.gamenative/files/imagefs/usr/bin/
+[BOX64] Looking for /data/user/0/app.gamenative/files/imagefs/opt/proton-10.0-4-x86_64/lib/wine/../../bin/wine
+[BOX64] argv[1]="winhandler.exe"
+[BOX64] argv[2]=""C:\\Program Files (x86)\\Steam\\steamclient_loader_x64.exe""
+[BOX64] Rename process to "wine"
+[BOX64] Warning, cannot pre-load /data/app/~~xvWFyISAbF-pHl34U2x8xw==/app.gamenative-vqGUTiHQ2E8F8I-i8nclcg==/lib/arm64/libhook_impl.so
+[BOX64] Warning, cannot pre-load /data/app/~~xvWFyISAbF-pHl34U2x8xw==/app.gamenative-vqGUTiHQ2E8F8I-i8nclcg==/lib/arm64/libfile_redirect_hook.so
+[BOX64] Warning, cannot pre-load /data/user/0/app.gamenative/files/imagefs/usr/lib/libandroid-sysvshm.so
+[BOX64] Warning, cannot pre-load /data/user/0/app.gamenative/files/imagefs/usr/lib/libevshim.so
+[BOX64] Warning, cannot pre-load /data/user/0/app.gamenative/files/imagefs/usr/lib/libredirect-bionic.so
+[BOX64] Warning, cannot pre-load /data/user/0/app.gamenative/files/imagefs/usr/lib/libandroid-sysvshm.so
+[BOX64] Warning, cannot pre-load /data/user/0/app.gamenative/files/imagefs/usr/lib/libevshim.so
+[BOX64] Warning, cannot pre-load /data/user/0/app.gamenative/files/imagefs/usr/lib/libredirect-bionic.so
+[BOX64] Warning, program break not found
+[BOX64] Using native(wrapped) libdl.so
+[BOX64] Warning, program break not found
+[BOX64] Using native(wrapped) libc.so
+[BOX64] Warning, program break not found
+[BOX64] Using native(wrapped) libpthread.so
+[BOX64] Using native(wrapped) libm.so
+[BOX64] Using native(wrapped) libbsd.so
+[BOX64] Warning, program break not found
+[BOX64] Using emulated /data/user/0/app.gamenative/files/imagefs/opt/proton-10.0-4-x86_64/bin/../lib/wine/x86_64-unix/ntdll.so
+00b0:fixme:fsync:do_fsync futexes not supported on this platform.
+009c:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\actxprxy.dll" at 0000007FFCF60000: builtin
+00b0:trace:loaddll:build_module Loaded L"C:\\windows\\winhandler.exe" at 0000000140000000: native
+00b0:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\kernelbase.dll" at 0000007FFF880000: builtin
+00b0:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\kernel32.dll" at 0000007FFFBE0000: builtin
+00b0:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\msvcrt.dll" at 0000007FFF5E0000: builtin
+009c:err:ole:start_rpcss Failed to start RpcSs service
+00b0:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\ucrtbase.dll" at 0000007FFE4F0000: builtin
+00b0:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\sechost.dll" at 0000007FFE820000: builtin
+00b0:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\advapi32.dll" at 0000007FFE890000: builtin
+00b0:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\shcore.dll" at 0000007FFE970000: builtin
+[BOX64] Warning, program break not found
+[BOX64] Using emulated /data/user/0/app.gamenative/files/imagefs/opt/proton-10.0-4-x86_64/lib/wine/x86_64-unix/win32u.so
+00b0:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\win32u.dll" at 0000007FFDE20000: builtin
+00b0:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\gdi32.dll" at 0000007FFDE70000: builtin
+[BOX64] Warning, program break not found
+[BOX64] Using emulated /data/user/0/app.gamenative/files/imagefs/opt/proton-10.0-4-x86_64/lib/wine/x86_64-unix/ws2_32.so
+00b0:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\ws2_32.dll" at 0000007FFDDA0000: builtin
+00b0:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\user32.dll" at 0000007FFE060000: builtin
+00b0:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\shlwapi.dll" at 0000007FFE9B0000: builtin
+00b0:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\SHELL32.dll" at 0000007FFEA80000: builtin
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/tmp/gamepad.mem -> /data/data/app.gamenative/files/imagefs/tmp/gamepad.mem
+[BOX64] Box64 arm64 v0.4.1  with Dynarec built on Mar  2 2026 04:58:48
+[BOX64] Dynarec for ARM64, with extension: ASIMD AES CRC32 PMULL ATOMICS SHA1 SHA2 USCAT FLAGM FLAGM2 FRINT AFP RNDR
+[BOX64] Running on Unknown CPU with 8 cores, pagesize: 4096
+[BOX64] Will use hardware counter measured at 19.2 MHz emulating 2.4 GHz
+[BOX64] Wine preloader detected, loading "/data/user/0/app.gamenative/files/imagefs/opt/proton-10.0-4-x86_64/lib/wine/../../bin/wine" directly
+[BOX64] Wine64 detected, WINEPRELOADRESERVE="140000000-14002a000"
+[BOX64] Didn't detect 48bits of address space, considering it's 39bits
+[BOX64] Warning, program break not found
+[BOX64] WINE prereserve of 0x10000:0x8000 done
+[BOX64] WINE prereserve of 0x110000:0x30000000 done
+[BOX64] WINE prereserve of 0x7f000000:0x3000000 done
+[BOX64] WINE prereserve of 0x140000000:0x14002a000 done
+[BOX64] Detected running wine with "tabtip.exe"
+[BOX64] Warning, older then 2.34 pthread_kill not found, using current one
+[BOX64] Counted 106 Env var
+[BOX64] BOX64 trying to Preload /data/app/~~xvWFyISAbF-pHl34U2x8xw==/app.gamenative-vqGUTiHQ2E8F8I-i8nclcg==/lib/arm64/libhook_impl.so /data/app/~~xvWFyISAbF-pHl34U2x8xw==/app.gamenative-vqGUTiHQ2E8F8I-i8nclcg==/lib/arm64/libfile_redirect_hook.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libandroid-sysvshm.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libevshim.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libredirect-bionic.so 
+[BOX64] BOX64 trying to Preload /data/app/~~xvWFyISAbF-pHl34U2x8xw==/app.gamenative-vqGUTiHQ2E8F8I-i8nclcg==/lib/arm64/libhook_impl.so /data/app/~~xvWFyISAbF-pHl34U2x8xw==/app.gamenative-vqGUTiHQ2E8F8I-i8nclcg==/lib/arm64/libfile_redirect_hook.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libandroid-sysvshm.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libevshim.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libredirect-bionic.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libandroid-sysvshm.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libevshim.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libredirect-bionic.so 
+[BOX64] Library search path: 
+[BOX64] Binary search path: ./:bin/:/data/user/0/app.gamenative/files/imagefs/opt/proton-10.0-4-x86_64/bin/:/data/user/0/app.gamenative/files/imagefs/usr/bin/
+[BOX64] Looking for /data/user/0/app.gamenative/files/imagefs/opt/proton-10.0-4-x86_64/lib/wine/../../bin/wine
+[BOX64] argv[1]="C:\windows\system32\tabtip.exe"
+[BOX64] Rename process to "wine"
+[BOX64] Warning, cannot pre-load /data/app/~~xvWFyISAbF-pHl34U2x8xw==/app.gamenative-vqGUTiHQ2E8F8I-i8nclcg==/lib/arm64/libhook_impl.so
+[BOX64] Warning, cannot pre-load /data/app/~~xvWFyISAbF-pHl34U2x8xw==/app.gamenative-vqGUTiHQ2E8F8I-i8nclcg==/lib/arm64/libfile_redirect_hook.so
+[BOX64] Warning, cannot pre-load /data/user/0/app.gamenative/files/imagefs/usr/lib/libandroid-sysvshm.so
+[BOX64] Warning, cannot pre-load /data/user/0/app.gamenative/files/imagefs/usr/lib/libevshim.so
+[BOX64] Warning, cannot pre-load /data/user/0/app.gamenative/files/imagefs/usr/lib/libredirect-bionic.so
+[BOX64] Warning, cannot pre-load /data/user/0/app.gamenative/files/imagefs/usr/lib/libandroid-sysvshm.so
+[BOX64] Warning, cannot pre-load /data/user/0/app.gamenative/files/imagefs/usr/lib/libevshim.so
+[BOX64] Warning, cannot pre-load /data/user/0/app.gamenative/files/imagefs/usr/lib/libredirect-bionic.so
+[BOX64] Warning, program break not found
+[BOX64] Using native(wrapped) libdl.so
+[BOX64] Warning, program break not found
+[BOX64] Using native(wrapped) libc.so
+[BOX64] Warning, program break not found
+[BOX64] Using native(wrapped) libpthread.so
+[BOX64] Using native(wrapped) libm.so
+[BOX64] Using native(wrapped) libbsd.so
+[BOX64] Warning, program break not found
+[BOX64] Using emulated /data/user/0/app.gamenative/files/imagefs/opt/proton-10.0-4-x86_64/bin/../lib/wine/x86_64-unix/ntdll.so
+00c0:fixme:fsync:do_fsync futexes not supported on this platform.
+[BOX64] Warning, program break not found
+[BOX64] Using native(wrapped) libfreetype.so
+[BOX64] Warning, program break not found
+[BOX64] Using native(wrapped) libfontconfig.so
+[BOX64] Warning, program break not found
+[BOX64] Using native(wrapped) libexpat.so.1
+[BOX64] Using native(wrapped) libfreetype.so.6
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/share/fonts
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/share/fonts
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts/.uuid -> /data/data/app.gamenative/files/imagefs/usr/share/fonts/.uuid
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts/.uuid -> /data/data/app.gamenative/files/imagefs/usr/share/fonts/.uuid
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/share/fonts
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/share/fonts
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts/.uuid -> /data/data/app.gamenative/files/imagefs/usr/share/fonts/.uuid
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts/.uuid -> /data/data/app.gamenative/files/imagefs/usr/share/fonts/.uuid
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+00c0:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\tabtip.exe" at 0000000140000000: builtin
+00c0:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\kernelbase.dll" at 0000007FFF880000: builtin
+00c0:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\kernel32.dll" at 0000007FFFBE0000: builtin
+00c0:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\ucrtbase.dll" at 0000007FFF150000: builtin
+00c0:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\sechost.dll" at 0000007FFF480000: builtin
+00c0:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\msvcrt.dll" at 0000007FFEEB0000: builtin
+00c0:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\advapi32.dll" at 0000007FFF4F0000: builtin
+[BOX64] Warning, program break not found
+[BOX64] Using emulated /data/user/0/app.gamenative/files/imagefs/opt/proton-10.0-4-x86_64/lib/wine/x86_64-unix/win32u.so
+00c0:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\win32u.dll" at 0000007FFE7E0000: builtin
+00c0:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\gdi32.dll" at 0000007FFE830000: builtin
+[BOX64] Warning, program break not found
+[BOX64] Using emulated /data/user/0/app.gamenative/files/imagefs/opt/proton-10.0-4-x86_64/lib/wine/x86_64-unix/ws2_32.so
+00c0:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\ws2_32.dll" at 0000007FFE760000: builtin
+00c0:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\user32.dll" at 0000007FFEA20000: builtin
+00c0:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\rpcrt4.dll" at 0000007FFE460000: builtin
+00c0:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\combase.dll" at 0000007FFE630000: builtin
+00c0:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\coml2.dll" at 0000007FFE410000: builtin
+00c0:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\ole32.dll" at 0000007FFF5D0000: builtin
+00c0:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\shcore.dll" at 0000007FFD7A0000: builtin
+00c0:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\shlwapi.dll" at 0000007FFD7E0000: builtin
+00c0:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\shell32.dll" at 0000007FFD8B0000: builtin
+00c0:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\oleaut32.dll" at 0000007FFD520000: builtin
+[BOX64] Warning, program break not found
+[BOX64] Using native(wrapped) libfreetype.so
+[BOX64] Warning, program break not found
+[BOX64] Using native(wrapped) libfontconfig.so
+[BOX64] Warning, program break not found
+[BOX64] Using native(wrapped) libexpat.so.1
+[BOX64] Using native(wrapped) libfreetype.so.6
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/share/fonts
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/share/fonts
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts/.uuid -> /data/data/app.gamenative/files/imagefs/usr/share/fonts/.uuid
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts/.uuid -> /data/data/app.gamenative/files/imagefs/usr/share/fonts/.uuid
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+00b0:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\imm32.dll" at 0000007FFDD40000: builtin
+00b0:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\rpcrt4.dll" at 0000007FFD790000: builtin
+00b0:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\combase.dll" at 0000007FFD960000: builtin
+00b0:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\coml2.dll" at 0000007FFD740000: builtin
+00b0:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\ole32.dll" at 0000007FFDA90000: builtin
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/share/fonts
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/share/fonts
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts/.uuid -> /data/data/app.gamenative/files/imagefs/usr/share/fonts/.uuid
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts/.uuid -> /data/data/app.gamenative/files/imagefs/usr/share/fonts/.uuid
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+[BOX64] Parsing volatile metadata of file steamclient_loader_x64.exe loaded at 0x100210000
+[BOX64] Parsing volatile metadata of file steamclient_loader_x64.exe loaded at 0x100210000
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/tmp/gamepad.mem -> /data/data/app.gamenative/files/imagefs/tmp/gamepad.mem
+[BOX64] Box64 arm64 v0.4.1  with Dynarec built on Mar  2 2026 04:58:48
+[BOX64] Dynarec for ARM64, with extension: ASIMD AES CRC32 PMULL ATOMICS SHA1 SHA2 USCAT FLAGM FLAGM2 FRINT AFP RNDR
+[BOX64] Running on Unknown CPU with 8 cores, pagesize: 4096
+[BOX64] Will use hardware counter measured at 19.2 MHz emulating 2.4 GHz
+[BOX64] Wine preloader detected, loading "/data/user/0/app.gamenative/files/imagefs/opt/proton-10.0-4-x86_64/lib/wine/../../bin/wine" directly
+[BOX64] Wine64 detected, WINEPRELOADRESERVE="140000000-140083000"
+[BOX64] Didn't detect 48bits of address space, considering it's 39bits
+[BOX64] Warning, program break not found
+[BOX64] WINE prereserve of 0x10000:0x8000 done
+[BOX64] WINE prereserve of 0x110000:0x30000000 done
+[BOX64] WINE prereserve of 0x7f000000:0x3000000 done
+[BOX64] WINE prereserve of 0x140000000:0x140083000 done
+[BOX64] Detected running wine with "steamclient_loader_x64.exe"
+[BOX64] Warning, older then 2.34 pthread_kill not found, using current one
+[BOX64] Counted 106 Env var
+[BOX64] BOX64 trying to Preload /data/app/~~xvWFyISAbF-pHl34U2x8xw==/app.gamenative-vqGUTiHQ2E8F8I-i8nclcg==/lib/arm64/libhook_impl.so /data/app/~~xvWFyISAbF-pHl34U2x8xw==/app.gamenative-vqGUTiHQ2E8F8I-i8nclcg==/lib/arm64/libfile_redirect_hook.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libandroid-sysvshm.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libevshim.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libredirect-bionic.so 
+[BOX64] BOX64 trying to Preload /data/app/~~xvWFyISAbF-pHl34U2x8xw==/app.gamenative-vqGUTiHQ2E8F8I-i8nclcg==/lib/arm64/libhook_impl.so /data/app/~~xvWFyISAbF-pHl34U2x8xw==/app.gamenative-vqGUTiHQ2E8F8I-i8nclcg==/lib/arm64/libfile_redirect_hook.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libandroid-sysvshm.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libevshim.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libredirect-bionic.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libandroid-sysvshm.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libevshim.so /data/user/0/app.gamenative/files/imagefs/usr/lib/libredirect-bionic.so 
+[BOX64] Library search path: 
+[BOX64] Binary search path: ./:bin/:/data/user/0/app.gamenative/files/imagefs/opt/proton-10.0-4-x86_64/bin/:/data/user/0/app.gamenative/files/imagefs/usr/bin/
+[BOX64] Looking for /data/user/0/app.gamenative/files/imagefs/opt/proton-10.0-4-x86_64/lib/wine/../../bin/wine
+[BOX64] argv[1]="C:\Program Files (x86)\Steam\steamclient_loader_x64.exe"
+[BOX64] Rename process to "wine"
+[BOX64] Warning, cannot pre-load /data/app/~~xvWFyISAbF-pHl34U2x8xw==/app.gamenative-vqGUTiHQ2E8F8I-i8nclcg==/lib/arm64/libhook_impl.so
+[BOX64] Warning, cannot pre-load /data/app/~~xvWFyISAbF-pHl34U2x8xw==/app.gamenative-vqGUTiHQ2E8F8I-i8nclcg==/lib/arm64/libfile_redirect_hook.so
+[BOX64] Warning, cannot pre-load /data/user/0/app.gamenative/files/imagefs/usr/lib/libandroid-sysvshm.so
+[BOX64] Warning, cannot pre-load /data/user/0/app.gamenative/files/imagefs/usr/lib/libevshim.so
+[BOX64] Warning, cannot pre-load /data/user/0/app.gamenative/files/imagefs/usr/lib/libredirect-bionic.so
+[BOX64] Warning, cannot pre-load /data/user/0/app.gamenative/files/imagefs/usr/lib/libandroid-sysvshm.so
+[BOX64] Warning, cannot pre-load /data/user/0/app.gamenative/files/imagefs/usr/lib/libevshim.so
+[BOX64] Warning, cannot pre-load /data/user/0/app.gamenative/files/imagefs/usr/lib/libredirect-bionic.so
+[BOX64] Warning, program break not found
+[BOX64] Using native(wrapped) libdl.so
+[BOX64] Warning, program break not found
+[BOX64] Using native(wrapped) libc.so
+[BOX64] Warning, program break not found
+[BOX64] Using native(wrapped) libpthread.so
+[BOX64] Using native(wrapped) libm.so
+[BOX64] Using native(wrapped) libbsd.so
+[BOX64] Warning, program break not found
+[BOX64] Using emulated /data/user/0/app.gamenative/files/imagefs/opt/proton-10.0-4-x86_64/bin/../lib/wine/x86_64-unix/ntdll.so
+00cc:fixme:fsync:do_fsync futexes not supported on this platform.
+[BOX64] Parsing volatile metadata of file steamclient_loader_x64.exe loaded at 0x140000000
+00c0:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\imm32.dll" at 0000007FFD4C0000: builtin
+00c0:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\oleacc.dll" at 0000007FFD320000: builtin
+00c0:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\uiautomationcore.dll" at 0000007FFD380000: builtin
+00cc:trace:loaddll:build_module Loaded L"C:\\Program Files (x86)\\Steam\\steamclient_loader_x64.exe" at 0000000140000000: native
+00cc:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\kernelbase.dll" at 0000007FFF880000: builtin
+00cc:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\kernel32.dll" at 0000007FFFBE0000: builtin
+[BOX64] Warning, program break not found
+[BOX64] Using emulated /data/user/0/app.gamenative/files/imagefs/opt/proton-10.0-4-x86_64/lib/wine/x86_64-unix/winex11.so
+[BOX64] Warning, program break not found
+[BOX64] Using native(wrapped) libXext.so
+[BOX64] Warning, program break not found
+[BOX64] Using native(wrapped) libX11.so.6
+[BOX64] Warning, program break not found
+[BOX64] Using native(wrapped) libxcb.so.1
+[BOX64] Warning, program break not found
+[BOX64] Using native(wrapped) libXau.so.6
+[BOX64] Using native(wrapped) libXdmcp.so.6
+[BOX64] Using native(wrapped) libdl.so.2
+00cc:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\ucrtbase.dll" at 0000007FFED80000: builtin
+00cc:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\sechost.dll" at 0000007FFF0B0000: builtin
+00c0:trace:loaddll:build_module Loaded L"c:\\windows\\system32\\winex11.drv" at 0000007FFD310000: builtin
+00cc:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\msvcrt.dll" at 0000007FFEAE0000: builtin
+00cc:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\advapi32.dll" at 0000007FFF120000: builtin
+[BOX64] Warning, program break not found
+[BOX64] Using emulated /data/user/0/app.gamenative/files/imagefs/opt/proton-10.0-4-x86_64/lib/wine/x86_64-unix/win32u.so
+00cc:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\win32u.dll" at 0000007FFEA90000: builtin
+00cc:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\gdi32.dll" at 0000007FFF200000: builtin
+[BOX64] Warning, program break not found
+[BOX64] Using emulated /data/user/0/app.gamenative/files/imagefs/opt/proton-10.0-4-x86_64/lib/wine/x86_64-unix/ws2_32.so
+00cc:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\ws2_32.dll" at 0000007FFEA10000: builtin
+00cc:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\USER32.dll" at 0000007FFF3F0000: builtin
+00c0:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\uxtheme.dll" at 0000007FFD280000: builtin
+[BOX64] Warning, program break not found
+[BOX64] Using native(wrapped) libfreetype.so
+[BOX64] Warning, program break not found
+[BOX64] Using native(wrapped) libfontconfig.so
+[BOX64] Warning, program break not found
+[BOX64] Using native(wrapped) libexpat.so.1
+[BOX64] Using native(wrapped) libfreetype.so.6
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/share/fonts
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/share/fonts
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts/.uuid -> /data/data/app.gamenative/files/imagefs/usr/share/fonts/.uuid
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts/.uuid -> /data/data/app.gamenative/files/imagefs/usr/share/fonts/.uuid
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/share/fonts
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/share/fonts
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts/.uuid -> /data/data/app.gamenative/files/imagefs/usr/share/fonts/.uuid
+I replace: rewrite: /data/data/com.winlator.cmod/files/imagefs/usr/share/fonts/.uuid -> /data/data/app.gamenative/files/imagefs/usr/share/fonts/.uuid
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+I replace: rewrite (fstatat): /data/data/com.winlator.cmod/files/imagefs/usr/local/share/fonts -> /data/data/app.gamenative/files/imagefs/usr/local/share/fonts
+00c0:fixme:oleacc:find_class_data unhandled window class: L"#32769"
+00c0:fixme:uiautomation:uia_get_providers_for_hwnd Override provider callback currently unimplemented.
+00c0:fixme:uiautomation:default_uia_provider_callback Default ProviderType_NonClientArea provider unimplemented.
+00c0:fixme:oleacc:find_class_data unhandled window class: L"#32769"
+00c0:fixme:uiautomation:base_hwnd_fragment_get_FragmentRoot 0000000000735818, 000000000020FA88: stub!
+00c0:fixme:uiautomation:base_hwnd_fragment_GetEmbeddedFragmentRoots 0000000000735818, 000000000020FA80: stub!
+00cc:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\imm32.dll" at 0000007FFE9B0000: builtin
+[BOX64] Warning, program break not found
+[BOX64] Using emulated /data/user/0/app.gamenative/files/imagefs/opt/proton-10.0-4-x86_64/lib/wine/x86_64-unix/winex11.so
+[BOX64] Warning, program break not found
+[BOX64] Using native(wrapped) libXext.so
+[BOX64] Warning, program break not found
+[BOX64] Using native(wrapped) libX11.so.6
+[BOX64] Warning, program break not found
+[BOX64] Using native(wrapped) libxcb.so.1
+[BOX64] Warning, program break not found
+[BOX64] Using native(wrapped) libXau.so.6
+[BOX64] Using native(wrapped) libXdmcp.so.6
+[BOX64] Using native(wrapped) libdl.so.2
+00cc:trace:loaddll:build_module Loaded L"c:\\windows\\system32\\winex11.drv" at 0000007FFE9A0000: builtin
+00cc:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\uxtheme.dll" at 0000007FFE910000: builtin
+00cc:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\rpcrt4.dll" at 0000007FFE360000: builtin
+00cc:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\combase.dll" at 0000007FFE530000: builtin
+00cc:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\coml2.dll" at 0000007FFE310000: builtin
+00cc:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\ole32.dll" at 0000007FFE660000: builtin
+[BOX64] Warning, program break not found
+[BOX64] Using emulated /data/user/0/app.gamenative/files/imagefs/opt/proton-10.0-4-x86_64/lib/wine/x86_64-unix/winex11.so
+[BOX64] Warning, program break not found
+[BOX64] Using native(wrapped) libXext.so
+[BOX64] Warning, program break not found
+[BOX64] Using native(wrapped) libX11.so.6
+[BOX64] Warning, program break not found
+[BOX64] Using native(wrapped) libxcb.so.1
+[BOX64] Warning, program break not found
+[BOX64] Using native(wrapped) libXau.so.6
+[BOX64] Using native(wrapped) libXdmcp.so.6
+[BOX64] Using native(wrapped) libdl.so.2
+00d8:fixme:oleacc:find_class_data unhandled window class: L"Button"
+00c4:trace:loaddll:build_module Loaded L"c:\\windows\\system32\\winex11.drv" at 0000007FFD730000: builtin
+00d8:fixme:uiautomation:msaa_provider_GetPatternProvider Unimplemented patternId 10002
+00d8:fixme:uiautomation:base_hwnd_provider_GetPatternProvider 0000000000759480, 10002, 000000000144F7A0: stub
+00d8:fixme:oleacc:find_class_data unhandled window class: L"#32770"
+00d8:fixme:oleacc:find_class_data unhandled window class: L"Button"
+00c4:trace:loaddll:build_module Loaded L"C:\\windows\\system32\\uxtheme.dll" at 0000007FFD6A0000: builtin
+X connection to :0 broken (explicit kill or server shutdown).
+X connection to :0 broken (explicit kill or server shutdown).
+X connection to :0 broken (explicit kill or server shutdown).
+00cc:fixme:x11drv:X11DRV_DestroyNotify window 0x30090/2800003 destroyed from the outside
+00cc:fixme:x11drv:X11DRV_DestroyNotify window 0x10082/2800002 destroyed from the outside
+X connection to :0 broken (explicit kill or server shutdown).
+X connection to :0 broken (explicit kill or server shutdown).
+009c:fixme:x11drv:X11DRV_DestroyNotify window 0x30098/80000f destroyed from the outside
+009c:fixme:x11drv:X11DRV_DestroyNotify window 0x10058/80000e destroyed from the outside
+X connection to :0 broken (explicit kill or server shutdown).

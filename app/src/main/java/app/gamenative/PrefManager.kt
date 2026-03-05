@@ -145,6 +145,17 @@ object PrefManager {
             setPref(COMPONENT_MANIFEST_FETCHED_AT, value)
         }
 
+    /* Online Releases Cache */
+    private val ONLINE_RELEASES_JSON = stringPreferencesKey("online_releases_json")
+    var onlineReleasesJson: String
+        get() = getPref(ONLINE_RELEASES_JSON, "")
+        set(value) = setPref(ONLINE_RELEASES_JSON, value)
+
+    private val ONLINE_RELEASES_FETCHED_AT = longPreferencesKey("online_releases_fetched_at")
+    var onlineReleasesFetchedAt: Long
+        get() = getPref(ONLINE_RELEASES_FETCHED_AT, 0L)
+        set(value) = setPref(ONLINE_RELEASES_FETCHED_AT, value)
+
     /* PICS */
     private val LAST_PICS_CHANGE_NUMBER = intPreferencesKey("last_pics_change_number")
     var lastPICSChangeNumber: Int
@@ -1009,5 +1020,12 @@ object PrefManager {
         }
         set(value) {
             setPref(APP_SPECIFIC_CONFIGS, Json.encodeToString(value))
+        }
+
+    private val SETUP_COMPLETED = booleanPreferencesKey("setup_completed")
+    var setupCompleted: Boolean
+        get() = getPref(SETUP_COMPLETED, false)
+        set(value) {
+            setPref(SETUP_COMPLETED, value)
         }
 }

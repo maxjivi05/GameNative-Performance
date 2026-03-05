@@ -125,8 +125,16 @@ fun HomeLibraryScreen(
         onIsSearching = viewModel::onIsSearching,
         onSearchQuery = viewModel::onSearchQuery,
         onRefresh = viewModel::onRefresh,
-        onClickPlay = onClickPlay,
-        onTestGraphics = onTestGraphics,
+        onClickPlay = { appId, bootToContainer ->
+            editedLibraryItem = null
+            viewModel.onModalBottomSheet(false)
+            onClickPlay(appId, bootToContainer)
+        },
+        onTestGraphics = { appId ->
+            editedLibraryItem = null
+            viewModel.onModalBottomSheet(false)
+            onTestGraphics(appId)
+        },
         onEdit = { editedLibraryItem = it },
         onNavigateRoute = onNavigateRoute,
         onLogout = onLogout,
@@ -147,12 +155,18 @@ fun HomeLibraryScreen(
             onDismiss = { editedLibraryItem = null },
             onClickPlay = { bootToContainer ->
                 editedLibraryItem?.let {
-                    onClickPlay(it.appId, bootToContainer)
+                    val id = it.appId
+                    editedLibraryItem = null
+                    viewModel.onModalBottomSheet(false)
+                    onClickPlay(id, bootToContainer)
                 }
             },
             onTestGraphics = {
                 editedLibraryItem?.let {
-                    onTestGraphics(it.appId)
+                    val id = it.appId
+                    editedLibraryItem = null
+                    viewModel.onModalBottomSheet(false)
+                    onTestGraphics(id)
                 }
             }
         )

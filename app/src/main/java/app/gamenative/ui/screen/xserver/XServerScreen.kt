@@ -2036,8 +2036,8 @@ private fun setupXEnvironment(
         guestProgramLauncherComponent.setWineInfo(xServerState.value.wineInfo);
 
         val gameTerminationCallback: (Int) -> Unit = { status ->
-            // 137=SIGKILL, 143=SIGTERM — normal quit signals
-            if (status != 0 && status != 137 && status != 143) {
+            // 137=SIGKILL, 143=SIGTERM — normal quit signals. -1 is often returned when processes are forcefully killed.
+            if (status != 0 && status != 137 && status != 143 && status != -1) {
                 Timber.e("Guest program terminated with status: $status")
                 onGameLaunchError?.invoke("Game terminated with error status: $status")
             }

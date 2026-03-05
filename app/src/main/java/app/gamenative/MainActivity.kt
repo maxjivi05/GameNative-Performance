@@ -204,19 +204,6 @@ class MainActivity : ComponentActivity(), InputManager.InputDeviceListener {
         PluviaApp.events.on<AndroidEvent.EndProcess, Unit>(onEndProcess)
 
         setContent {
-            var hasNotificationPermission by remember { mutableStateOf(false) }
-            val permissionLauncher = rememberLauncherForActivityResult(
-                contract = ActivityResultContracts.RequestPermission(),
-            ) { isGranted ->
-                hasNotificationPermission = isGranted
-            }
-
-            LaunchedEffect(Unit) {
-                if (!hasNotificationPermission && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                }
-            }
-
             val context = LocalContext.current
             val imageLoader = remember {
                 val memoryCache = MemoryCache.Builder(context)

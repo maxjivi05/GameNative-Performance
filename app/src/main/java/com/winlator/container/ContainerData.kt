@@ -40,7 +40,7 @@ data class ContainerData(
     // container runtime variant (glibc or bionic)
     val containerVariant: String = Container.DEFAULT_VARIANT,
     // wine version identifier (used for bionic variant), defaults to main wine
-    val wineVersion: String = WineInfo.MAIN_WINE_VERSION.identifier(),
+    val wineVersion: String = Container.DEFAULT_WINE_VERSION,
     // selected 32-bit emulator for WoW64 processes (FEXCore/Box64)
     val emulator: String = Container.DEFAULT_EMULATOR,
     // FEXCore version (used on arm64ec)

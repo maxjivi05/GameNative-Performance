@@ -708,14 +708,13 @@ internal fun LibraryFrontendPane(
     val currentHatX by rememberUpdatedState(hatX)
     val currentHatY by rememberUpdatedState(hatY)
 
-    // Helper: handle game click — if uninstalled on a storefront tab, show install dialog
+    // Helper: handle game click — if uninstalled, show install dialog (even if searching on Library tab)
     val handleGameClick: (LibraryItem) -> Unit = { item ->
-        val isLibraryTab = tabs[selectedTabIdx] == FrontendTab.LIBRARY
         val isDownloading = state.downloadProgressMap.containsKey(item.appId)
         if (isDownloading) {
             val downloadsIndex = tabs.indexOf(FrontendTab.DOWNLOADS)
             if (downloadsIndex != -1) onTabChanged(downloadsIndex)
-        } else if (!isLibraryTab && !item.isInstalled) {
+        } else if (!item.isInstalled) {
             installDialogItem = item
         } else {
             onClickPlay(item.appId, false)

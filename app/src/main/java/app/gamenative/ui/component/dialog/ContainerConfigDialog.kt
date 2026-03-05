@@ -203,12 +203,24 @@ fun ContainerConfigScreen(
 
     val screenSizes = stringArrayResource(R.array.screen_size_entries).toList()
     val baseGraphicsDrivers = stringArrayResource(R.array.graphics_driver_entries).toList()
-    val graphicsDriversRef = remember(initialConfig) { mutableStateOf(baseGraphicsDrivers.toMutableList()) }
-    var graphicsDrivers by graphicsDriversRef
     val dxWrappers = stringArrayResource(R.array.dxwrapper_entries).toList()
     val dxvkVersionsBase = stringArrayResource(R.array.dxvk_version_entries).toList()
     val vkd3dVersionsBase = stringArrayResource(R.array.vkd3d_version_entries).toList()
     val audioDrivers = stringArrayResource(R.array.audio_driver_entries).toList()
+    
+    // Initialize graphicsDrivers with base drivers PLUS any custom driver currently selected in config
+    // This prevents IndexOutOfBoundsException if a custom driver is selected and the list resets to base.
+    val graphicsDriversRef = remember(initialConfig) { 
+        val list = baseGraphicsDrivers.toMutableList()
+        val currentDriver = config.graphicsDriver
+        if (currentDriver.isNotEmpty() && baseGraphicsDrivers.none { StringUtils.parseIdentifier(it) == currentDriver }) {
+            val entry = "$currentDriver (Adreno)"
+            if (!list.contains(entry)) list.add(entry)
+        }
+        mutableStateOf(list)
+    }
+    var graphicsDrivers by graphicsDriversRef
+    
     val gpuCards = ContainerUtils.getGPUCards(context)
     val presentModes = stringArrayResource(R.array.present_mode_entries).toList()
     val resourceTypes = stringArrayResource(R.array.resource_type_entries).toList()
@@ -260,9 +272,8 @@ fun ContainerConfigScreen(
         "ukrainian", "vietnamese"
     )
 
-    // PRE-LOAD synchronously to avoid flash
-    val initialAvailability = remember { runBlocking(Dispatchers.IO) { ManifestComponentHelper.loadComponentAvailability(context) } }
-    val componentAvailabilityRef = remember { mutableStateOf<ManifestComponentHelper.ComponentAvailability?>(initialAvailability) }
+    // PRE-LOAD asynchronously
+    val componentAvailabilityRef = remember { mutableStateOf<ManifestComponentHelper.ComponentAvailability?>(null) }
     var componentAvailability by componentAvailabilityRef
     
     val availability = componentAvailability
@@ -615,8 +626,16 @@ fun ContainerConfigScreen(
     }
     var graphicsDriverIndex by graphicsDriverIndexRef
 
+    // Ensure graphicsDriverIndex is always valid for the current graphicsDrivers list
+    LaunchedEffect(config.containerVariant, graphicsDrivers) {
+        if (graphicsDriverIndex >= graphicsDrivers.size) {
+            graphicsDriverIndex = (graphicsDrivers.size - 1).coerceAtLeast(0)
+        }
+    }
+
     fun getVersionsForDriver(): List<String> {
-        val driverType = StringUtils.parseIdentifier(graphicsDrivers[graphicsDriverIndex])
+        val safeIndex = graphicsDriverIndex.coerceIn(0, (graphicsDrivers.size - 1).coerceAtLeast(0))
+        val driverType = StringUtils.parseIdentifier(graphicsDrivers[safeIndex])
         return when (driverType) {
             "turnip" -> turnipVersions
             "virgl" -> virglVersions
@@ -644,19 +663,36 @@ fun ContainerConfigScreen(
     val vkd3dVersionIndexRef = rememberSaveable(initialConfig) { mutableIntStateOf(0) }
     var vkd3dVersionIndex by vkd3dVersionIndexRef
 
-    fun vkd3dForcedVersion(): String {
-        val driverType = StringUtils.parseIdentifier(graphicsDrivers[graphicsDriverIndex])
-        val isVortekLike = config.containerVariant.equals(Container.GLIBC) && (driverType == "vortek" || driverType == "adreno" || driverType == "sd-8-elite")
-        return if (isVortekLike) "2.6" else "2.14.1"
-    }
-
-    val graphicsDriverVersionIndexRef = rememberSaveable {
+    val graphicsDriverVersionIndexRef = rememberSaveable(initialConfig) {
         val version = config.graphicsDriverVersion
         val driverIndex = if (version.isEmpty()) 0
         else graphicsDriverVersionOptions.ids.indexOfFirst { it == version }.let { if (it >= 0) it else 0 }
         mutableIntStateOf(driverIndex)
     }
     var graphicsDriverVersionIndex by graphicsDriverVersionIndexRef
+
+    // Ensure all critical indices are safely clamped during list transitions
+    LaunchedEffect(graphicsDrivers, dxWrappers, dxvkOptions, vkd3dOptions, graphicsDriverVersionOptions) {
+        if (graphicsDriverIndex >= graphicsDrivers.size) graphicsDriverIndex = (graphicsDrivers.size - 1).coerceAtLeast(0)
+        if (dxWrapperIndex >= dxWrappers.size) dxWrapperIndex = (dxWrappers.size - 1).coerceAtLeast(0)
+        
+        val dxvkSize = (1 + dxvkOptions.ids.size)
+        if (dxvkVersionIndex >= dxvkSize) dxvkVersionIndex = (dxvkSize - 1).coerceAtLeast(0)
+        
+        val vkd3dSize = (1 + vkd3dOptions.ids.size)
+        if (vkd3dVersionIndex >= vkd3dSize) vkd3dVersionIndex = (vkd3dSize - 1).coerceAtLeast(0)
+        
+        if (graphicsDriverVersionIndex >= graphicsDriverVersionOptions.labels.size) {
+            graphicsDriverVersionIndex = (graphicsDriverVersionOptions.labels.size - 1).coerceAtLeast(0)
+        }
+    }
+
+    fun vkd3dForcedVersion(): String {
+        val safeIndex = graphicsDriverIndex.coerceIn(0, (graphicsDrivers.size - 1).coerceAtLeast(0))
+        val driverType = StringUtils.parseIdentifier(graphicsDrivers[safeIndex])
+        val isVortekLike = config.containerVariant.equals(Container.GLIBC) && (driverType == "vortek" || driverType == "adreno" || driverType == "sd-8-elite")
+        return if (isVortekLike) "2.6" else "2.14.1"
+    }
 
     fun currentDxvkContext(): ManifestComponentHelper.DxvkContext = ManifestComponentHelper.buildDxvkContext(
         containerVariant = config.containerVariant,
@@ -700,6 +736,25 @@ fun ContainerConfigScreen(
             changed = true
         }
         if (changed) config = config.copy(dxwrapperConfig = kvs.toString())
+    }
+
+    var hasAutoCorrectedWine by remember { mutableStateOf(false) }
+    LaunchedEffect(versionsLoaded, config.containerVariant, bionicWineOptions, glibcWineOptions) {
+        if (!versionsLoaded) return@LaunchedEffect
+        val options = if (config.containerVariant.equals(Container.BIONIC, true)) bionicWineOptions else glibcWineOptions
+        val currentWine = config.wineVersion
+        
+        // Only auto-correct if the current wine version is NOT in the valid list for this variant.
+        // This allows the user to change the wine version manually without the effect 
+        // immediately snapping it back to the first item in the list on the next recomposition.
+        if (options.ids.isNotEmpty() && !options.ids.contains(currentWine)) {
+            val fallback = options.ids.firstOrNull() ?: ""
+            if (fallback.isNotEmpty() && fallback != currentWine) {
+                timber.log.Timber.i("Auto-correcting invalid wine version from '$currentWine' to '$fallback' for variant ${config.containerVariant}")
+                config = config.copy(wineVersion = fallback)
+                hasAutoCorrectedWine = true
+            }
+        }
     }
 
     LaunchedEffect(versionsLoaded, dxvkOptions, dxvkVersionsBase, graphicsDriverIndex, dxWrapperIndex, config.dxwrapperConfig, config.dxvkVersion) {
@@ -953,7 +1008,7 @@ fun ContainerConfigScreen(
         launchCustomDriverPicker = { customDriverLauncher.launch("application/zip") },
         reloadGraphicsDrivers = { 
             scope.launch {
-                val availability = ManifestComponentHelper.loadComponentAvailability(context)
+                val availability = ManifestComponentHelper.loadComponentAvailability(context, forceRefresh = true)
                 componentAvailability = availability
                 wrapperVersions = (baseWrapperVersions + (availability.installedDrivers ?: emptyList())).distinct()
             }
@@ -969,7 +1024,13 @@ fun ContainerConfigScreen(
     MessageDialog(visible = dismissDialogState.visible, title = dismissDialogState.title, message = dismissDialogState.message, confirmBtnText = dismissDialogState.confirmBtnText, dismissBtnText = dismissDialogState.dismissBtnText, onDismissRequest = { dismissDialogState = MessageDialogState(visible = false) }, onDismissClick = { dismissDialogState = MessageDialogState(visible = false) }, onConfirmClick = onDismissRequest)
 
     androidx.compose.runtime.CompositionLocalProvider(app.gamenative.ui.component.settings.LocalIsFrontend provides isFrontend) {
-        ContainerConfigContent(title = title, config = config, initialConfig = initialConfig, state = state, onDismissCheck = onDismissCheck, onSave = onSave, nonzeroResolutionError = nonzeroResolutionError, aspectResolutionError = aspectResolutionError, default = default, isFrontend = isFrontend)
+        if (!versionsLoaded) {
+            androidx.compose.foundation.layout.Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        } else {
+            ContainerConfigContent(title = title, config = config, initialConfig = initialConfig, state = state, onDismissCheck = onDismissCheck, onSave = onSave, nonzeroResolutionError = nonzeroResolutionError, aspectResolutionError = aspectResolutionError, default = default, isFrontend = isFrontend)
+        }
     }
 }
 

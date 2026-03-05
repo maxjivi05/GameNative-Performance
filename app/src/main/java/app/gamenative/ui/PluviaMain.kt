@@ -66,6 +66,7 @@ import app.gamenative.ui.enums.Orientation
 import app.gamenative.ui.model.MainViewModel
 import app.gamenative.ui.screen.HomeScreen
 import app.gamenative.ui.screen.PluviaScreen
+import app.gamenative.ui.screen.SetupWizardScreen
 import app.gamenative.ui.screen.login.UserLoginScreen
 import app.gamenative.ui.screen.settings.SettingsScreen
 import app.gamenative.ui.screen.xserver.XServerScreen
@@ -897,8 +898,19 @@ fun PluviaMain(
 
         NavHost(
             navController = navController,
-            startDestination = PluviaScreen.Home.route,
+            startDestination = if (PrefManager.setupCompleted) PluviaScreen.Home.route else PluviaScreen.SetupWizard.route,
         ) {
+            /** Setup Wizard **/
+            composable(route = PluviaScreen.SetupWizard.route) {
+                SetupWizardScreen(
+                    onFinished = {
+                        navController.navigate(PluviaScreen.Home.route) {
+                            popUpTo(PluviaScreen.SetupWizard.route) { inclusive = true }
+                        }
+                    }
+                )
+            }
+
             /** Login **/
             /** Login **/
             composable(route = PluviaScreen.LoginUser.route) {

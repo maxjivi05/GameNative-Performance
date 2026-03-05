@@ -191,9 +191,14 @@ fun GameEditDialog(
         context = context,
         libraryItem = libraryItem,
         onEditContainer = {
-            // Load container data synchronously before switching to Settings view
-            containerData = screenModel.loadContainerData(context, libraryItem)
-            currentView = EditView.SETTINGS
+            coroutineScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                // Load container data from disk (source of truth) before switching to Settings view
+                val updated = screenModel.loadContainerData(context, libraryItem)
+                withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    containerData = updated
+                    currentView = EditView.SETTINGS
+                }
+            }
         },
         onBack = onDismiss, // Not used in this context usually
         onClickPlay = onClickPlay,
@@ -531,6 +536,13 @@ fun GameEditDialog(
                                 coroutineScope.launch(kotlinx.coroutines.Dispatchers.IO) {
                                     try {
                                         screenModel.saveContainerConfig(context, libraryItem, config)
+                                        // Force a clean reload from disk
+                                        val updated = withContext(kotlinx.coroutines.Dispatchers.IO) {
+                                            screenModel.loadContainerData(context, libraryItem)
+                                        }
+                                        withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                            containerData = updated
+                                        }
                                     } catch (e: Exception) {
                                         timber.log.Timber.e(e, "Failed to save container config for ${libraryItem.appId}")
                                     } finally {

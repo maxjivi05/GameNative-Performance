@@ -337,11 +337,10 @@ object ContainerUtils {
         PrefManager.appSpecificConfigs = configs
         Timber.i("Saved app-specific config for $appId")
 
-        // Only apply to the underlying container instance if it's NOT a shared master container
-        // OR if this app explicitly owns this container.
-        if (!isMasterContainer) {
-            applyToContainer(context, container, containerData, saveToDisk = true)
-        }
+        // Apply to the in-memory container instance.
+        // If it's a shared master container, we DON'T save to its own config.json on disk (saveToDisk = false).
+        // If it's an app-specific container, we DO save to its config.json (saveToDisk = true).
+        applyToContainer(context, container, containerData, saveToDisk = !isMasterContainer)
     }
 
     /**
@@ -677,20 +676,42 @@ object ContainerUtils {
     }
 
     /**
-     * Overload for ensureGameDriveMounted that works with containerId and returns ContainerData.
-     * Used by AppScreen implementations to load config and ensure drives are mounted in one go.
+     * Loads container data for a game, ensuring drives are mounted and app-specific config is applied.
      */
-    fun ensureGameDriveMounted(context: Context, containerId: String, appId: String): ContainerData {
+    fun loadContainerDataForGame(context: Context, containerId: String, appId: String): ContainerData {
         val container = ContainerManager(context).getContainerById(containerId)
+        return if (container != null) {
+            loadContainerDataForGame(context, container, appId)
+        } else {
+            Timber.e("loadContainerDataForGame: Could not find container $containerId for $appId")
+            val config = PrefManager.appSpecificConfigs[appId]?.let {
+                try { ContainerData.fromJson(it) } catch (e: Exception) { ContainerData() }
+            } ?: ContainerData()
+            config
+        }
+    }
+
+    /**
+     * Loads container data for a game using an already loaded Container object.
+     */
+    fun loadContainerDataForGame(context: Context, container: Container, appId: String): ContainerData {
         ensureGameDriveMounted(context, container, appId)
-        
-        // Load effective config (app-specific or container-base)
-        val config = PrefManager.appSpecificConfigs[appId]?.let {
-            try { ContainerData.fromJson(it) } catch (e: Exception) { toContainerData(container) }
-        } ?: toContainerData(container)
-        
-        // Sync the drives from the modified container object to the returned config
-        return config.copy(drives = container.drives)
+
+        // Always prioritize the actual data from the Container object (reloaded from disk)
+        // to ensure we never use stale cached data.
+        val config = toContainerData(container)
+
+        // Only use PrefManager for non-core transient overrides if absolutely necessary, 
+        // but for core settings, the Container object is the source of truth.
+        val appSpecific = PrefManager.appSpecificConfigs[appId]?.let {
+            try { ContainerData.fromJson(it) } catch (e: Exception) { null }
+        }
+
+        // Merge app-specific overrides (like drives or executable path) into the base container config
+        return config.copy(
+            executablePath = appSpecific?.executablePath?.ifEmpty { config.executablePath } ?: config.executablePath,
+            drives = container.drives // Sync drives from the modified container object
+        )
     }
 
     /**
@@ -707,8 +728,15 @@ object ContainerUtils {
             }
             GameSource.CUSTOM_GAME -> CustomGameScanner.getFolderPathFromAppId(appId)
             GameSource.GOG -> {
-                val gameId = extractGameIdFromContainerId(appId)
-                GOGService.getGOGGameOf(gameId.toString())?.installPath
+                val gameId = extractGameIdFromContainerId(appId).toString()
+                GOGService.getGOGGameOf(gameId)?.installPath ?: run {
+                    // Fallback to direct DB query if service instance is not ready
+                    runBlocking(Dispatchers.IO) {
+                        try {
+                            app.gamenative.db.PluviaDatabase.getInstance(context).gogGameDao().getById(gameId)?.installPath
+                        } catch (e: Exception) { null }
+                    }
+                }
             }
             GameSource.EPIC -> {
                 val gameId = extractGameIdFromContainerId(appId)
@@ -731,7 +759,8 @@ object ContainerUtils {
             // Rebuild drives without A: using the correct concatenated format (LETTER:path)
             // Container.drivesIterator parses "D:/pathE:/path" — NO comma separators.
             val sb = StringBuilder()
-            for (drive in Container.drivesIterator(container.drives)) {
+            val drives = container.drives ?: Container.DEFAULT_DRIVES
+            for (drive in Container.drivesIterator(drives)) {
                 if (drive[0] != "A") {
                     sb.append(drive[0]).append(':').append(drive[1])
                 }
@@ -1425,15 +1454,10 @@ object ContainerUtils {
         return try {
             lastPart.toInt()
         } catch (e: NumberFormatException) {
-            // Amazon IDs are UUID strings (e.g. "amzn1.adg.product.xxx") — not parseable as Int.
-            // Use hashCode() of the full ID part (after prefix) for a stable Int representation.
-            if (containerId.startsWith("AMAZON_")) {
-                val idPart = idWithoutSuffix.removePrefix("AMAZON_")
-                Timber.d("extractGameIdFromContainerId: Amazon ID '$idPart' → hashCode=${idPart.hashCode()}")
-                idPart.hashCode()
-            } else {
-                throw IllegalArgumentException("Could not extract game ID from container ID: $containerId", e)
-            }
+            // If the ID part is not numeric (e.g. Amazon UUID, Custom Game name, etc.),
+            // use the hashCode of the ID part to provide a stable Int representation.
+            Timber.d("extractGameIdFromContainerId: Non-numeric ID '$lastPart' → hashCode=${lastPart.hashCode()}")
+            lastPart.hashCode()
         }
     }
 

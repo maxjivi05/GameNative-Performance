@@ -92,6 +92,17 @@ class LibraryViewModel @Inject constructor(
     private var gogGameList: List<GOGGame> = emptyList()
     private var epicGameList: List<EpicGame> = emptyList()
     private var amazonGameList: List<AmazonGame> = emptyList()
+    private var customGameList: List<LibraryItem> = emptyList()
+
+    private fun refreshCustomGames() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val items = CustomGameScanner.scanAsLibraryItems()
+            if (customGameList != items) {
+                customGameList = items
+                onFilterApps(paginationCurrentPage)
+            }
+        }
+    }
 
     // Track if this is the first load to apply minimum load time
     private var isFirstLoad = true
@@ -214,6 +225,7 @@ class LibraryViewModel @Inject constructor(
         PluviaApp.events.on<AndroidEvent.LibraryInstallStatusChanged, Unit>(onInstallStatusChanged)
         PluviaApp.events.on<AndroidEvent.CustomGameImagesFetched, Unit>(onCustomGameImagesFetched)
         PluviaApp.events.on<AndroidEvent.StoreAuthChanged, Unit>(onStoreAuthChanged)
+        refreshCustomGames()
     }
 
     override fun onCleared() {
@@ -339,6 +351,7 @@ class LibraryViewModel @Inject constructor(
                     Timber.tag("LibraryViewModel").i("Triggering Epic library refresh")
                     app.gamenative.service.epic.EpicService.triggerLibrarySync(context)
                 }
+                refreshCustomGames()
             } catch (e: Exception) {
                 Timber.tag("LibraryViewModel").e(e, "Failed to refresh owned games from server")
             } finally {
@@ -365,7 +378,7 @@ class LibraryViewModel @Inject constructor(
             }
 
             CustomGameScanner.invalidateCache()
-            onFilterApps(paginationCurrentPage)
+            refreshCustomGames()
         }
     }
 
@@ -459,16 +472,22 @@ class LibraryViewModel @Inject constructor(
             // Scan Custom Games roots and create UI items (filtered by search query inside scanner)
             // Only include custom games if GAME filter is selected
             val customGameItems = if (currentState.appInfoSortType.contains(AppFilter.GAME)) {
-                CustomGameScanner.scanAsLibraryItems(
-                    query = currentState.searchQuery
-                ).map { item ->
-                    val localPlaytime = LocalPlaytimeManager.getPlaytime(context, item.appId)
-                    item.copy(
-                        playTime = localPlaytime.totalMinutes,
-                        lastSessionTime = localPlaytime.lastSessionMinutes,
-                        lastPlayed = localPlaytime.lastPlayed
-                    )
-                }
+                customGameList
+                    .filter { item ->
+                        if (currentState.searchQuery.isNotEmpty()) {
+                            item.name.contains(currentState.searchQuery, ignoreCase = true)
+                        } else {
+                            true
+                        }
+                    }
+                    .map { item ->
+                        val localPlaytime = LocalPlaytimeManager.getPlaytime(context, item.appId)
+                        item.copy(
+                            playTime = localPlaytime.totalMinutes,
+                            lastSessionTime = localPlaytime.lastSessionMinutes,
+                            lastPlayed = localPlaytime.lastPlayed
+                        )
+                    }
             } else {
                 emptyList()
             }

@@ -667,7 +667,7 @@ private fun Preview_AppItemGrid() {
                     LibraryItem(idx, "${GameSource.STEAM.name}_${item.id}", item.name, item.iconHash, idx % 2 == 0, GameSource.CUSTOM_GAME)
                 }
                 LazyVerticalGrid(columns = GridCells.Fixed(4), horizontalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(20.dp, 20.dp, 20.dp, 72.dp)) {
-                    items(items = appInfoList, key = { it.index }) { item ->
+                    items(items = appInfoList, key = { it.appId }) { item ->
                         val status = when (item.index % 4) {
                             0 -> GameCompatibilityStatus.COMPATIBLE
                             1 -> GameCompatibilityStatus.GPU_COMPATIBLE
@@ -678,7 +678,7 @@ private fun Preview_AppItemGrid() {
                     }
                 }
                 LazyVerticalGrid(columns = GridCells.Fixed(5), horizontalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(20.dp, 20.dp, 20.dp, 72.dp)) {
-                    items(items = appInfoList, key = { it.index }) { item ->
+                    items(items = appInfoList, key = { it.appId }) { item ->
                         val status = when (item.index % 4) {
                             0 -> GameCompatibilityStatus.COMPATIBLE
                             1 -> GameCompatibilityStatus.GPU_COMPATIBLE
